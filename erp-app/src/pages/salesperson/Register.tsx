@@ -237,15 +237,25 @@ const SalespersonMyData: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 bg-blue-50">
                     {editingId === item.id ? (
-                      <input
-                        type="text"
+                      <select
                         value={item.meeting_status || ''}
                         onChange={(e) => handleChange(item.id, 'meeting_status', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                        placeholder="미팅여부"
-                      />
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">선택</option>
+                        <option value="미팅완료">미팅완료</option>
+                        <option value="일정재확인요청">일정재확인요청</option>
+                        <option value="미팅거절">미팅거절</option>
+                      </select>
                     ) : (
-                      <span className="text-sm text-gray-900">{item.meeting_status || '-'}</span>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                        item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                        item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {item.meeting_status || '-'}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 bg-blue-50">

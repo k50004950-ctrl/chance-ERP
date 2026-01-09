@@ -298,8 +298,8 @@ const Sidebar: React.FC = () => {
         </div>
       )}
 
-      {/* 인사 종목 메뉴 (일반 사용자(employee)만) */}
-      {user?.role === 'employee' && (
+      {/* 인사 종목 메뉴 (일반 사용자(employee) 및 섭외자(recruiter)) */}
+      {(user?.role === 'employee' || user?.role === 'recruiter') && (
         <div className="p-3 border-b border-gray-200">
           <NavLink
             to="/attendance/clock-in"

@@ -420,11 +420,12 @@ const SalesDBRegister: React.FC = () => {
                   <select
                     value={row.meeting_status}
                     onChange={(e) => handleCellChange(index, 'meeting_status', e.target.value)}
-                    className="w-20 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
+                    className="w-32 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="">선택</option>
-                    <option value="Y">Y</option>
-                    <option value="N">N</option>
+                    <option value="미팅완료">미팅완료</option>
+                    <option value="일정재확인요청">일정재확인요청</option>
+                    <option value="미팅거절">미팅거절</option>
                   </select>
                 </td>
                 <td className="border border-gray-300 px-1 py-1">

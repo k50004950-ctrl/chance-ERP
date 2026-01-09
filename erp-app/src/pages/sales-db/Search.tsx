@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search as SearchIcon, Trash2, Edit } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface SalesDB {
   id: number;
@@ -26,9 +27,11 @@ interface SalesDB {
 }
 
 const SalesDBSearch: React.FC = () => {
+  const { user } = useAuth();
   const [salesDB, setSalesDB] = useState<SalesDB[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<SalesDB[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSalesDB();
@@ -75,6 +78,25 @@ const SalesDBSearch: React.FC = () => {
     } catch (error) {
       console.error('삭제 실패:', error);
       alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleMeetingStatusUpdate = async (id: number, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/sales-db/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meeting_status: newStatus }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert('미팅여부가 업데이트되었습니다.');
+        fetchSalesDB();
+        setEditingId(null);
+      }
+    } catch (error) {
+      console.error('업데이트 실패:', error);
+      alert('업데이트 중 오류가 발생했습니다.');
     }
   };
 
@@ -211,8 +233,28 @@ const SalesDBSearch: React.FC = () => {
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                     {item.salesperson_name || '-'}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                    {item.meeting_status || '-'}
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    {user?.role === 'salesperson' ? (
+                      <select
+                        value={item.meeting_status || ''}
+                        onChange={(e) => handleMeetingStatusUpdate(item.id, e.target.value)}
+                        className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">선택</option>
+                        <option value="미팅완료">미팅완료</option>
+                        <option value="일정재확인요청">일정재확인요청</option>
+                        <option value="미팅거절">미팅거절</option>
+                      </select>
+                    ) : (
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                        item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                        item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {item.meeting_status || '-'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                     {item.company_name}

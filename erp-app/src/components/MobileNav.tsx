@@ -65,8 +65,8 @@ const MobileNav: React.FC = () => {
                 <span className="text-sm font-medium">대시보드</span>
               </NavLink>
 
-              {/* 일반 사용자(employee) 메뉴만 */}
-              {user?.role === 'employee' && (
+              {/* 일반 사용자(employee) 및 섭외자(recruiter) 메뉴 */}
+              {(user?.role === 'employee' || user?.role === 'recruiter') && (
                 <>
                   <NavLink
                     to="/attendance/clock-in"

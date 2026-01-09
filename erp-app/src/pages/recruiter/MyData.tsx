@@ -33,9 +33,13 @@ interface Salesperson {
 
 const RecruiterMyData: React.FC = () => {
   const [myData, setMyData] = useState<MyDataItem[]>([]);
+  const [filteredData, setFilteredData] = useState<MyDataItem[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
 
   useEffect(() => {
     // 로그인한 사용자 정보 가져오기
@@ -68,11 +72,65 @@ const RecruiterMyData: React.FC = () => {
       const result = await response.json();
       if (result.success) {
         setMyData(result.data);
+        setFilteredData(result.data);
+        
+        // 연도 목록 추출 (proposal_date 기준)
+        const years = new Set<string>();
+        result.data.forEach((item: MyDataItem) => {
+          if (item.proposal_date) {
+            const year = item.proposal_date.substring(0, 4);
+            years.add(year);
+          }
+        });
+        const yearList = Array.from(years).sort((a, b) => b.localeCompare(a));
+        setAvailableYears(yearList);
+        
+        // 기본값: 현재 연도와 월
+        const now = new Date();
+        const currentYear = now.getFullYear().toString();
+        const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+        
+        if (yearList.includes(currentYear)) {
+          setSelectedYear(currentYear);
+          setSelectedMonth(currentMonth);
+          filterDataByMonth(result.data, currentYear, currentMonth);
+        } else if (yearList.length > 0) {
+          setSelectedYear(yearList[0]);
+          setSelectedMonth('');
+        }
       }
     } catch (error) {
       console.error('데이터 조회 실패:', error);
     }
   };
+
+  const filterDataByMonth = (data: MyDataItem[], year: string, month: string) => {
+    if (!year) {
+      setFilteredData(data);
+      return;
+    }
+    
+    let filtered = data.filter(item => {
+      if (!item.proposal_date) return false;
+      const itemYear = item.proposal_date.substring(0, 4);
+      return itemYear === year;
+    });
+    
+    if (month) {
+      filtered = filtered.filter(item => {
+        const itemMonth = item.proposal_date.substring(5, 7);
+        return itemMonth === month;
+      });
+    }
+    
+    setFilteredData(filtered);
+  };
+
+  useEffect(() => {
+    if (myData.length > 0) {
+      filterDataByMonth(myData, selectedYear, selectedMonth);
+    }
+  }, [selectedYear, selectedMonth]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -145,6 +203,57 @@ const RecruiterMyData: React.FC = () => {
         </p>
       </div>
 
+      {/* 월별 필터 */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-semibold text-gray-700">연도:</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+                setSelectedMonth('');
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">전체</option>
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}년
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {selectedYear && (
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-semibold text-gray-700">월:</label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">전체</option>
+                {Array.from({ length: 12 }, (_, i) => {
+                  const month = (i + 1).toString().padStart(2, '0');
+                  return (
+                    <option key={month} value={month}>
+                      {i + 1}월
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+          
+          <div className="ml-auto">
+            <span className="text-sm text-gray-600">
+              총 <strong className="text-blue-600">{filteredData.length}</strong>개 업체
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -160,14 +269,14 @@ const RecruiterMyData: React.FC = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {myData.length === 0 ? (
+            {filteredData.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
-                  섭외한 업체 데이터가 없습니다.
+                  {selectedYear || selectedMonth ? '해당 기간에 섭외한 업체가 없습니다.' : '섭외한 업체 데이터가 없습니다.'}
                 </td>
               </tr>
             ) : (
-              myData.map((item) => (
+              filteredData.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 bg-blue-50">
                     {editingId === item.id ? (

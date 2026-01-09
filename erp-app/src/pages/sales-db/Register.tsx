@@ -58,6 +58,7 @@ const SalesDBRegister: React.FC = () => {
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
   const [rows, setRows] = useState<SalesDBRow[]>([{ ...emptyRow }]);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // 천 단위 쉼표 포맷팅 함수
   const formatNumberWithCommas = (value: string): string => {
@@ -74,6 +75,10 @@ const SalesDBRegister: React.FC = () => {
   };
 
   useEffect(() => {
+    // 현재 로그인한 사용자 정보 가져오기
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setCurrentUser(user);
+    
     fetchSalespersons();
     fetchExistingData();
   }, []);
@@ -165,6 +170,8 @@ const SalesDBRegister: React.FC = () => {
         
         const payload = {
           ...row,
+          // proposer 필드가 비어있으면 현재 로그인한 사용자의 이름으로 설정
+          proposer: row.proposer || (currentUser?.name || ''),
           salesperson_id: row.salesperson_id ? parseInt(row.salesperson_id) : null,
           sales_amount: row.sales_amount ? parseInt(row.sales_amount) : null,
           actual_sales: row.actual_sales ? parseInt(row.actual_sales) : null,

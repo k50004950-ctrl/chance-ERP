@@ -31,6 +31,8 @@ const SalespersonSchedules: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'schedules' | 'memos'>('schedules');
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [users, setUsers] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<'table' | 'grouped'>('grouped'); // 한눈에 보기 모드 추가
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     loadUsers();
@@ -112,6 +114,33 @@ const SalespersonSchedules: React.FC = () => {
     );
   };
 
+  // 영업자별로 일정 그룹화 (날짜 필터링 포함)
+  const getGroupedSchedules = () => {
+    // 선택된 날짜의 일정만 필터링
+    const filteredByDate = schedules.filter(s => s.schedule_date === selectedDate);
+    
+    // 영업자별로 그룹화
+    const grouped: Record<string, Schedule[]> = {};
+    filteredByDate.forEach(schedule => {
+      const userName = schedule.user_name || '알 수 없음';
+      if (!grouped[userName]) {
+        grouped[userName] = [];
+      }
+      grouped[userName].push(schedule);
+    });
+    
+    // 각 영업자의 일정을 시간순으로 정렬
+    Object.keys(grouped).forEach(userName => {
+      grouped[userName].sort((a, b) => {
+        const timeA = a.schedule_time || '00:00';
+        const timeB = b.schedule_time || '00:00';
+        return timeA.localeCompare(timeB);
+      });
+    });
+    
+    return grouped;
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* 헤더 */}
@@ -122,20 +151,59 @@ const SalespersonSchedules: React.FC = () => {
 
       {/* 필터 */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-gray-700">영업자 선택:</label>
-          <select
-            value={selectedUser}
-            onChange={(e) => setSelectedUser(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">전체</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name} ({user.role === 'salesperson' ? '영업자' : '섭외자'})
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">영업자:</label>
+            <select
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">전체</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name} ({user.role === 'salesperson' ? '영업자' : '섭외자'})
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {activeTab === 'schedules' && (
+            <>
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-gray-700">날짜:</label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2 ml-auto">
+                <button
+                  onClick={() => setViewMode('grouped')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    viewMode === 'grouped'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  한눈에 보기
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    viewMode === 'table'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  테이블 보기
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -180,7 +248,75 @@ const SalespersonSchedules: React.FC = () => {
                 <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                 <p className="text-lg font-medium mb-1">등록된 일정이 없습니다</p>
               </div>
+            ) : viewMode === 'grouped' ? (
+              // 한눈에 보기 모드
+              <div>
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-gray-800">
+                    {new Date(selectedDate).toLocaleDateString('ko-KR', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      weekday: 'long'
+                    })} 일정
+                  </h3>
+                </div>
+                {Object.keys(getGroupedSchedules()).length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p className="text-lg font-medium mb-1">선택한 날짜에 일정이 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Object.entries(getGroupedSchedules()).map(([userName, userSchedules]) => (
+                      <div key={userName} className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-md p-5 border border-blue-100">
+                        <div className="flex items-center space-x-2 mb-4 pb-3 border-b border-blue-200">
+                          <Users className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-bold text-lg text-gray-800">{userName}</h4>
+                          <span className="ml-auto text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                            {userSchedules.length}건
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {userSchedules.map((schedule) => (
+                            <div 
+                              key={schedule.id} 
+                              className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:shadow-md transition"
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-semibold text-blue-600 text-sm">
+                                    {schedule.schedule_time || '시간 미정'}
+                                  </span>
+                                  {getStatusBadge(schedule.status)}
+                                </div>
+                              </div>
+                              <p className="font-medium text-gray-900 mb-1">{schedule.title}</p>
+                              {schedule.client_name && (
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-medium">고객:</span> {schedule.client_name}
+                                </p>
+                              )}
+                              {schedule.location && (
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-medium">장소:</span> {schedule.location}
+                                </p>
+                              )}
+                              {schedule.notes && (
+                                <p className="text-xs text-gray-500 mt-2 italic">
+                                  {schedule.notes}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
+              // 테이블 보기 모드 (기존)
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">

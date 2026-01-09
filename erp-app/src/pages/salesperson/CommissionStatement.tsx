@@ -25,6 +25,9 @@ const SalespersonCommissionStatement: React.FC = () => {
   const [details, setDetails] = useState<CommissionDetail[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingRate, setEditingRate] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const [selectedMonth, setSelectedMonth] = useState<string>((new Date().getMonth() + 1).toString().padStart(2, '0'));
+  const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
 
   useEffect(() => {
     fetchSalespersons();
@@ -34,7 +37,7 @@ const SalespersonCommissionStatement: React.FC = () => {
     if (selectedSalesperson) {
       fetchCommissionDetails();
     }
-  }, [selectedSalesperson]);
+  }, [selectedSalesperson, selectedYear, selectedMonth]);
 
   const fetchSalespersons = async () => {
     try {
@@ -60,13 +63,45 @@ const SalespersonCommissionStatement: React.FC = () => {
     if (!selectedSalesperson) return;
     
     try {
-      const response = await fetch(`/api/salesperson/${selectedSalesperson}/commission-details`);
+      const response = await fetch(`/api/salesperson/${selectedSalesperson}/commission-details?year=${selectedYear}&month=${selectedMonth}`);
       const result = await response.json();
       if (result.success) {
         setDetails(result.data);
+        setIsConfirmed(result.isConfirmed || false);
       }
     } catch (error) {
       console.error('수수료 상세 조회 실패:', error);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!confirm(`${selectedYear}년 ${selectedMonth}월 수수료를 확정하시겠습니까?\n확정 후에는 수정할 수 없습니다.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/commission-statements/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          salesperson_id: selectedSalesperson,
+          year: selectedYear,
+          month: selectedMonth,
+          details: details,
+          total_commission: totalCommission
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('수수료가 확정되었습니다.');
+        fetchCommissionDetails();
+      } else {
+        alert('확정 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('확정 실패:', error);
+      alert('확정 중 오류가 발생했습니다.');
     }
   };
 
@@ -119,26 +154,86 @@ const SalespersonCommissionStatement: React.FC = () => {
         <p className="text-gray-600 mt-1">계약 완료된 업체별 수수료를 확인하세요 (계약여부='Y'인 항목만 표시)</p>
       </div>
 
-      {/* 영업자 선택 (관리자만 표시) */}
-      {user?.role === 'admin' && (
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">영업자 선택:</label>
+      {/* 필터 영역 */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* 영업자 선택 (관리자만) */}
+          {user?.role === 'admin' && (
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">영업자:</label>
+              <select
+                value={selectedSalesperson}
+                onChange={(e) => setSelectedSalesperson(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">선택하세요</option>
+                {salespersons.map((sp) => (
+                  <option key={sp.id} value={sp.id}>
+                    {sp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 년도 선택 */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">년도:</label>
             <select
-              value={selectedSalesperson}
-              onChange={(e) => setSelectedSalesperson(e.target.value)}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">선택하세요</option>
-              {salespersons.map((sp) => (
-                <option key={sp.id} value={sp.id}>
-                  {sp.name}
-                </option>
-              ))}
+              {Array.from({ length: 5 }, (_, i) => {
+                const year = new Date().getFullYear() - 2 + i;
+                return (
+                  <option key={year} value={year}>
+                    {year}년
+                  </option>
+                );
+              })}
             </select>
           </div>
+
+          {/* 월 선택 */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">월:</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {Array.from({ length: 12 }, (_, i) => {
+                const month = (i + 1).toString().padStart(2, '0');
+                return (
+                  <option key={month} value={month}>
+                    {i + 1}월
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* 확정 버튼 (관리자만, 미확정 시에만) */}
+          {user?.role === 'admin' && !isConfirmed && selectedSalesperson && (
+            <button
+              onClick={handleConfirm}
+              className="ml-auto px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition flex items-center space-x-2"
+            >
+              <Save className="w-4 h-4" />
+              <span>확정</span>
+            </button>
+          )}
+
+          {/* 확정 상태 표시 */}
+          {isConfirmed && (
+            <div className="ml-auto px-4 py-2 bg-green-100 text-green-800 rounded-lg flex items-center space-x-2">
+              <DollarSign className="w-4 h-4" />
+              <span className="font-medium">확정됨</span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
       
       {/* 영업자 본인 정보 표시 */}
       {user?.role === 'salesperson' && (

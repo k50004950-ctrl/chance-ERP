@@ -31,18 +31,29 @@ interface Salesperson {
   username: string;
 }
 
+interface SalesClient {
+  id: number;
+  client_name: string;
+  commission_rate: number;
+  description: string;
+}
+
 const SalespersonMyData: React.FC = () => {
   const [myData, setMyData] = useState<MyDataItem[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [salespersonId, setSalespersonId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
+  const [salesClients, setSalesClients] = useState<SalesClient[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // 로그인한 사용자 정보 가져오기
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     setCurrentUser(user);
+    
+    // 거래처 목록은 항상 가져옴
+    fetchSalesClients();
     
     if (user.role === 'admin') {
       setIsAdmin(true);
@@ -67,6 +78,18 @@ const SalespersonMyData: React.FC = () => {
       }
     } catch (error) {
       console.error('영업자 목록 조회 실패:', error);
+    }
+  };
+
+  const fetchSalesClients = async () => {
+    try {
+      const response = await fetch('/api/sales-clients');
+      const result = await response.json();
+      if (result.success) {
+        setSalesClients(result.data);
+      }
+    } catch (error) {
+      console.error('거래처 목록 조회 실패:', error);
     }
   };
 
@@ -162,7 +185,10 @@ const SalespersonMyData: React.FC = () => {
           {isAdmin ? '영업자별 담당 업체 정보를 확인하고 수정하세요' : '내가 담당하는 업체 정보를 수정하세요'}
         </p>
         <p className="text-sm text-blue-600 mt-2">
-          ※ 계약날짜, 미팅여부, 계약기장료, 거래처, 기타(피드백) 필드만 수정 가능합니다.
+          ※ 계약날짜, 미팅여부, 거래처(매출거래처), 기타(피드백) 필드만 수정 가능합니다.
+        </p>
+        <p className="text-sm text-orange-600 mt-1">
+          ※ 거래처 선택 시 수수료가 자동으로 적용됩니다.
         </p>
       </div>
 
@@ -290,13 +316,25 @@ const SalespersonMyData: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 bg-blue-50">
                     {editingId === item.id ? (
-                      <input
-                        type="text"
+                      <select
                         value={item.client_name || ''}
-                        onChange={(e) => handleChange(item.id, 'client_name', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                        placeholder="거래처"
-                      />
+                        onChange={(e) => {
+                          const selectedClient = salesClients.find(c => c.client_name === e.target.value);
+                          handleChange(item.id, 'client_name', e.target.value);
+                          // 거래처 선택 시 수수료 자동 적용
+                          if (selectedClient) {
+                            handleChange(item.id, 'contract_client', selectedClient.commission_rate.toString());
+                          }
+                        }}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">거래처 선택</option>
+                        {salesClients.map((client) => (
+                          <option key={client.id} value={client.client_name}>
+                            {client.client_name} ({client.commission_rate.toLocaleString('ko-KR')}원)
+                          </option>
+                        ))}
+                      </select>
                     ) : (
                       <span className="text-sm text-gray-900">{item.client_name || '-'}</span>
                     )}

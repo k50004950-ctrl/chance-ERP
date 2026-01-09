@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, UserCheck } from 'lucide-react';
+import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 interface MyDataItem {
   id: number;
@@ -201,6 +201,55 @@ const RecruiterMyData: React.FC = () => {
         <p className="text-sm text-blue-600 mt-3">
           ※ 설의날짜, 미팅여부, 담당영업자 필드만 수정 가능합니다.
         </p>
+      </div>
+
+      {/* 실적 통계 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">전체 섭외</p>
+              <p className="text-2xl font-bold text-gray-800">{filteredData.length}</p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-blue-500" />
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">미팅완료 (실적)</p>
+              <p className="text-2xl font-bold text-green-600">
+                {filteredData.filter(item => item.meeting_status === '미팅완료').length}
+              </p>
+            </div>
+            <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">재확인요청</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {filteredData.filter(item => item.meeting_status === '일정재확인요청').length}
+              </p>
+            </div>
+            <Clock className="w-8 h-8 text-yellow-500" />
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">미팅거절</p>
+              <p className="text-2xl font-bold text-red-600">
+                {filteredData.filter(item => item.meeting_status === '미팅거절').length}
+              </p>
+            </div>
+            <XCircle className="w-8 h-8 text-red-500" />
+          </div>
+        </div>
       </div>
 
       {/* 월별 필터 */}

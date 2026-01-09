@@ -211,6 +211,16 @@ function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+
+    -- 매출거래처 테이블 (관리자가 관리)
+    CREATE TABLE IF NOT EXISTS sales_clients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_name TEXT UNIQUE NOT NULL,
+      commission_rate REAL DEFAULT 0,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Insert default admin user if not exists
@@ -273,6 +283,31 @@ function initDatabase() {
     if (!e.message.includes('duplicate column')) {
       console.error('contract_date 필드 추가 중 오류:', e.message);
     }
+  }
+
+  // commission_statements 테이블에 확정 기능 관련 필드 추가
+  try {
+    db.exec('ALTER TABLE commission_statements ADD COLUMN year TEXT');
+  } catch (e) {
+    // 이미 컬럼이 존재하면 무시
+  }
+
+  try {
+    db.exec('ALTER TABLE commission_statements ADD COLUMN month TEXT');
+  } catch (e) {
+    // 이미 컬럼이 존재하면 무시
+  }
+
+  try {
+    db.exec('ALTER TABLE commission_statements ADD COLUMN details_snapshot TEXT');
+  } catch (e) {
+    // 이미 컬럼이 존재하면 무시
+  }
+
+  try {
+    db.exec('ALTER TABLE commission_statements ADD COLUMN confirmed_at DATETIME');
+  } catch (e) {
+    // 이미 컬럼이 존재하면 무시
   }
 
   console.log('Database initialized at:', dbPath);
@@ -1168,27 +1203,54 @@ app.delete('/api/salespersons/:id', (req, res) => {
   }
 });
 
-// 영업자별 수수료 상세 조회 (계약여부='Y'인 데이터만)
+// 영업자별 수수료 상세 조회 (계약여부='Y'인 데이터만, 월별 필터링)
 app.get('/api/salesperson/:id/commission-details', (req, res) => {
   try {
     const { id } = req.params;
+    const { year, month } = req.query;
     
-    const details = db.prepare(`
-      SELECT 
-        id,
-        company_name,
-        contract_client,
-        contract_date,
-        COALESCE(commission_rate, 500) as commission_rate,
-        CAST(REPLACE(contract_client, ',', '') AS INTEGER) as commission_base,
-        CAST((CAST(REPLACE(contract_client, ',', '') AS INTEGER) * COALESCE(commission_rate, 500) / 100) AS INTEGER) as commission_amount,
-        contract_status
-      FROM sales_db 
-      WHERE salesperson_id = ? AND contract_status IN ('Y', '해임')
-      ORDER BY contract_date DESC, created_at DESC
-    `).all(id);
+    // 확정 여부 확인
+    const confirmed = db.prepare(`
+      SELECT * FROM commission_statements 
+      WHERE salesperson_id = ? AND year = ? AND month = ?
+    `).get(id, year, month);
     
-    res.json({ success: true, data: details });
+    if (confirmed) {
+      // 확정된 경우: 저장된 스냅샷 데이터 반환
+      const details = JSON.parse(confirmed.details_snapshot || '[]');
+      res.json({ 
+        success: true, 
+        data: details,
+        isConfirmed: true,
+        confirmedAt: confirmed.confirmed_at
+      });
+    } else {
+      // 미확정인 경우: 실시간 데이터 반환 (월별 필터링)
+      const yearMonth = `${year}-${month.padStart(2, '0')}`;
+      
+      const details = db.prepare(`
+        SELECT 
+          id,
+          company_name,
+          contract_client,
+          contract_date,
+          COALESCE(commission_rate, 500) as commission_rate,
+          CAST(REPLACE(contract_client, ',', '') AS INTEGER) as commission_base,
+          CAST((CAST(REPLACE(contract_client, ',', '') AS INTEGER) * COALESCE(commission_rate, 500) / 100) AS INTEGER) as commission_amount,
+          contract_status
+        FROM sales_db 
+        WHERE salesperson_id = ? 
+          AND contract_status IN ('Y', '해임')
+          AND substr(contract_date, 1, 7) = ?
+        ORDER BY contract_date DESC, created_at DESC
+      `).all(id, yearMonth);
+      
+      res.json({ 
+        success: true, 
+        data: details,
+        isConfirmed: false
+      });
+    }
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -1448,6 +1510,43 @@ app.delete('/api/commission-statements/:id', (req, res) => {
   }
 });
 
+// 수수료명세서 확정 (스냅샷 저장)
+app.post('/api/commission-statements/confirm', (req, res) => {
+  try {
+    const { salesperson_id, year, month, details, total_commission } = req.body;
+    
+    // 이미 확정된 명세서가 있는지 확인
+    const existing = db.prepare(`
+      SELECT id FROM commission_statements 
+      WHERE salesperson_id = ? AND year = ? AND month = ?
+    `).get(salesperson_id, year, month);
+    
+    if (existing) {
+      return res.json({ success: false, message: '이미 확정된 명세서입니다.' });
+    }
+    
+    // 새 명세서 생성 (스냅샷 저장)
+    const stmt = db.prepare(`
+      INSERT INTO commission_statements (
+        salesperson_id, year, month, details_snapshot, 
+        total_commission, confirmed_at
+      ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `);
+    
+    const result = stmt.run(
+      salesperson_id, 
+      year, 
+      month, 
+      JSON.stringify(details), 
+      total_commission
+    );
+    
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // ========== 일정 관리 API (Schedules) ==========
 // 일정 조회 (본인 것만 조회, 관리자는 모든 일정 조회 가능)
 app.get('/api/schedules', (req, res) => {
@@ -1593,6 +1692,65 @@ app.delete('/api/memos/:id', (req, res) => {
   try {
     const { id } = req.params;
     const stmt = db.prepare('DELETE FROM memos WHERE id = ?');
+    stmt.run(id);
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ========== 매출거래처 관리 API (Sales Clients) ==========
+// 매출거래처 전체 조회
+app.get('/api/sales-clients', (req, res) => {
+  try {
+    const clients = db.prepare('SELECT * FROM sales_clients ORDER BY client_name').all();
+    res.json({ success: true, data: clients });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 매출거래처 추가
+app.post('/api/sales-clients', (req, res) => {
+  try {
+    const { client_name, commission_rate, description } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO sales_clients (client_name, commission_rate, description)
+      VALUES (?, ?, ?)
+    `);
+    
+    const result = stmt.run(client_name, commission_rate || 0, description || '');
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 매출거래처 수정
+app.put('/api/sales-clients/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { client_name, commission_rate, description } = req.body;
+    
+    const stmt = db.prepare(`
+      UPDATE sales_clients 
+      SET client_name = ?, commission_rate = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    stmt.run(client_name, commission_rate, description || '', id);
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 매출거래처 삭제
+app.delete('/api/sales-clients/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const stmt = db.prepare('DELETE FROM sales_clients WHERE id = ?');
     stmt.run(id);
     res.json({ success: true });
   } catch (error) {

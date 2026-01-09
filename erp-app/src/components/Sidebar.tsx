@@ -170,6 +170,7 @@ const Sidebar: React.FC = () => {
       title: 'DB관리',
       icon: <Database className="w-4 h-4" />,
       children: [
+        { title: '내 DB 관리', path: '/recruiter/my-data', icon: <FileText className="w-4 h-4" /> },
         { title: 'DB등록', path: '/sales-db/register', icon: <UserPlus className="w-4 h-4" /> },
         { title: 'DB검색', path: '/sales-db/search', icon: <Search className="w-4 h-4" /> },
       ],

@@ -120,6 +120,19 @@ const MobileNav: React.FC = () => {
                     DB관리
                   </div>
                   <NavLink
+                    to="/recruiter/my-data"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-sm font-medium">내 DB 관리</span>
+                  </NavLink>
+                  <NavLink
                     to="/sales-db/register"
                     onClick={closeMenu}
                     className={({ isActive }) =>

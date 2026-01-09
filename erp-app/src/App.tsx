@@ -24,6 +24,9 @@ import SalespersonRegister from './pages/salesperson/Register';
 import ScheduleManagement from './pages/salesperson/ScheduleManagement';
 import MemoManagement from './pages/salesperson/MemoManagement';
 
+// 섭외자 관리
+import RecruiterMyData from './pages/recruiter/MyData';
+
 // 계약 관리
 import SalesCommission from './pages/contract/SalesCommission';
 import RecruitmentCommission from './pages/contract/RecruitmentCommission';
@@ -70,6 +73,9 @@ function App() {
             <Route path="salesperson/register" element={<SalespersonRegister />} />
             <Route path="salesperson/schedules" element={<ScheduleManagement />} />
             <Route path="salesperson/memos" element={<MemoManagement />} />
+            
+            {/* 섭외자 관리 */}
+            <Route path="recruiter/my-data" element={<RecruiterMyData />} />
             
             {/* 계약 관리 */}
             <Route path="contract/sales-commission" element={<SalesCommission />} />

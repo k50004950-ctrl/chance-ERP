@@ -1215,6 +1215,52 @@ app.get('/api/sales-db/my-data', (req, res) => {
   }
 });
 
+// 섭외자 본인 데이터만 조회
+app.get('/api/sales-db/my-data-recruiter', (req, res) => {
+  try {
+    const { proposer } = req.query;
+    
+    if (!proposer) {
+      return res.json({ success: false, message: '섭외자 이름이 필요합니다.' });
+    }
+    
+    const myData = db.prepare(`
+      SELECT * FROM sales_db 
+      WHERE proposer = ? 
+      ORDER BY created_at DESC
+    `).all(proposer);
+    
+    res.json({ success: true, data: myData });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 섭외자가 특정 필드만 수정
+app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { proposal_date, proposer, meeting_status, salesperson_id } = req.body;
+    
+    // 본인 데이터인지 확인
+    const record = db.prepare('SELECT proposer FROM sales_db WHERE id = ?').get(id);
+    if (!record || record.proposer !== proposer) {
+      return res.json({ success: false, message: '권한이 없습니다.' });
+    }
+    
+    const stmt = db.prepare(`
+      UPDATE sales_db 
+      SET proposal_date = ?, meeting_status = ?, salesperson_id = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(proposal_date, meeting_status, salesperson_id, id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // 영업자가 특정 필드만 수정
 app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
   try {

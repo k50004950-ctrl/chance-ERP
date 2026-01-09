@@ -1,8 +1,0 @@
-[build]
-builder = "nixpacks"
-buildCommand = "cd erp-app && npm ci && npm run build"
-
-[deploy]
-startCommand = "cd erp-app && npm run server"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10

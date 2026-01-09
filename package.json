@@ -1,0 +1,15 @@
+{
+  "name": "chance-erp-wrapper",
+  "version": "1.0.0",
+  "description": "Chance Company ERP System",
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "install": "cd erp-app && npm install",
+    "build": "cd erp-app && npm run build",
+    "start": "cd erp-app && npm run server",
+    "server": "cd erp-app && npm run server"
+  }
+}

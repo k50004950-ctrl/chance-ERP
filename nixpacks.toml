@@ -1,6 +1,6 @@
 # Railway Nixpacks 설정
 [phases.setup]
-nixPkgs = ["nodejs_22", "python3"]
+nixPkgs = ["nodejs-22_x", "python3"]
 
 [phases.install]
 cmds = ["cd erp-app && npm install"]

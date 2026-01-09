@@ -1,0 +1,405 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, FileText, TrendingUp, DollarSign, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+
+interface Schedule {
+  id?: number;
+  user_id: number;
+  title: string;
+  schedule_date: string;
+  schedule_time: string;
+  client_name: string;
+  location: string;
+  notes: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  created_at?: string;
+}
+
+interface Memo {
+  id?: number;
+  user_id: number;
+  title: string;
+  content: string;
+  category: string;
+  created_at?: string;
+}
+
+interface CommissionStats {
+  totalContracts: number;
+  thisMonthCommission: number;
+  pendingCommission: number;
+  completedDeals: number;
+}
+
+const SalespersonDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [memos, setMemos] = useState<Memo[]>([]);
+  const [stats, setStats] = useState<CommissionStats>({
+    totalContracts: 0,
+    thisMonthCommission: 0,
+    pendingCommission: 0,
+    completedDeals: 0
+  });
+
+  // 캘린더용 state
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  useEffect(() => {
+    if (user?.id) {
+      loadSchedules();
+      loadMemos();
+      loadStats();
+    }
+  }, [user]);
+
+  const loadSchedules = async () => {
+    try {
+      const response = await fetch(`/api/schedules?user_id=${user?.id}`);
+      const result = await response.json();
+      if (result.success) {
+        setSchedules(result.data);
+      }
+    } catch (error) {
+      console.error('일정 조회 실패:', error);
+    }
+  };
+
+  const loadMemos = async () => {
+    try {
+      const response = await fetch(`/api/memos?user_id=${user?.id}`);
+      const result = await response.json();
+      if (result.success) {
+        setMemos(result.data);
+      }
+    } catch (error) {
+      console.error('메모 조회 실패:', error);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      // 수수료 명세서 데이터 가져오기
+      const response = await fetch(`/api/salesperson/${user?.id}/commission-details`);
+      const result = await response.json();
+      
+      if (result.success) {
+        const details = result.data;
+        const thisMonth = new Date().toISOString().slice(0, 7);
+        
+        const thisMonthData = details.filter((d: any) => d.contract_date?.startsWith(thisMonth));
+        const thisMonthCommission = thisMonthData.reduce((sum: number, d: any) => sum + (d.commission_amount || 0), 0);
+        
+        setStats({
+          totalContracts: details.length,
+          thisMonthCommission: thisMonthCommission,
+          pendingCommission: 0, // 필요시 추가 로직
+          completedDeals: details.filter((d: any) => d.contract_status === 'Y').length
+        });
+      }
+    } catch (error) {
+      console.error('통계 조회 실패:', error);
+    }
+  };
+
+  // 캘린더 렌더링 함수
+  const renderCalendar = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay();
+
+    const days = [];
+    const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+
+    // 빈 칸 추가
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push(<div key={`empty-${i}`} className="p-2 text-center"></div>);
+    }
+
+    // 날짜 추가
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = date.toISOString().split('T')[0];
+      const daySchedules = schedules.filter(s => s.schedule_date === dateStr);
+      const isToday = dateStr === new Date().toISOString().split('T')[0];
+      const isSunday = date.getDay() === 0;
+      const isSaturday = date.getDay() === 6;
+
+      days.push(
+        <div
+          key={day}
+          className={`p-2 min-h-[60px] border border-gray-200 text-sm ${
+            isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'
+          }`}
+        >
+          <div className={`font-semibold mb-1 ${
+            isSunday ? 'text-red-600' : isSaturday ? 'text-blue-600' : 'text-gray-700'
+          }`}>
+            {day}
+          </div>
+          {daySchedules.length > 0 && (
+            <div className="space-y-1">
+              {daySchedules.slice(0, 2).map((schedule, idx) => (
+                <div
+                  key={idx}
+                  className="text-xs px-1 py-0.5 bg-blue-100 text-blue-800 rounded truncate"
+                  title={schedule.title}
+                >
+                  {schedule.schedule_time && `${schedule.schedule_time.slice(0, 5)} `}
+                  {schedule.title}
+                </div>
+              ))}
+              {daySchedules.length > 2 && (
+                <div className="text-xs text-gray-500">+{daySchedules.length - 2}개</div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        {/* 요일 헤더 */}
+        <div className="grid grid-cols-7 gap-0 mb-2">
+          {weekDays.map((day, idx) => (
+            <div
+              key={day}
+              className={`text-center font-semibold text-sm py-2 ${
+                idx === 0 ? 'text-red-600' : idx === 6 ? 'text-blue-600' : 'text-gray-600'
+              }`}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+        {/* 날짜 그리드 */}
+        <div className="grid grid-cols-7 gap-0 border-t border-l border-gray-200">
+          {days}
+        </div>
+      </div>
+    );
+  };
+
+  const prevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('ko-KR').format(value);
+  };
+
+  // 최근 5개 메모만 표시
+  const recentMemos = memos.slice(0, 5);
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {/* 헤더 */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">
+          안녕하세요, {user?.name}님! 👋
+        </h1>
+        <p className="text-gray-600 mt-1">오늘도 좋은 하루 되세요!</p>
+      </div>
+
+      {/* 상단 2개 카드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* 좌상: 월별 수수료 그래프 (간단한 버전) */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
+              기정로 수급현황
+            </h3>
+            <span className="text-sm text-gray-500">
+              금년 기준({new Date().getFullYear()}년 1월 ~ 12월)
+            </span>
+          </div>
+          
+          <div className="h-48 flex items-end justify-between space-x-2">
+            {Array.from({ length: 12 }, (_, i) => {
+              const monthCommission = i === new Date().getMonth() ? stats.thisMonthCommission : 0;
+              const maxHeight = 10000000; // 1000만원
+              const height = Math.min((monthCommission / maxHeight) * 100, 100);
+              
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center">
+                  <div className="w-full flex items-end justify-center h-40">
+                    <div
+                      className="w-full bg-blue-500 rounded-t"
+                      style={{ height: `${height}%` }}
+                      title={`${i + 1}월: ${formatCurrency(monthCommission)}원`}
+                    ></div>
+                  </div>
+                  <span className="text-xs text-gray-500 mt-2">{i + 1}월</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 우상: 수입액 현황 */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center">
+              <DollarSign className="w-5 h-5 mr-2 text-green-600" />
+              수입액 현황
+            </h3>
+            <span className="text-sm text-gray-500">
+              {new Date().getFullYear()}년 {String(new Date().getMonth() + 1).padStart(2, '0')}월
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-700">수입액</span>
+              <span className="text-xl font-bold text-gray-900">
+                {formatCurrency(stats.thisMonthCommission)}원
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="text-xs text-gray-600 mb-1">총 계약 건수</div>
+                <div className="text-2xl font-bold text-blue-600">{stats.totalContracts}건</div>
+              </div>
+              <div className="p-4 bg-green-50 rounded-lg">
+                <div className="text-xs text-gray-600 mb-1">완료된 거래</div>
+                <div className="text-2xl font-bold text-green-600">{stats.completedDeals}건</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-orange-50 rounded-lg">
+                <div className="text-xs text-gray-600 mb-1">이번 달 일정</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {schedules.filter(s => s.schedule_date.startsWith(new Date().toISOString().slice(0, 7))).length}개
+                </div>
+              </div>
+              <div className="p-4 bg-purple-50 rounded-lg">
+                <div className="text-xs text-gray-600 mb-1">등록된 메모</div>
+                <div className="text-2xl font-bold text-purple-600">{memos.length}개</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 하단 2개 카드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 좌하: 최근 일정 (캘린더 뷰) */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+              최근 일정
+            </h3>
+            <button
+              onClick={() => navigate('/salesperson/schedules')}
+              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+              title="일정 관리"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* 월 선택 */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={prevMonth}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="font-semibold text-gray-800">
+              {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
+            </span>
+            <button
+              onClick={nextMonth}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* 캘린더 */}
+          {renderCalendar()}
+        </div>
+
+        {/* 우하: 최근 메모 */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center">
+              <FileText className="w-5 h-5 mr-2 text-green-600" />
+              최근 메모
+            </h3>
+            <button
+              onClick={() => navigate('/salesperson/memos')}
+              className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+              title="메모 관리"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+
+          {recentMemos.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+              <p className="text-sm">등록된 메모가 없습니다</p>
+              <p className="text-xs mt-1">+ 버튼을 눌러 메모를 추가하세요</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="border-b border-gray-200">
+                  <tr>
+                    <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">분류</th>
+                    <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">제목</th>
+                    <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">내용</th>
+                    <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">작성일</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentMemos.map((memo) => (
+                    <tr key={memo.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-3 text-sm">
+                        {memo.category ? (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                            {memo.category}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-sm font-medium text-gray-900">
+                        {memo.title}
+                      </td>
+                      <td className="py-3 px-3 text-sm text-gray-700 max-w-xs">
+                        <div className="line-clamp-1">{memo.content}</div>
+                      </td>
+                      <td className="py-3 px-3 text-xs text-gray-500 whitespace-nowrap">
+                        {memo.created_at ? new Date(memo.created_at).toLocaleDateString('ko-KR') : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SalespersonDashboard;

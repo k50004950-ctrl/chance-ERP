@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+release/
+build/
+
+# Database (개인 데이터이므로 제외)
+server/erp.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Upload files
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Temporary files
+*.tmp
+.cache/
+.temp/
+
+# Electron
+*.exe
+*.app
+*.dmg
+
+# Excel/CSV temporary files
+~$*.xlsx
+~$*.xls
+*.csv.bak

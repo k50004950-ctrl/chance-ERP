@@ -1,0 +1,51 @@
+# Node modules
+node_modules/
+
+# Database files (개인 데이터 제외)
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build outputs
+dist/
+build/
+release/
+
+# Temporary files
+*.tmp
+.cache/
+.temp/
+
+# Excel backup files
+~$*.xlsx
+~$*.xls
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploads directory contents but keep structure
+erp-app/server/uploads/*
+!erp-app/server/uploads/.gitkeep

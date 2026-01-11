@@ -34,9 +34,9 @@ const upload = multer({
 let db;
 
 function initDatabase() {
-  // Use /app/data for Railway Volume, fallback to local path
+  // Use /tmp for Railway if no volume, fallback to local path
   const dataDir = process.env.NODE_ENV === 'production' 
-    ? '/app/data' 
+    ? (fs.existsSync('/app/data') ? '/app/data' : '/tmp')
     : __dirname;
   
   // Ensure data directory exists

@@ -1512,17 +1512,55 @@ app.delete('/api/employees/:id', (req, res) => {
     // 직원의 user_id 가져오기
     const employee = db.prepare('SELECT user_id FROM employees WHERE id = ?').get(id);
     
-    // 직원 삭제
-    db.prepare('DELETE FROM employees WHERE id = ?').run(id);
-    
-    // 연결된 사용자도 삭제
-    if (employee && employee.user_id) {
-      db.prepare('DELETE FROM users WHERE id = ?').run(employee.user_id);
+    if (!employee) {
+      return res.json({ success: false, message: '직원을 찾을 수 없습니다.' });
     }
     
-    res.json({ success: true });
+    // 트랜잭션으로 모든 관련 데이터 삭제
+    const deleteEmployee = db.transaction(() => {
+      // 1. 근태 기록 삭제
+      db.prepare('DELETE FROM attendance WHERE employee_id = ?').run(id);
+      
+      // 2. 휴가 기록 삭제
+      db.prepare('DELETE FROM leaves WHERE employee_id = ?').run(id);
+      
+      // 3. 직원 레코드 삭제
+      db.prepare('DELETE FROM employees WHERE id = ?').run(id);
+      
+      // 4. 연결된 사용자가 있으면 사용자 삭제 (모든 관련 데이터 포함)
+      if (employee.user_id) {
+        const userId = employee.user_id;
+        
+        // 영업자 관련 데이터 삭제
+        db.prepare('DELETE FROM salespersons WHERE salesperson_id = ?').run(userId);
+        db.prepare('DELETE FROM sales_db WHERE salesperson_id = ?').run(userId);
+        db.prepare('DELETE FROM sales_contracts WHERE salesperson_id = ?').run(userId);
+        db.prepare('DELETE FROM commission_statements WHERE salesperson_id = ?').run(userId);
+        db.prepare('DELETE FROM misc_commissions WHERE salesperson_id = ?').run(userId);
+        
+        // 일정 및 메모 삭제
+        db.prepare('DELETE FROM schedules WHERE user_id = ?').run(userId);
+        db.prepare('DELETE FROM memos WHERE user_id = ?').run(userId);
+        
+        // 계정 변경 요청 삭제
+        db.prepare('DELETE FROM account_change_requests WHERE user_id = ? OR reviewed_by = ?').run(userId, userId);
+        
+        // 공지사항 읽음 기록 삭제
+        db.prepare('DELETE FROM notice_reads WHERE user_id = ?').run(userId);
+        
+        // 작성한 공지사항의 author_id를 NULL로 설정
+        db.prepare('UPDATE notices SET author_id = NULL WHERE author_id = ?').run(userId);
+        
+        // 사용자 삭제
+        db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+      }
+    });
+    
+    deleteEmployee();
+    res.json({ success: true, message: '직원이 삭제되었습니다.' });
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    console.error('직원 삭제 오류:', error);
+    res.json({ success: false, message: '직원 삭제 중 오류가 발생했습니다: ' + error.message });
   }
 });
 

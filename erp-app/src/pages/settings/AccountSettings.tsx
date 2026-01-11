@@ -68,7 +68,7 @@ const AccountSettings: React.FC = () => {
   // API에서 계정 데이터 로드
   const fetchAccounts = async () => {
     try {
-      const response = await fetch('${API_BASE_URL}/api/users');
+      const response = await fetch(`${API_BASE_URL}/api/users`);
       const result = await response.json();
       if (result.success) {
         const accountsData = result.data.map((user: any) => ({

@@ -423,6 +423,42 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
+// Password reset endpoint (for debugging/maintenance)
+app.post('/api/auth/reset-all-passwords', (req, res) => {
+  try {
+    const { secret } = req.body;
+    
+    // Simple security check - require a secret key
+    if (secret !== 'reset123') {
+      res.json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+    
+    // Reset all passwords to '1234'
+    const result = db.prepare('UPDATE users SET password = ?').run('1234');
+    console.log(`Password reset completed. ${result.changes} users updated.`);
+    
+    res.json({ 
+      success: true, 
+      message: `모든 비밀번호가 '1234'로 초기화되었습니다.`,
+      usersUpdated: result.changes 
+    });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// Get all usernames (for debugging)
+app.get('/api/auth/debug-users', (req, res) => {
+  try {
+    const users = db.prepare('SELECT id, username, name, role FROM users').all();
+    res.json({ success: true, users });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // Users API
 app.get('/api/users', (req, res) => {
   try {

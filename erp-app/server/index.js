@@ -482,6 +482,68 @@ app.post('/api/auth/reset-all-passwords', (req, res) => {
   }
 });
 
+// Create test accounts endpoint (for debugging/maintenance)
+app.post('/api/auth/create-test-accounts', (req, res) => {
+  try {
+    const { secret } = req.body;
+    
+    // Simple security check - require a secret key
+    if (secret !== 'reset123') {
+      res.json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+    
+    const testAccounts = [
+      { username: 'test_sales', password: '1234', name: '영업사원1', role: 'salesperson', employee_code: 'EMP001', department: '영업팀', position: '대리', commission_rate: 30 },
+      { username: 'test_sales2', password: '1234', name: '영업사원2', role: 'salesperson', employee_code: 'EMP002', department: '영업팀', position: '사원', commission_rate: 25 },
+      { username: 'test_recruiter', password: '1234', name: '채용담당자1', role: 'recruiter', employee_code: 'EMP003', department: '인사팀', position: '과장', commission_rate: 20 },
+      { username: 'test_employee', password: '1234', name: '일반직원1', role: 'employee', employee_code: 'EMP004', department: '관리팀', position: '주임', commission_rate: 0 }
+    ];
+
+    let created = 0;
+    let skipped = 0;
+    
+    testAccounts.forEach(account => {
+      const exists = db.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get(account.username);
+      if (exists.count === 0) {
+        db.prepare(`
+          INSERT INTO users (username, password, name, role, employee_code, department, position, commission_rate,
+                            bank_name, account_number, social_security_number, hire_date, address, emergency_contact)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          account.username,
+          account.password,
+          account.name,
+          account.role,
+          account.employee_code,
+          account.department,
+          account.position,
+          account.commission_rate,
+          '국민은행',
+          '123456-78-901234',
+          '900101-1234567',
+          '2024-01-01',
+          '서울특별시 강남구 테헤란로 123',
+          '010-1234-5678'
+        );
+        created++;
+      } else {
+        skipped++;
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `테스트 계정 생성 완료`,
+      created,
+      skipped
+    });
+  } catch (error) {
+    console.error('Test accounts creation error:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // Get all usernames (for debugging)
 app.get('/api/auth/debug-users', (req, res) => {
   try {

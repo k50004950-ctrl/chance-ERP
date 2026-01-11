@@ -115,7 +115,7 @@ const MyAccountEdit: React.FC = () => {
     }
 
     try {
-      const response = await fetch('${API_BASE_URL}/api/account-change-requests', {
+      const response = await fetch(`${API_BASE_URL}/api/account-change-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

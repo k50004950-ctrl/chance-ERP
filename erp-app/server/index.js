@@ -12,7 +12,7 @@ const csv = require('csv-parser');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 104857600; // 100MB default
-const DATA_DIR = process.env.NODE_ENV === 'production' ? '/app/data' : __dirname;
+const DATA_DIR = process.env.NODE_ENV === 'production' ? '/app/server' : __dirname;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(DATA_DIR, 'uploads/');
 
 // Middleware

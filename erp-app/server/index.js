@@ -174,14 +174,25 @@ function initDatabase() {
     CREATE TABLE IF NOT EXISTS commission_statements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       salesperson_id INTEGER NOT NULL,
-      period_start DATE NOT NULL,
-      period_end DATE NOT NULL,
-      total_sales INTEGER DEFAULT 0,
+      year TEXT NOT NULL,
+      month TEXT NOT NULL,
+      details_snapshot TEXT,
       total_commission INTEGER DEFAULT 0,
-      payment_date DATE,
-      payment_status TEXT DEFAULT 'pending' CHECK(payment_status IN ('pending', 'paid')),
+      confirmed_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (salesperson_id) REFERENCES salespersons(id)
+      FOREIGN KEY (salesperson_id) REFERENCES users(id)
+    );
+
+    -- 기타수수료 테이블 (관리자가 추가하는 기타 수수료)
+    CREATE TABLE IF NOT EXISTS misc_commissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      salesperson_id INTEGER NOT NULL,
+      year TEXT NOT NULL,
+      month TEXT NOT NULL,
+      description TEXT,
+      amount INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (salesperson_id) REFERENCES users(id)
     );
 
     -- 일정 관리 테이블 (영업자/관리자)
@@ -1230,19 +1241,21 @@ app.get('/api/salesperson/:id/commission-details', (req, res) => {
       
       const details = db.prepare(`
         SELECT 
-          id,
-          company_name,
-          contract_client,
-          contract_date,
-          COALESCE(commission_rate, 500) as commission_rate,
-          CAST(REPLACE(contract_client, ',', '') AS INTEGER) as commission_base,
-          CAST((CAST(REPLACE(contract_client, ',', '') AS INTEGER) * COALESCE(commission_rate, 500) / 100) AS INTEGER) as commission_amount,
-          contract_status
-        FROM sales_db 
-        WHERE salesperson_id = ? 
-          AND contract_status IN ('Y', '해임')
-          AND substr(contract_date, 1, 7) = ?
-        ORDER BY contract_date DESC, created_at DESC
+          s.id,
+          s.company_name,
+          s.contract_client,
+          s.contract_date,
+          s.client_name,
+          COALESCE(c.commission_rate, 500) as commission_rate,
+          CAST(REPLACE(s.contract_client, ',', '') AS INTEGER) as commission_base,
+          CAST((CAST(REPLACE(s.contract_client, ',', '') AS INTEGER) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER) as commission_amount,
+          s.contract_status
+        FROM sales_db s
+        LEFT JOIN sales_clients c ON s.client_name = c.client_name
+        WHERE s.salesperson_id = ? 
+          AND s.contract_status = 'Y'
+          AND substr(s.contract_date, 1, 7) = ?
+        ORDER BY s.contract_date DESC, s.created_at DESC
       `).all(id, yearMonth);
       
       res.json({ 
@@ -1327,7 +1340,7 @@ app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
 app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
   try {
     const { id } = req.params;
-    const { contract_date, meeting_status, contract_client, client_name, feedback, salesperson_id } = req.body;
+    const { contract_date, meeting_status, contract_client, client_name, contract_status, feedback, salesperson_id } = req.body;
     
     // 본인 데이터인지 확인
     const record = db.prepare('SELECT salesperson_id FROM sales_db WHERE id = ?').get(id);
@@ -1337,10 +1350,10 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
     
     const stmt = db.prepare(`
       UPDATE sales_db 
-      SET contract_date = ?, meeting_status = ?, contract_client = ?, client_name = ?, feedback = ?, updated_at = CURRENT_TIMESTAMP
+      SET contract_date = ?, meeting_status = ?, contract_client = ?, client_name = ?, contract_status = ?, feedback = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    stmt.run(contract_date, meeting_status, contract_client, client_name, feedback, id);
+    stmt.run(contract_date, meeting_status, contract_client, client_name, contract_status, feedback, id);
     
     res.json({ success: true });
   } catch (error) {
@@ -1542,6 +1555,149 @@ app.post('/api/commission-statements/confirm', (req, res) => {
     );
     
     res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 전체 영업자 수수료 요약 조회
+app.get('/api/commission-statements/summary', (req, res) => {
+  try {
+    const { year, month } = req.query;
+    
+    if (!year || !month) {
+      return res.json({ success: false, message: '연도와 월을 입력하세요.' });
+    }
+    
+    // 모든 영업자 조회
+    const salespersons = db.prepare(`
+      SELECT id, name, username FROM users WHERE role = 'salesperson'
+    `).all();
+    
+    const yearMonth = `${year}-${month.padStart(2, '0')}`;
+    
+    const summary = salespersons.map(sp => {
+      // 계약 수수료 계산
+      const contractCommission = db.prepare(`
+        SELECT 
+          COALESCE(SUM(
+            CAST((CAST(REPLACE(s.contract_client, ',', '') AS INTEGER) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER)
+          ), 0) as total
+        FROM sales_db s
+        LEFT JOIN sales_clients c ON s.client_name = c.client_name
+        WHERE s.salesperson_id = ? 
+          AND s.contract_status = 'Y'
+          AND substr(s.contract_date, 1, 7) = ?
+      `).get(sp.id, yearMonth);
+      
+      // 기타 수수료 계산
+      const miscCommission = db.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM misc_commissions
+        WHERE salesperson_id = ? AND year = ? AND month = ?
+      `).get(sp.id, year, month);
+      
+      const totalCommission = (contractCommission?.total || 0) + (miscCommission?.total || 0);
+      const withholdingTax = Math.round(totalCommission * 0.033);
+      const netPay = totalCommission - withholdingTax;
+      
+      // 확정 여부 확인
+      const confirmed = db.prepare(`
+        SELECT confirmed_at FROM commission_statements
+        WHERE salesperson_id = ? AND year = ? AND month = ?
+      `).get(sp.id, year, month);
+      
+      return {
+        salesperson_id: sp.id,
+        salesperson_name: sp.name,
+        username: sp.username,
+        total_commission: totalCommission,
+        withholding_tax: withholdingTax,
+        net_pay: netPay,
+        is_confirmed: !!confirmed,
+        confirmed_at: confirmed?.confirmed_at || null
+      };
+    });
+    
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ========== 기타수수료 API (Miscellaneous Commissions) ==========
+// 기타수수료 조회 (특정 영업자의 특정 연월)
+app.get('/api/misc-commissions', (req, res) => {
+  try {
+    const { salesperson_id, year, month } = req.query;
+    
+    if (!salesperson_id || !year || !month) {
+      return res.json({ success: false, message: '필수 파라미터가 누락되었습니다.' });
+    }
+    
+    const commissions = db.prepare(`
+      SELECT * FROM misc_commissions 
+      WHERE salesperson_id = ? AND year = ? AND month = ?
+      ORDER BY created_at DESC
+    `).all(salesperson_id, year, month);
+    
+    res.json({ success: true, data: commissions });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 기타수수료 추가
+app.post('/api/misc-commissions', (req, res) => {
+  try {
+    const { salesperson_id, year, month, description, amount } = req.body;
+    
+    if (!salesperson_id || !year || !month || amount === undefined) {
+      return res.json({ success: false, message: '필수 필드가 누락되었습니다.' });
+    }
+    
+    const stmt = db.prepare(`
+      INSERT INTO misc_commissions (salesperson_id, year, month, description, amount)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(salesperson_id, year, month, description || '', amount);
+    
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 기타수수료 수정
+app.put('/api/misc-commissions/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description, amount } = req.body;
+    
+    const stmt = db.prepare(`
+      UPDATE misc_commissions 
+      SET description = ?, amount = ?
+      WHERE id = ?
+    `);
+    
+    stmt.run(description || '', amount, id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 기타수수료 삭제
+app.delete('/api/misc-commissions/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const stmt = db.prepare('DELETE FROM misc_commissions WHERE id = ?');
+    stmt.run(id);
+    
+    res.json({ success: true });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -1754,6 +1910,71 @@ app.delete('/api/sales-clients/:id', (req, res) => {
     stmt.run(id);
     res.json({ success: true });
   } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ========== 월별 실적 현황 API ==========
+// 월별 실적 현황 조회
+app.get('/api/admin/monthly-performance', (req, res) => {
+  try {
+    const { year, month, contract_status } = req.query;
+    
+    let query = `
+      SELECT 
+        sd.id,
+        sd.proposal_date,
+        sd.proposer,
+        u.name as salesperson_name,
+        sd.meeting_status,
+        sd.contract_status,
+        sd.company_name,
+        sd.representative,
+        sd.contact,
+        sd.industry,
+        sd.client_name,
+        sd.contract_client,
+        sd.contract_month,
+        sd.actual_sales,
+        sc.commission_rate
+      FROM sales_db sd
+      LEFT JOIN users u ON sd.salesperson_id = u.id
+      LEFT JOIN sales_clients sc ON sd.client_name = sc.client_name
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    // 연도/월 필터
+    if (year && month) {
+      query += ` AND strftime('%Y', sd.proposal_date) = ? AND strftime('%m', sd.proposal_date) = ?`;
+      params.push(year, String(month).padStart(2, '0'));
+    } else if (year) {
+      query += ` AND strftime('%Y', sd.proposal_date) = ?`;
+      params.push(year);
+    } else if (month) {
+      query += ` AND strftime('%m', sd.proposal_date) = ?`;
+      params.push(String(month).padStart(2, '0'));
+    }
+    
+    // 계약 상태 필터
+    if (contract_status && contract_status !== 'all') {
+      query += ` AND sd.contract_status = ?`;
+      params.push(contract_status);
+    }
+    
+    // 매출거래처 필터
+    if (client_name && client_name !== 'all') {
+      query += ` AND sd.client_name = ?`;
+      params.push(client_name);
+    }
+    
+    query += ` ORDER BY sd.proposal_date DESC`;
+    
+    const data = db.prepare(query).all(...params);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('월별 실적 조회 오류:', error);
     res.json({ success: false, message: error.message });
   }
 });

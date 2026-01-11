@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Edit, Save, X, Users } from 'lucide-react';
+import { formatDateToKorean } from '../../utils/dateFormat';
+import KoreanDatePicker from '../../components/KoreanDatePicker';
 
 interface MyDataItem {
   id: number;
@@ -132,6 +134,7 @@ const SalespersonMyData: React.FC = () => {
           meeting_status: item.meeting_status,
           contract_client: item.contract_client,
           client_name: item.client_name,
+          contract_status: item.contract_status,
           feedback: item.feedback,
           salesperson_id: salespersonId,
         }),
@@ -226,6 +229,7 @@ const SalespersonMyData: React.FC = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">미팅여부</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약기장료</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">거래처</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-green-50">계약완료</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">기타(피드백)</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 whitespace-nowrap">작업</th>
             </tr>
@@ -233,7 +237,7 @@ const SalespersonMyData: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {myData.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
                   담당하는 업체 데이터가 없습니다.
                 </td>
               </tr>
@@ -242,14 +246,23 @@ const SalespersonMyData: React.FC = () => {
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 bg-blue-50">
                     {editingId === item.id ? (
-                      <input
-                        type="date"
-                        value={item.contract_date || ''}
-                        onChange={(e) => handleChange(item.id, 'contract_date', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                      <KoreanDatePicker
+                        selected={item.contract_date ? new Date(item.contract_date) : null}
+                        onChange={(date) => {
+                          if (date) {
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const day = String(date.getDate()).padStart(2, '0');
+                            handleChange(item.id, 'contract_date', `${year}-${month}-${day}`);
+                          } else {
+                            handleChange(item.id, 'contract_date', '');
+                          }
+                        }}
+                        className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholderText="날짜 선택"
                       />
                     ) : (
-                      <span className="text-sm text-gray-900">{item.contract_date || '-'}</span>
+                      <span className="text-sm text-gray-900">{formatDateToKorean(item.contract_date) || '-'}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
@@ -319,24 +332,40 @@ const SalespersonMyData: React.FC = () => {
                       <select
                         value={item.client_name || ''}
                         onChange={(e) => {
-                          const selectedClient = salesClients.find(c => c.client_name === e.target.value);
                           handleChange(item.id, 'client_name', e.target.value);
-                          // 거래처 선택 시 수수료 자동 적용
-                          if (selectedClient) {
-                            handleChange(item.id, 'contract_client', selectedClient.commission_rate.toString());
-                          }
                         }}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">거래처 선택</option>
                         {salesClients.map((client) => (
                           <option key={client.id} value={client.client_name}>
-                            {client.client_name} ({client.commission_rate.toLocaleString('ko-KR')}원)
+                            {client.client_name} ({client.commission_rate}%)
                           </option>
                         ))}
                       </select>
                     ) : (
                       <span className="text-sm text-gray-900">{item.client_name || '-'}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 bg-green-50">
+                    {editingId === item.id ? (
+                      <select
+                        value={item.contract_status || ''}
+                        onChange={(e) => handleChange(item.id, 'contract_status', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500"
+                      >
+                        <option value="">선택</option>
+                        <option value="Y">Y (완료)</option>
+                        <option value="N">N (미완료)</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        item.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
+                        item.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                        'bg-gray-50 text-gray-500'
+                      }`}>
+                        {item.contract_status || '-'}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 bg-blue-50">

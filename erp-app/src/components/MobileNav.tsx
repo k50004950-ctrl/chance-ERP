@@ -271,6 +271,32 @@ const MobileNav: React.FC = () => {
                     영업자 관리
                   </div>
                   <NavLink
+                    to="/admin/monthly-performance"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-sm font-medium">월별 실적 현황</span>
+                  </NavLink>
+                  <NavLink
+                    to="/admin/commission-summary"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-sm font-medium">전체 수수료 요약</span>
+                  </NavLink>
+                  <NavLink
                     to="/salesperson/commission-statement"
                     onClick={closeMenu}
                     className={({ isActive }) =>

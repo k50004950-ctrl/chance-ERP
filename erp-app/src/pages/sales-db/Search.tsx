@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search as SearchIcon, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { formatDateToKorean } from '../../utils/dateFormat';
 
 interface SalesDB {
   id: number;
@@ -225,7 +226,7 @@ const SalesDBSearch: React.FC = () => {
                     </button>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                    {item.proposal_date || '-'}
+                    {formatDateToKorean(item.proposal_date) || '-'}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                     {item.proposer || '-'}

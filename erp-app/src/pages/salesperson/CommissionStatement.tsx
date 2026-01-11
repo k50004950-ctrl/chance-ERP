@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Plus, DollarSign, Edit, Save } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { formatDateToKorean } from '../../utils/dateFormat';
 
 interface Salesperson {
   id: number;
@@ -18,6 +19,15 @@ interface CommissionDetail {
   contract_status: string;
 }
 
+interface MiscCommission {
+  id?: number;
+  salesperson_id: number;
+  year: string;
+  month: string;
+  description: string;
+  amount: number;
+}
+
 const SalespersonCommissionStatement: React.FC = () => {
   const { user } = useAuth();
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
@@ -28,6 +38,10 @@ const SalespersonCommissionStatement: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState<string>((new Date().getMonth() + 1).toString().padStart(2, '0'));
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
+  const [miscCommissions, setMiscCommissions] = useState<MiscCommission[]>([]);
+  const [showAddMisc, setShowAddMisc] = useState<boolean>(false);
+  const [newMiscDescription, setNewMiscDescription] = useState<string>('');
+  const [newMiscAmount, setNewMiscAmount] = useState<string>('');
 
   useEffect(() => {
     fetchSalespersons();
@@ -36,6 +50,7 @@ const SalespersonCommissionStatement: React.FC = () => {
   useEffect(() => {
     if (selectedSalesperson) {
       fetchCommissionDetails();
+      fetchMiscCommissions();
     }
   }, [selectedSalesperson, selectedYear, selectedMonth]);
 
@@ -74,6 +89,78 @@ const SalespersonCommissionStatement: React.FC = () => {
     }
   };
 
+  const fetchMiscCommissions = async () => {
+    if (!selectedSalesperson) return;
+    
+    try {
+      const response = await fetch(`/api/misc-commissions?salesperson_id=${selectedSalesperson}&year=${selectedYear}&month=${selectedMonth}`);
+      const result = await response.json();
+      if (result.success) {
+        setMiscCommissions(result.data);
+      }
+    } catch (error) {
+      console.error('기타수수료 조회 실패:', error);
+    }
+  };
+
+  const handleAddMiscCommission = async () => {
+    if (!newMiscDescription || !newMiscAmount) {
+      alert('내역과 금액을 입력하세요.');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/misc-commissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          salesperson_id: selectedSalesperson,
+          year: selectedYear,
+          month: selectedMonth,
+          description: newMiscDescription,
+          amount: parseInt(newMiscAmount.replace(/,/g, ''))
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('기타수수료가 추가되었습니다.');
+        setShowAddMisc(false);
+        setNewMiscDescription('');
+        setNewMiscAmount('');
+        fetchMiscCommissions();
+      } else {
+        alert('추가 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('추가 실패:', error);
+      alert('추가 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteMiscCommission = async (id: number) => {
+    if (!confirm('이 기타수수료를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/misc-commissions/${id}`, {
+        method: 'DELETE'
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('삭제되었습니다.');
+        fetchMiscCommissions();
+      } else {
+        alert('삭제 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('삭제 실패:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   const handleConfirm = async () => {
     if (!confirm(`${selectedYear}년 ${selectedMonth}월 수수료를 확정하시겠습니까?\n확정 후에는 수정할 수 없습니다.`)) {
       return;
@@ -105,9 +192,22 @@ const SalespersonCommissionStatement: React.FC = () => {
     }
   };
 
-  const totalCommission = details.reduce((sum, item) => {
+  // 계약 수수료 합계
+  const contractCommission = details.reduce((sum, item) => {
     return sum + (item.contract_status === '해임' ? -item.commission_amount : item.commission_amount);
   }, 0);
+
+  // 기타 수수료 합계
+  const miscCommissionTotal = miscCommissions.reduce((sum, item) => sum + item.amount, 0);
+
+  // 총 수수료
+  const totalCommission = contractCommission + miscCommissionTotal;
+
+  // 원천징수 (3.3%)
+  const withholdingTax = Math.round(totalCommission * 0.033);
+
+  // 실수령액
+  const netPay = totalCommission - withholdingTax;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR').format(amount);
@@ -284,7 +384,7 @@ const SalespersonCommissionStatement: React.FC = () => {
                 {details.map((detail, index) => (
                   <tr key={index} className={detail.contract_status === '해임' ? 'bg-red-50' : ''}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {detail.contract_date || '-'}
+                      {formatDateToKorean(detail.contract_date) || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {detail.company_name}
@@ -339,16 +439,150 @@ const SalespersonCommissionStatement: React.FC = () => {
                 ))}
                 <tr className="bg-gray-100 font-bold">
                   <td colSpan={5} className="px-6 py-4 text-right text-sm text-gray-900">
-                    총 수수료
+                    계약 수수료 합계
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-600">
-                    {formatCurrency(totalCommission)}
+                    {formatCurrency(contractCommission)}
                   </td>
                 </tr>
               </>
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* 기타수수료 섹션 */}
+      <div className="bg-white rounded-lg shadow mt-6">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">기타수수료</h3>
+          {user?.role === 'admin' && !isConfirmed && (
+            <button
+              onClick={() => setShowAddMisc(true)}
+              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm flex items-center space-x-1"
+            >
+              <Plus className="w-4 h-4" />
+              <span>추가</span>
+            </button>
+          )}
+        </div>
+
+        {showAddMisc && (
+          <div className="px-6 py-4 bg-blue-50 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <input
+                type="text"
+                placeholder="내역 (예: 교통비, 차감: 벌금)"
+                value={newMiscDescription}
+                onChange={(e) => setNewMiscDescription(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded"
+              />
+              <input
+                type="text"
+                placeholder="금액 (-가능)"
+                value={newMiscAmount}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/,/g, '');
+                  // 빈 값, 마이너스 부호만, 또는 마이너스가 앞에 있는 숫자 허용
+                  if (value === '' || value === '-' || /^-?\d+$/.test(value)) {
+                    if (value === '' || value === '-') {
+                      setNewMiscAmount(value);
+                    } else {
+                      setNewMiscAmount(parseInt(value).toLocaleString('ko-KR'));
+                    }
+                  }
+                }}
+                className="w-40 px-3 py-2 border border-gray-300 rounded text-right"
+              />
+              <button
+                onClick={handleAddMiscCommission}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded"
+              >
+                저장
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddMisc(false);
+                  setNewMiscDescription('');
+                  setNewMiscAmount('');
+                }}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded"
+              >
+                취소
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              * 차감 항목은 마이너스(-)로 입력하세요. 예: -50000
+            </p>
+          </div>
+        )}
+
+        <div className="divide-y divide-gray-200">
+          {miscCommissions.length === 0 ? (
+            <div className="px-6 py-8 text-center text-gray-500">
+              기타수수료가 없습니다.
+            </div>
+          ) : (
+            miscCommissions.map((misc) => (
+              <div key={misc.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <span className="text-sm text-gray-900">{misc.description}</span>
+                <div className="flex items-center space-x-4">
+                  <span className={`text-sm font-semibold ${misc.amount >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    {misc.amount >= 0 ? '+' : ''}{formatCurrency(misc.amount)}
+                  </span>
+                  {user?.role === 'admin' && !isConfirmed && (
+                    <button
+                      onClick={() => handleDeleteMiscCommission(misc.id!)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <span className="text-xs">삭제</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="px-6 py-4 bg-gray-100 border-t border-gray-200">
+          <div className="flex items-center justify-between font-semibold">
+            <span className="text-sm text-gray-900">기타수수료 합계</span>
+            <span className={`text-sm ${miscCommissionTotal >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              {miscCommissionTotal >= 0 ? '+' : ''}{formatCurrency(miscCommissionTotal)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 최종 합계 */}
+      <div className="bg-white rounded-lg shadow mt-6 p-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-lg">
+            <span className="font-medium text-gray-900">계약 수수료</span>
+            <span className="font-semibold text-gray-900">{formatCurrency(contractCommission)}</span>
+          </div>
+          <div className="flex items-center justify-between text-lg">
+            <span className="font-medium text-gray-900">기타 수수료</span>
+            <span className={`font-semibold ${miscCommissionTotal >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+              {miscCommissionTotal >= 0 ? '+' : ''}{formatCurrency(miscCommissionTotal)}
+            </span>
+          </div>
+          <div className="border-t border-gray-300 pt-4">
+            <div className="flex items-center justify-between text-xl">
+              <span className="font-bold text-gray-900">총 수수료</span>
+              <span className="font-bold text-blue-600">{formatCurrency(totalCommission)}</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-lg text-red-600">
+            <span className="font-medium">원천징수 (3.3%)</span>
+            <span className="font-semibold">-{formatCurrency(withholdingTax)}</span>
+          </div>
+          <div className="border-t-2 border-gray-400 pt-4">
+            <div className="flex items-center justify-between text-2xl">
+              <span className="font-bold text-gray-900">실수령액</span>
+              <span className="font-bold text-green-600">{formatCurrency(netPay)}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

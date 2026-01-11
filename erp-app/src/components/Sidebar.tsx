@@ -127,6 +127,8 @@ const Sidebar: React.FC = () => {
       title: '영업자 관리',
       icon: <TrendingUp className="w-4 h-4" />,
       children: [
+        { title: '월별 실적 현황', path: '/admin/monthly-performance', icon: <BarChart3 className="w-4 h-4" /> },
+        { title: '전체 수수료 요약', path: '/admin/commission-summary', icon: <TrendingUp className="w-4 h-4" /> },
         { title: '영업자 수수료 명세서', path: '/salesperson/commission-statement', icon: <FileText className="w-4 h-4" /> },
         { title: '영업자 DB 입력', path: '/salesperson/register', icon: <UserPlus className="w-4 h-4" /> },
         { title: '영업자 일정/메모 관리', path: '/admin/salesperson-schedules', icon: <Calendar className="w-4 h-4" /> },

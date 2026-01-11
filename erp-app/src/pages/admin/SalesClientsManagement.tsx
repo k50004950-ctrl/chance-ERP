@@ -135,7 +135,7 @@ const SalesClientsManagement: React.FC = () => {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">매출거래처 관리</h1>
-          <p className="text-gray-600 mt-1">거래처별 수수료율을 관리합니다 (관리자 전용)</p>
+          <p className="text-gray-600 mt-1">거래처별 수수료율(%)을 관리합니다 (예: 600% = 계약기장료의 6배)</p>
         </div>
         <button
           onClick={handleAdd}
@@ -155,7 +155,7 @@ const SalesClientsManagement: React.FC = () => {
                 거래처명
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                수수료 (원)
+                수수료율 (%)
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 설명
@@ -196,9 +196,10 @@ const SalesClientsManagement: React.FC = () => {
                         value={client.commission_rate}
                         onChange={(e) => handleChange(client.id!, 'commission_rate', Number(e.target.value))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="예: 600"
                       />
                     ) : (
-                      <span className="text-gray-900">{client.commission_rate.toLocaleString('ko-KR')} 원</span>
+                      <span className="text-gray-900">{client.commission_rate}%</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
@@ -284,14 +285,16 @@ const SalesClientsManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    수수료 (원)
+                    수수료율 (%)
                   </label>
                   <input
                     type="number"
                     value={formData.commission_rate}
                     onChange={(e) => setFormData({ ...formData, commission_rate: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="예: 600 (계약기장료의 6배)"
                   />
+                  <p className="text-xs text-gray-500 mt-1">예: 600% = 계약기장료 × 6</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

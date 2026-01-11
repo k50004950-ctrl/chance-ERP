@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Save, Plus, Trash2, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { formatDateToKorean } from '../../utils/dateFormat';
 
 interface Salesperson {
   id: number;
@@ -80,7 +81,13 @@ const SalesDBRegister: React.FC = () => {
     setCurrentUser(user);
     
     fetchSalespersons();
-    fetchExistingData();
+    
+    // 섭외자인 경우 본인이 등록한 것만 가져옴
+    if (user.role === 'recruiter') {
+      fetchExistingDataForRecruiter(user.name);
+    } else {
+      fetchExistingData();
+    }
   }, []);
 
   const fetchSalespersons = async () => {
@@ -132,8 +139,53 @@ const SalesDBRegister: React.FC = () => {
     }
   };
 
+  const fetchExistingDataForRecruiter = async (proposerName: string) => {
+    try {
+      const response = await fetch(`/api/sales-db/my-data-recruiter?proposer=${encodeURIComponent(proposerName)}`);
+      const result = await response.json();
+      if (result.success && result.data && result.data.length > 0) {
+        // 기존 데이터를 행으로 변환
+        const existingRows = result.data.map((item: any) => ({
+          id: item.id,
+          proposal_date: item.proposal_date || '',
+          proposer: item.proposer || '',
+          salesperson_id: item.salesperson_id ? String(item.salesperson_id) : '',
+          meeting_status: item.meeting_status || '',
+          company_name: item.company_name || '',
+          representative: item.representative || '',
+          address: item.address || '',
+          contact: item.contact || '',
+          industry: item.industry || '',
+          sales_amount: item.sales_amount ? String(item.sales_amount) : '',
+          existing_client: item.existing_client || '',
+          contract_status: item.contract_status || '',
+          termination_month: item.termination_month || '',
+          actual_sales: item.actual_sales ? String(item.actual_sales) : '',
+          contract_date: item.contract_date || '',
+          contract_client: item.contract_client ? formatNumberWithCommas(item.contract_client) : '',
+          contract_month: item.contract_month || '',
+          client_name: item.client_name || '',
+          feedback: item.feedback || '',
+          april_type1_date: item.april_type1_date || '',
+        }));
+        // 기존 데이터 + 빈 행 하나 추가
+        setRows([...existingRows, { ...emptyRow, proposer: proposerName }]);
+      } else {
+        // 데이터가 없으면 섭외자 이름이 자동 입력된 빈 행 추가
+        setRows([{ ...emptyRow, proposer: proposerName }]);
+      }
+    } catch (error) {
+      console.error('기존 데이터 조회 실패:', error);
+    }
+  };
+
   const handleAddRow = () => {
-    setRows([...rows, { ...emptyRow }]);
+    // 섭외자인 경우 proposer를 자동으로 설정
+    if (currentUser?.role === 'recruiter') {
+      setRows([...rows, { ...emptyRow, proposer: currentUser.name }]);
+    } else {
+      setRows([...rows, { ...emptyRow }]);
+    }
   };
 
   const handleRemoveRow = (index: number) => {
@@ -409,6 +461,8 @@ const SalesDBRegister: React.FC = () => {
                     value={row.proposer}
                     onChange={(e) => handleCellChange(index, 'proposer', e.target.value)}
                     className="w-24 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
+                    readOnly={currentUser?.role === 'recruiter'}
+                    style={{ backgroundColor: currentUser?.role === 'recruiter' ? '#f3f4f6' : 'transparent' }}
                   />
                 </td>
                 <td className="border border-gray-300 px-1 py-1">

@@ -14,6 +14,8 @@ import Leaves from './pages/hr/Leaves';
 // 관리자 - 영업자 일정/메모 관리
 import SalespersonSchedules from './pages/admin/SalespersonSchedules';
 import SalesClientsManagement from './pages/admin/SalesClientsManagement';
+import CommissionSummary from './pages/admin/CommissionSummary';
+import MonthlyPerformance from './pages/admin/MonthlyPerformance';
 
 // DB관리
 import SalesDBRegister from './pages/sales-db/Register';
@@ -65,6 +67,8 @@ function App() {
             {/* 관리자 - 영업자 일정/메모 */}
             <Route path="admin/salesperson-schedules" element={<SalespersonSchedules />} />
             <Route path="admin/sales-clients" element={<SalesClientsManagement />} />
+            <Route path="admin/monthly-performance" element={<MonthlyPerformance />} />
+            <Route path="admin/commission-summary" element={<CommissionSummary />} />
             
             {/* DB관리 */}
             <Route path="sales-db/register" element={<SalesDBRegister />} />

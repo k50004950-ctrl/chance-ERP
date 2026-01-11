@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { formatDateToKorean } from '../../utils/dateFormat';
+import KoreanDatePicker from '../../components/KoreanDatePicker';
 
 interface MyDataItem {
   id: number;
@@ -329,14 +331,23 @@ const RecruiterMyData: React.FC = () => {
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 bg-blue-50">
                     {editingId === item.id ? (
-                      <input
-                        type="date"
-                        value={item.proposal_date || ''}
-                        onChange={(e) => handleChange(item.id, 'proposal_date', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                      <KoreanDatePicker
+                        selected={item.proposal_date ? new Date(item.proposal_date) : null}
+                        onChange={(date) => {
+                          if (date) {
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const day = String(date.getDate()).padStart(2, '0');
+                            handleChange(item.id, 'proposal_date', `${year}-${month}-${day}`);
+                          } else {
+                            handleChange(item.id, 'proposal_date', '');
+                          }
+                        }}
+                        className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholderText="날짜 선택"
                       />
                     ) : (
-                      <span className="text-sm text-gray-900">{item.proposal_date || '-'}</span>
+                      <span className="text-sm text-gray-900">{formatDateToKorean(item.proposal_date) || '-'}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">

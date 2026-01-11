@@ -310,13 +310,44 @@ function initDatabase() {
   // Insert default admin user if not exists
   const adminExists = db.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get('admin');
   if (adminExists.count === 0) {
-    db.prepare('INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)').run(
+    db.prepare(`
+      INSERT INTO users (username, password, name, role, employee_code, department, position, commission_rate,
+                        bank_name, account_number, social_security_number, hire_date, address, emergency_contact)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
       'admin',
       '1234',
       '관리자',
-      'admin'
+      'admin',
+      'EMP000',
+      '관리팀',
+      '대표',
+      0,
+      '국민은행',
+      '123456-78-901234',
+      '800101-1234567',
+      '2024-01-01',
+      '서울특별시 강남구 테헤란로 123',
+      '010-1234-5678'
     );
     console.log('Default admin account created (username: admin, password: 1234)');
+  } else {
+    // Update admin account to ensure it has all required fields
+    db.prepare(`
+      UPDATE users SET 
+        password = '1234',
+        bank_name = COALESCE(bank_name, '국민은행'),
+        account_number = COALESCE(account_number, '123456-78-901234'),
+        social_security_number = COALESCE(social_security_number, '800101-1234567'),
+        hire_date = COALESCE(hire_date, '2024-01-01'),
+        address = COALESCE(address, '서울특별시 강남구 테헤란로 123'),
+        emergency_contact = COALESCE(emergency_contact, '010-1234-5678'),
+        employee_code = COALESCE(employee_code, 'EMP000'),
+        department = COALESCE(department, '관리팀'),
+        position = COALESCE(position, '대표')
+      WHERE username = 'admin'
+    `).run();
+    console.log('Admin account updated with required fields (password: 1234)');
   }
 
   // Create default test accounts if they don't exist

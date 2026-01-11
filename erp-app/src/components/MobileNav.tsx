@@ -47,7 +47,7 @@ const MobileNav: React.FC = () => {
 
         {/* 드롭다운 메뉴 */}
         {isOpen && (
-          <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg">
+          <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg max-h-[calc(100vh-4rem)] overflow-y-auto">
             <div className="py-2">
               {/* 대시보드 */}
               <NavLink

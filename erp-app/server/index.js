@@ -324,7 +324,6 @@ function initDatabase() {
     db.prepare('UPDATE users SET password = ?').run('1234');
     console.log('All passwords have been reset to: 1234');
   }
-}
 
   // 기존 sales_db 테이블에 commission_rate 필드 추가 (없으면)
   try {

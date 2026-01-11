@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Users, CheckCircle, FileText, Calendar, BarChart3 } from 'lucide-react';
+import { API_BASE_URL } from '../../lib/api';
 
 interface PerformanceData {
   id: number;
@@ -24,7 +25,7 @@ const RecruiterPerformance: React.FC = () => {
 
   const fetchPerformanceData = async () => {
     try {
-      let url = 'http://localhost:3000/api/recruiter-performance';
+      let url = '${API_BASE_URL}/api/recruiter-performance';
       
       if (viewMode === 'custom') {
         url += `?year=${selectedYear}&month=${selectedMonth}`;

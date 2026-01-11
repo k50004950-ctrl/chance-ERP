@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Download, Filter, Calendar } from 'lucide-react';
+import { API_BASE_URL } from '../../lib/api';
 import { formatDateToKorean } from '../../utils/dateFormat';
 
 interface PerformanceData {
@@ -46,7 +47,7 @@ const MonthlyPerformance: React.FC = () => {
   // 매출거래처 목록 가져오기
   const fetchSalesClients = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/sales-clients');
+      const response = await fetch('${API_BASE_URL}/api/sales-clients');
       const result = await response.json();
       if (result.success) {
         setSalesClients(result.data);
@@ -67,9 +68,9 @@ const MonthlyPerformance: React.FC = () => {
         client_name: clientFilter
       });
       
-      console.log('API 요청:', `http://localhost:3000/api/admin/monthly-performance?${params}`);
+      console.log('API 요청:', `${API_BASE_URL}/api/admin/monthly-performance?${params}`);
       
-      const response = await fetch(`http://localhost:3000/api/admin/monthly-performance?${params}`);
+      const response = await fetch(`${API_BASE_URL}/api/admin/monthly-performance?${params}`);
       
       console.log('API 응답 상태:', response.status);
       

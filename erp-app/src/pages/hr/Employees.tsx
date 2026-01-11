@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Edit, Trash2, Save, X } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../lib/api';
 
 interface Employee {
   id: number;
@@ -47,7 +48,7 @@ const Employees: React.FC = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/employees');
+      const response = await fetch('${API_BASE_URL}/api/employees');
       const result = await response.json();
       if (result.success) {
         setEmployees(result.data);

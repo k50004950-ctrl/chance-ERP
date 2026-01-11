@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Plus, Edit, Trash2, X, AlertCircle, Eye } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../lib/api';
 
 interface Notice {
   id: number;
@@ -37,7 +38,7 @@ const NoticeManagement: React.FC = () => {
 
   const fetchNotices = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/notices?user_id=${user?.id}`);
+      const response = await fetch(`${API_BASE_URL}/api/notices?user_id=${user?.id}`);
       const result = await response.json();
       if (result.success) {
         setNotices(result.data);
@@ -87,7 +88,7 @@ const NoticeManagement: React.FC = () => {
     try {
       if (isEditing && editingId) {
         // 수정
-        const response = await fetch(`http://localhost:3000/api/notices/${editingId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/notices/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -106,7 +107,7 @@ const NoticeManagement: React.FC = () => {
         }
       } else {
         // 추가
-        const response = await fetch('http://localhost:3000/api/notices', {
+        const response = await fetch('${API_BASE_URL}/api/notices', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -134,7 +135,7 @@ const NoticeManagement: React.FC = () => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     
     try {
-      const response = await fetch(`http://localhost:3000/api/notices/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/notices/${id}`, {
         method: 'DELETE'
       });
       

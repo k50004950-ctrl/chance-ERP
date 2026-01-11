@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import NoticePopup from './NoticePopup';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../lib/api';
 
 const Layout: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
@@ -27,7 +28,7 @@ const Layout: React.FC = () => {
 
     try {
       // 사용자 정보를 서버에서 다시 조회하여 최신 정보 확인
-      const response = await fetch(`http://localhost:3000/api/users/${user.id}`);
+      const response = await fetch(`${API_BASE_URL}/api/users/${user.id}`);
       const result = await response.json();
       
       if (result.success && result.data) {

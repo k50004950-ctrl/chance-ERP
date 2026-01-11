@@ -3,6 +3,7 @@ import { Save, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../lib/api';
 
 interface UserInfo {
   id: number;
@@ -55,7 +56,7 @@ const MyAccountEdit: React.FC = () => {
 
   const fetchUserInfo = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/users`);
+      const response = await fetch(`${API_BASE_URL}/api/users`);
       const result = await response.json();
       if (result.success) {
         const currentUser = result.data.find((u: any) => u.id === user?.id);
@@ -81,7 +82,7 @@ const MyAccountEdit: React.FC = () => {
 
   const fetchChangeRequests = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/account-change-requests/user/${user?.id}`);
+      const response = await fetch(`${API_BASE_URL}/api/account-change-requests/user/${user?.id}`);
       const result = await response.json();
       if (result.success) {
         setChangeRequests(result.data);
@@ -114,7 +115,7 @@ const MyAccountEdit: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/account-change-requests', {
+      const response = await fetch('${API_BASE_URL}/api/account-change-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

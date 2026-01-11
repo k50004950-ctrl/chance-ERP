@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Search, Plus, Key, Edit, Trash2, X } from 'lucide-react';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../lib/api';
 
 interface Account {
   id: number;
@@ -67,7 +68,7 @@ const AccountSettings: React.FC = () => {
   // API에서 계정 데이터 로드
   const fetchAccounts = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/users');
+      const response = await fetch('${API_BASE_URL}/api/users');
       const result = await response.json();
       if (result.success) {
         const accountsData = result.data.map((user: any) => ({
@@ -174,7 +175,7 @@ const AccountSettings: React.FC = () => {
         return roleMapping[role] || 'employee';
       };
       
-      const response = await fetch(`http://localhost:3000/api/users/${passwordData.accountId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/${passwordData.accountId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -257,7 +258,7 @@ const AccountSettings: React.FC = () => {
     try {
       if (isEditing && editingId) {
         // 수정
-        const response = await fetch(`http://localhost:3000/api/users/${editingId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/users/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -291,7 +292,7 @@ const AccountSettings: React.FC = () => {
           return;
         }
         
-        const response = await fetch('http://localhost:3000/api/users', {
+        const response = await fetch('${API_BASE_URL}/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -330,7 +331,7 @@ const AccountSettings: React.FC = () => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE_URL}/api/users/${id}`, { method: 'DELETE' });
       const result = await response.json();
       if (result.success) {
         alert('삭제되었습니다.');

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search as SearchIcon, Trash2, Edit, X, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../lib/api';
 
 interface SalesDB {
   id: number;
@@ -73,7 +74,7 @@ const SalesDBSearch: React.FC = () => {
   const handleShowFeedback = async (id: number) => {
     setCurrentFeedbackId(id);
     try {
-      const response = await fetch(`http://localhost:3000/api/sales-db/${id}/feedback-history`);
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${id}/feedback-history`);
       const result = await response.json();
       if (result.success) {
         setFeedbackHistory(result.data || []);
@@ -98,7 +99,7 @@ const SalesDBSearch: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/api/sales-db/${currentFeedbackId}/add-feedback`, {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${currentFeedbackId}/add-feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

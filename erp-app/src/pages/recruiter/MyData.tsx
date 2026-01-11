@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle, Plus } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
+import { API_BASE_URL } from '../../lib/api';
 
 interface MyDataItem {
   id: number;
@@ -152,7 +153,7 @@ const RecruiterMyData: React.FC = () => {
   const handleShowFeedback = async (id: number) => {
     setCurrentFeedbackId(id);
     try {
-      const response = await fetch(`http://localhost:3000/api/sales-db/${id}/feedback-history`);
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${id}/feedback-history`);
       const result = await response.json();
       if (result.success) {
         setFeedbackHistory(result.data || []);
@@ -177,7 +178,7 @@ const RecruiterMyData: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/api/sales-db/${currentFeedbackId}/add-feedback`, {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${currentFeedbackId}/add-feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

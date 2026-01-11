@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Filter } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../lib/api';
 
 interface ChangeRequest {
   id: number;
@@ -32,7 +33,7 @@ const AccountChangeApproval: React.FC = () => {
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/account-change-requests?status=${statusFilter}`);
+      const response = await fetch(`${API_BASE_URL}/api/account-change-requests?status=${statusFilter}`);
       const result = await response.json();
       if (result.success) {
         setRequests(result.data);
@@ -59,7 +60,7 @@ const AccountChangeApproval: React.FC = () => {
     if (!selectedRequest || !user) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/account-change-requests/${selectedRequest.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/account-change-requests/${selectedRequest.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

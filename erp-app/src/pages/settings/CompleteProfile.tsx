@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, User, Building, CreditCard, Calendar, MapPin, Phone } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
+import { API_BASE_URL } from '../../lib/api';
 
 const CompleteProfile: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -35,7 +36,7 @@ const CompleteProfile: React.FC = () => {
     if (!user) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${user.id}`);
+      const response = await fetch(`${API_BASE_URL}/api/users/${user.id}`);
       const result = await response.json();
       
       if (result.success && result.data) {
@@ -75,7 +76,7 @@ const CompleteProfile: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${user?.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

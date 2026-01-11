@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Edit, Save, X, Users, Plus } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
+import { API_BASE_URL } from '../../lib/api';
 
 interface MyDataItem {
   id: number;
@@ -187,7 +188,7 @@ const SalespersonMyData: React.FC = () => {
     console.log('피드백 조회 시작:', id);
     setCurrentFeedbackId(id);
     try {
-      const response = await fetch(`http://localhost:3000/api/sales-db/${id}/feedback-history`);
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${id}/feedback-history`);
       console.log('피드백 API 응답 상태:', response.status);
       
       if (!response.ok) {
@@ -220,7 +221,7 @@ const SalespersonMyData: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/api/sales-db/${currentFeedbackId}/add-feedback`, {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${currentFeedbackId}/add-feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,7 +283,7 @@ const SalespersonMyData: React.FC = () => {
     }
     
     try {
-      const response = await fetch('http://localhost:3000/api/sales-db', {
+      const response = await fetch('${API_BASE_URL}/api/sales-db', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatDateToKorean } from '../utils/dateFormat';
+import { API_BASE_URL } from '../lib/api';
 
 interface Notice {
   id: number;
@@ -29,7 +30,7 @@ const NoticePopup: React.FC = () => {
     if (!user) return;
     
     try {
-      const response = await fetch(`http://localhost:3000/api/notices/unread?user_id=${user.id}`);
+      const response = await fetch(`${API_BASE_URL}/api/notices/unread?user_id=${user.id}`);
       const result = await response.json();
       
       if (result.success && result.data.length > 0) {
@@ -45,7 +46,7 @@ const NoticePopup: React.FC = () => {
     if (!user) return;
     
     try {
-      await fetch(`http://localhost:3000/api/notices/${noticeId}/read`, {
+      await fetch(`${API_BASE_URL}/api/notices/${noticeId}/read`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id })

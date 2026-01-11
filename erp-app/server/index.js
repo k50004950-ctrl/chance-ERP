@@ -34,13 +34,24 @@ const upload = multer({
 let db;
 
 function initDatabase() {
-  // Production: use __dirname (where erp.db is located)
-  // Development: use __dirname
-  const dataDir = __dirname;
+  // Use /data directory for Railway Volume (persistent storage)
+  // Falls back to __dirname for local development
+  const dataDir = process.env.DATA_DIR || '/data';
   
   // Ensure data directory exists
   if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      console.log(`Created data directory: ${dataDir}`);
+    } catch (err) {
+      console.warn(`Could not create ${dataDir}, falling back to __dirname`);
+      // Fallback to current directory if /data is not writable
+      const fallbackDir = __dirname;
+      const fallbackPath = path.join(fallbackDir, 'erp.db');
+      console.log(`Using fallback database path: ${fallbackPath}`);
+      db = new Database(fallbackPath);
+      return;
+    }
   }
   
   const dbPath = path.join(dataDir, 'erp.db');

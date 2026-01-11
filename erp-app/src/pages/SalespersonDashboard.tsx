@@ -57,7 +57,8 @@ const SalespersonDashboard: React.FC = () => {
 
   const loadSchedules = async () => {
     try {
-      const response = await fetch(`/api/schedules?user_id=${user?.id}`);
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${API_BASE_URL}/schedules?user_id=${user?.id}`);
       const result = await response.json();
       if (result.success) {
         setSchedules(result.data);
@@ -69,7 +70,8 @@ const SalespersonDashboard: React.FC = () => {
 
   const loadMemos = async () => {
     try {
-      const response = await fetch(`/api/memos?user_id=${user?.id}`);
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${API_BASE_URL}/memos?user_id=${user?.id}`);
       const result = await response.json();
       if (result.success) {
         setMemos(result.data);
@@ -81,8 +83,9 @@ const SalespersonDashboard: React.FC = () => {
 
   const loadStats = async () => {
     try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
       // 수수료 명세서 데이터 가져오기
-      const response = await fetch(`/api/salesperson/${user?.id}/commission-details`);
+      const response = await fetch(`${API_BASE_URL}/salesperson/${user?.id}/commission-details`);
       const result = await response.json();
       
       if (result.success) {

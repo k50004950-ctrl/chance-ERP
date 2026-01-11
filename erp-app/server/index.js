@@ -672,7 +672,12 @@ app.post('/api/users', (req, res) => {
     
     res.json({ success: true, id: userInfo.lastInsertRowid, employee_code: auto_employee_code });
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    // 중복 사용자명 에러 처리
+    if (error.message && error.message.includes('UNIQUE constraint failed: users.username')) {
+      res.json({ success: false, message: '이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.' });
+    } else {
+      res.json({ success: false, message: error.message });
+    }
   }
 });
 

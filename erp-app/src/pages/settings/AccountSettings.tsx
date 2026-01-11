@@ -318,7 +318,12 @@ const AccountSettings: React.FC = () => {
           handleCloseModal();
           fetchAccounts();
         } else {
-          alert('추가 실패: ' + result.message);
+          // 중복 사용자명 에러 처리
+          if (result.message && result.message.includes('UNIQUE constraint failed: users.username')) {
+            alert('이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.');
+          } else {
+            alert('추가 실패: ' + result.message);
+          }
         }
       }
     } catch (error) {

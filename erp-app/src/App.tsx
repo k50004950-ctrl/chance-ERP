@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
+import SalespersonDashboard from './pages/SalespersonDashboard';
 
 // 인사관리
 import Employees from './pages/hr/Employees';
@@ -64,6 +65,7 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="salesperson-dashboard" element={<SalespersonDashboard />} />
             
             {/* 출퇴근 */}
             <Route path="attendance/clock-in" element={<ClockIn />} />

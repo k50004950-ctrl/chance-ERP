@@ -1,1 +1,1 @@
-web: node server/index.js
+web: cd erp-app && node server/index.js

@@ -236,6 +236,19 @@ const MobileNav: React.FC = () => {
                   >
                     <span className="text-sm font-medium">DB검색</span>
                   </NavLink>
+                  <NavLink
+                    to="/admin/recruiter-performance"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-sm font-medium">섭외자 개인별 실적</span>
+                  </NavLink>
 
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
                     업무관리
@@ -282,6 +295,19 @@ const MobileNav: React.FC = () => {
                     }
                   >
                     <span className="text-sm font-medium">월별 실적 현황</span>
+                  </NavLink>
+                  <NavLink
+                    to="/admin/salesperson-performance"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-sm font-medium">영업자 개인별 실적</span>
                   </NavLink>
                   <NavLink
                     to="/admin/commission-summary"
@@ -391,10 +417,15 @@ const MobileNav: React.FC = () => {
                   >
                     <span className="text-sm font-medium">섭외 거래처 수수료</span>
                   </NavLink>
+                </>
+              )}
 
-                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
-                    설정관리
-                  </div>
+              {/* 설정관리 - 모든 사용자 */}
+              <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                설정관리
+              </div>
+              {user?.role === 'admin' && (
+                <>
                   <NavLink
                     to="/settings/accounts"
                     onClick={closeMenu}
@@ -409,7 +440,7 @@ const MobileNav: React.FC = () => {
                     <span className="text-sm font-medium">계정설정</span>
                   </NavLink>
                   <NavLink
-                    to="/settings/company"
+                    to="/admin/account-change-approval"
                     onClick={closeMenu}
                     className={({ isActive }) =>
                       `flex items-center space-x-3 px-4 py-3 transition-colors ${
@@ -419,9 +450,50 @@ const MobileNav: React.FC = () => {
                       }`
                     }
                   >
-                    <span className="text-sm font-medium">회사 설정</span>
+                    <span className="text-sm font-medium">계정 변경 승인</span>
+                  </NavLink>
+                  <NavLink
+                    to="/admin/notice-management"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-sm font-medium">공지사항 관리</span>
                   </NavLink>
                 </>
+              )}
+              <NavLink
+                to="/settings/my-account"
+                onClick={closeMenu}
+                className={({ isActive }) =>
+                  `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`
+                }
+              >
+                <span className="text-sm font-medium">내 정보 수정</span>
+              </NavLink>
+              {user?.role === 'admin' && (
+                <NavLink
+                  to="/settings/company"
+                  onClick={closeMenu}
+                  className={({ isActive }) =>
+                    `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`
+                  }
+                >
+                  <span className="text-sm font-medium">회사 설정</span>
+                </NavLink>
               )}
 
               {/* 로그아웃 */}

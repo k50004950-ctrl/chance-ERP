@@ -57,7 +57,17 @@ function initDatabase() {
       password TEXT NOT NULL,
       name TEXT NOT NULL,
       role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter')),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      employee_code TEXT,
+      department TEXT,
+      position TEXT,
+      commission_rate INTEGER DEFAULT 0,
+      bank_name TEXT,
+      account_number TEXT,
+      social_security_number TEXT,
+      hire_date DATE,
+      address TEXT,
+      emergency_contact TEXT
     );
 
     -- Products table (제품)
@@ -232,7 +242,71 @@ function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- 계정 변경 요청 테이블 (사용자가 본인 계정 수정 요청)
+    CREATE TABLE IF NOT EXISTS account_change_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      requested_changes TEXT NOT NULL,
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+      admin_note TEXT,
+      requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      reviewed_at DATETIME,
+      reviewed_by INTEGER,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (reviewed_by) REFERENCES users(id)
+    );
+
+    -- 공지사항 테이블
+    CREATE TABLE IF NOT EXISTS notices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      author_id INTEGER NOT NULL,
+      is_important BOOLEAN DEFAULT 0,
+      is_active BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (author_id) REFERENCES users(id)
+    );
+
+    -- 공지사항 읽음 여부 테이블
+    CREATE TABLE IF NOT EXISTS notice_reads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      notice_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (notice_id) REFERENCES notices(id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      UNIQUE(notice_id, user_id)
+    );
   `);
+
+  // Add new columns to users table if they don't exist (for existing databases)
+  const addColumnIfNotExists = (tableName, columnName, columnType) => {
+    try {
+      const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
+      const columnExists = tableInfo.some(col => col.name === columnName);
+      if (!columnExists) {
+        db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}`).run();
+        console.log(`Added column ${columnName} to ${tableName}`);
+      }
+    } catch (error) {
+      console.error(`Error adding column ${columnName} to ${tableName}:`, error.message);
+    }
+  };
+
+  // Add new columns to users table
+  addColumnIfNotExists('users', 'employee_code', 'TEXT');
+  addColumnIfNotExists('users', 'department', 'TEXT');
+  addColumnIfNotExists('users', 'position', 'TEXT');
+  addColumnIfNotExists('users', 'commission_rate', 'INTEGER DEFAULT 0');
+  addColumnIfNotExists('users', 'bank_name', 'TEXT');
+  addColumnIfNotExists('users', 'account_number', 'TEXT');
+  addColumnIfNotExists('users', 'social_security_number', 'TEXT');
+  addColumnIfNotExists('users', 'hire_date', 'DATE');
+  addColumnIfNotExists('users', 'address', 'TEXT');
+  addColumnIfNotExists('users', 'emergency_contact', 'TEXT');
 
   // Insert default admin user if not exists
   const adminExists = db.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get('admin');
@@ -346,62 +420,89 @@ app.post('/api/auth/login', (req, res) => {
 // Users API
 app.get('/api/users', (req, res) => {
   try {
-    const users = db.prepare('SELECT id, username, name, role, created_at FROM users ORDER BY created_at DESC').all();
+    const users = db.prepare(`
+      SELECT id, username, name, role, created_at,
+             employee_code, department, position, commission_rate,
+             bank_name, account_number, social_security_number,
+             hire_date, address, emergency_contact
+      FROM users 
+      ORDER BY created_at DESC
+    `).all();
     res.json({ success: true, data: users });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
 });
 
-// Employees API
-app.get('/api/employees', (req, res) => {
+// 특정 사용자 조회
+app.get('/api/users/:id', (req, res) => {
   try {
-    const employees = db.prepare(`
-      SELECT 
-        e.id,
-        e.employee_code,
-        e.department,
-        e.position,
-        e.hire_date,
-        e.phone,
-        e.email,
-        u.name,
-        u.username,
-        u.role
-      FROM employees e
-      INNER JOIN users u ON e.user_id = u.id
-      ORDER BY e.created_at DESC
-    `).all();
-    res.json({ success: true, data: employees });
+    const { id } = req.params;
+    const user = db.prepare(`
+      SELECT id, username, name, role, created_at,
+             employee_code, department, position, commission_rate,
+             bank_name, account_number, social_security_number,
+             hire_date, address, emergency_contact
+      FROM users 
+      WHERE id = ?
+    `).get(id);
+    
+    if (user) {
+      res.json({ success: true, data: user });
+    } else {
+      res.json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+    }
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
 });
 
+// Users API (계속)
 app.post('/api/users', (req, res) => {
   try {
-    const { username, password, name, role, employee_code, department, position } = req.body;
+    const { 
+      username, password, name, role, 
+      department, position, commission_rate,
+      bank_name, account_number, social_security_number,
+      hire_date, address, emergency_contact
+    } = req.body;
     
-    // 사용자 계정 생성
+    // 사원번호 자동 생성 (최대 ID + 1로 생성)
+    const maxIdResult = db.prepare('SELECT COALESCE(MAX(id), 0) as maxId FROM users').get();
+    const nextId = maxIdResult.maxId + 1;
+    const auto_employee_code = `EMP${String(nextId).padStart(3, '0')}`;
+    
+    // 사용자 계정 생성 (모든 필드 포함)
     const userStmt = db.prepare(`
-      INSERT INTO users (username, password, name, role)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO users (
+        username, password, name, role, employee_code,
+        department, position, commission_rate,
+        bank_name, account_number, social_security_number,
+        hire_date, address, emergency_contact
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const userInfo = userStmt.run(username, password, name, role);
+    const userInfo = userStmt.run(
+      username, password, name, role, auto_employee_code,
+      department || '', position || '', commission_rate || 0,
+      bank_name || '', account_number || '', social_security_number || '',
+      hire_date || null, address || '', emergency_contact || ''
+    );
     
-    // 직원 정보도 함께 생성
+    // 직원 정보도 함께 생성 (employees 테이블과의 호환성 유지)
     const employeeStmt = db.prepare(`
       INSERT INTO employees (user_id, employee_code, department, position, hire_date)
-      VALUES (?, ?, ?, ?, DATE('now'))
+      VALUES (?, ?, ?, ?, ?)
     `);
     employeeStmt.run(
       userInfo.lastInsertRowid,
-      employee_code || `EMP${String(userInfo.lastInsertRowid).padStart(3, '0')}`, 
+      auto_employee_code, 
       department || '부서 미정', 
-      position || '직급 미정'
+      position || '직급 미정',
+      hire_date || null
     );
     
-    res.json({ success: true, id: userInfo.lastInsertRowid });
+    res.json({ success: true, id: userInfo.lastInsertRowid, employee_code: auto_employee_code });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -410,27 +511,80 @@ app.post('/api/users', (req, res) => {
 app.put('/api/users/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const { username, password, name, role } = req.body;
+    const updateData = req.body;
     
-    // 비밀번호가 제공된 경우에만 업데이트
-    if (password) {
-      const stmt = db.prepare(`
-        UPDATE users 
-        SET username = ?, password = ?, name = ?, role = ?
-        WHERE id = ?
-      `);
-      stmt.run(username, password, name, role, id);
-    } else {
-      const stmt = db.prepare(`
-        UPDATE users 
-        SET username = ?, name = ?, role = ?
-        WHERE id = ?
-      `);
-      stmt.run(username, name, role, id);
+    // 업데이트할 필드만 동적으로 구성
+    const updateFields = [];
+    const updateValues = [];
+    
+    // 각 필드를 체크하여 제공된 경우에만 업데이트 목록에 추가
+    if (updateData.username !== undefined) {
+      updateFields.push('username = ?');
+      updateValues.push(updateData.username);
     }
+    if (updateData.password !== undefined) {
+      updateFields.push('password = ?');
+      updateValues.push(updateData.password);
+    }
+    if (updateData.name !== undefined) {
+      updateFields.push('name = ?');
+      updateValues.push(updateData.name);
+    }
+    if (updateData.role !== undefined) {
+      updateFields.push('role = ?');
+      updateValues.push(updateData.role);
+    }
+    if (updateData.department !== undefined) {
+      updateFields.push('department = ?');
+      updateValues.push(updateData.department || '');
+    }
+    if (updateData.position !== undefined) {
+      updateFields.push('position = ?');
+      updateValues.push(updateData.position || '');
+    }
+    if (updateData.commission_rate !== undefined) {
+      updateFields.push('commission_rate = ?');
+      updateValues.push(updateData.commission_rate || 0);
+    }
+    if (updateData.bank_name !== undefined) {
+      updateFields.push('bank_name = ?');
+      updateValues.push(updateData.bank_name || '');
+    }
+    if (updateData.account_number !== undefined) {
+      updateFields.push('account_number = ?');
+      updateValues.push(updateData.account_number || '');
+    }
+    if (updateData.social_security_number !== undefined) {
+      updateFields.push('social_security_number = ?');
+      updateValues.push(updateData.social_security_number || '');
+    }
+    if (updateData.hire_date !== undefined) {
+      updateFields.push('hire_date = ?');
+      updateValues.push(updateData.hire_date || null);
+    }
+    if (updateData.address !== undefined) {
+      updateFields.push('address = ?');
+      updateValues.push(updateData.address || '');
+    }
+    if (updateData.emergency_contact !== undefined) {
+      updateFields.push('emergency_contact = ?');
+      updateValues.push(updateData.emergency_contact || '');
+    }
+    
+    if (updateFields.length === 0) {
+      return res.json({ success: false, message: '업데이트할 필드가 없습니다.' });
+    }
+    
+    // WHERE 절을 위해 id 추가
+    updateValues.push(id);
+    
+    const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+    const stmt = db.prepare(sql);
+    stmt.run(...updateValues);
     
     res.json({ success: true });
   } catch (error) {
+    console.error('사용자 업데이트 오류:', error);
     res.json({ success: false, message: error.message });
   }
 });
@@ -596,21 +750,6 @@ app.post('/api/products/import-csv', (req, res) => {
 
     insertMany();
     res.json({ success: true, count });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
-});
-
-// Employees
-app.get('/api/employees', (req, res) => {
-  try {
-    const employees = db.prepare(`
-      SELECT e.*, u.username, u.name as user_name 
-      FROM employees e
-      LEFT JOIN users u ON e.user_id = u.id
-      ORDER BY e.created_at DESC
-    `).all();
-    res.json({ success: true, data: employees });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -1072,7 +1211,21 @@ app.post('/api/sales-db/upload-csv-stream', upload.single('file'), async (req, r
 app.get('/api/employees', (req, res) => {
   try {
     const employees = db.prepare(`
-      SELECT e.*, u.username, u.role, u.name as user_name
+      SELECT 
+        e.*, 
+        u.username, 
+        u.role, 
+        u.name as user_name,
+        u.employee_code,
+        u.department,
+        u.position,
+        u.commission_rate,
+        u.bank_name,
+        u.account_number,
+        u.social_security_number,
+        u.hire_date,
+        u.address,
+        u.emergency_contact
       FROM employees e
       LEFT JOIN users u ON e.user_id = u.id
       ORDER BY e.created_at DESC
@@ -1357,6 +1510,98 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 피드백 추가 API (이력 관리)
+app.post('/api/sales-db/:id/add-feedback', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { author, content } = req.body;
+    
+    if (!author || !content) {
+      return res.json({ success: false, message: '작성자와 내용은 필수입니다.' });
+    }
+    
+    // 현재 데이터 조회
+    const currentData = db.prepare('SELECT feedback FROM sales_db WHERE id = ?').get(id);
+    
+    // 기존 피드백 파싱 (JSON 배열 또는 빈 배열)
+    let feedbackHistory = [];
+    if (currentData && currentData.feedback) {
+      try {
+        feedbackHistory = JSON.parse(currentData.feedback);
+        if (!Array.isArray(feedbackHistory)) {
+          // 기존 텍스트 형태라면 첫 번째 항목으로 변환
+          feedbackHistory = [{
+            author: '이전 기록',
+            content: currentData.feedback,
+            timestamp: new Date().toISOString()
+          }];
+        }
+      } catch (e) {
+        // JSON 파싱 실패 시 기존 텍스트를 첫 항목으로
+        feedbackHistory = [{
+          author: '이전 기록',
+          content: currentData.feedback,
+          timestamp: new Date().toISOString()
+        }];
+      }
+    }
+    
+    // 새 피드백 추가
+    feedbackHistory.push({
+      author: author,
+      content: content,
+      timestamp: new Date().toISOString()
+    });
+    
+    // 업데이트
+    const stmt = db.prepare('UPDATE sales_db SET feedback = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    stmt.run(JSON.stringify(feedbackHistory), id);
+    
+    res.json({ success: true, data: feedbackHistory });
+  } catch (error) {
+    console.error('피드백 추가 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 피드백 이력 조회 API
+app.get('/api/sales-db/:id/feedback-history', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const data = db.prepare('SELECT feedback FROM sales_db WHERE id = ?').get(id);
+    
+    if (!data) {
+      return res.json({ success: false, message: '데이터를 찾을 수 없습니다.' });
+    }
+    
+    let feedbackHistory = [];
+    if (data.feedback) {
+      try {
+        feedbackHistory = JSON.parse(data.feedback);
+        if (!Array.isArray(feedbackHistory)) {
+          feedbackHistory = [{
+            author: '이전 기록',
+            content: data.feedback,
+            timestamp: new Date().toISOString()
+          }];
+        }
+      } catch (e) {
+        feedbackHistory = [{
+          author: '이전 기록',
+          content: data.feedback,
+          timestamp: new Date().toISOString()
+        }];
+      }
+    }
+    
+    res.json({ success: true, data: feedbackHistory });
+  } catch (error) {
+    console.error('피드백 조회 오류:', error);
     res.json({ success: false, message: error.message });
   }
 });
@@ -1918,7 +2163,7 @@ app.delete('/api/sales-clients/:id', (req, res) => {
 // 월별 실적 현황 조회
 app.get('/api/admin/monthly-performance', (req, res) => {
   try {
-    const { year, month, contract_status } = req.query;
+    const { year, month, contract_status, client_name } = req.query;
     
     let query = `
       SELECT 
@@ -1979,14 +2224,687 @@ app.get('/api/admin/monthly-performance', (req, res) => {
   }
 });
 
+// ========== 계정 변경 요청 API ==========
+// 사용자가 본인 계정 변경 요청
+app.post('/api/account-change-requests', (req, res) => {
+  try {
+    const { user_id, requested_changes } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO account_change_requests (user_id, requested_changes)
+      VALUES (?, ?)
+    `);
+    const result = stmt.run(user_id, JSON.stringify(requested_changes));
+    
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 모든 계정 변경 요청 조회 (관리자용)
+app.get('/api/account-change-requests', (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let query = `
+      SELECT 
+        acr.*,
+        u.username,
+        u.name as user_name,
+        u.employee_code,
+        admin.name as reviewed_by_name
+      FROM account_change_requests acr
+      LEFT JOIN users u ON acr.user_id = u.id
+      LEFT JOIN users admin ON acr.reviewed_by = admin.id
+    `;
+    
+    const params = [];
+    if (status && status !== 'all') {
+      query += ` WHERE acr.status = ?`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY acr.requested_at DESC`;
+    
+    const requests = db.prepare(query).all(...params);
+    
+    // requested_changes를 JSON으로 파싱
+    const parsedRequests = requests.map(req => ({
+      ...req,
+      requested_changes: JSON.parse(req.requested_changes)
+    }));
+    
+    res.json({ success: true, data: parsedRequests });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 특정 사용자의 계정 변경 요청 조회
+app.get('/api/account-change-requests/user/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const requests = db.prepare(`
+      SELECT 
+        acr.*,
+        admin.name as reviewed_by_name
+      FROM account_change_requests acr
+      LEFT JOIN users admin ON acr.reviewed_by = admin.id
+      WHERE acr.user_id = ?
+      ORDER BY acr.requested_at DESC
+    `).all(userId);
+    
+    // requested_changes를 JSON으로 파싱
+    const parsedRequests = requests.map(req => ({
+      ...req,
+      requested_changes: JSON.parse(req.requested_changes)
+    }));
+    
+    res.json({ success: true, data: parsedRequests });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 계정 변경 요청 승인/거절 (관리자용)
+app.put('/api/account-change-requests/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, admin_note, reviewed_by } = req.body;
+    
+    // 요청 정보 가져오기
+    const request = db.prepare('SELECT * FROM account_change_requests WHERE id = ?').get(id);
+    if (!request) {
+      return res.json({ success: false, message: '요청을 찾을 수 없습니다.' });
+    }
+    
+    // 승인인 경우 사용자 정보 업데이트
+    if (status === 'approved') {
+      const changes = JSON.parse(request.requested_changes);
+      
+      // 업데이트할 필드 구성
+      const updateFields = [];
+      const updateValues = [];
+      
+      if (changes.name) {
+        updateFields.push('name = ?');
+        updateValues.push(changes.name);
+      }
+      if (changes.department) {
+        updateFields.push('department = ?');
+        updateValues.push(changes.department);
+      }
+      if (changes.position) {
+        updateFields.push('position = ?');
+        updateValues.push(changes.position);
+      }
+      if (changes.bank_name !== undefined) {
+        updateFields.push('bank_name = ?');
+        updateValues.push(changes.bank_name);
+      }
+      if (changes.account_number !== undefined) {
+        updateFields.push('account_number = ?');
+        updateValues.push(changes.account_number);
+      }
+      if (changes.social_security_number !== undefined) {
+        updateFields.push('social_security_number = ?');
+        updateValues.push(changes.social_security_number);
+      }
+      if (changes.hire_date !== undefined) {
+        updateFields.push('hire_date = ?');
+        updateValues.push(changes.hire_date);
+      }
+      if (changes.address !== undefined) {
+        updateFields.push('address = ?');
+        updateValues.push(changes.address);
+      }
+      if (changes.emergency_contact !== undefined) {
+        updateFields.push('emergency_contact = ?');
+        updateValues.push(changes.emergency_contact);
+      }
+      
+      if (updateFields.length > 0) {
+        updateValues.push(request.user_id);
+        const updateQuery = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+        db.prepare(updateQuery).run(...updateValues);
+      }
+    }
+    
+    // 요청 상태 업데이트
+    const stmt = db.prepare(`
+      UPDATE account_change_requests 
+      SET status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(status, admin_note || '', reviewed_by, id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 계정 변경 요청 삭제
+app.delete('/api/account-change-requests/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM account_change_requests WHERE id = ?').run(id);
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ========== 당월 실적 순위 API ==========
+// 영업자 당월 실적 순위 조회
+app.get('/api/rankings/monthly', (req, res) => {
+  try {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    
+    // 모든 영업자 조회
+    const salespersons = db.prepare(`
+      SELECT id, name, employee_code 
+      FROM users 
+      WHERE role = 'salesperson'
+    `).all();
+    
+    const rankings = salespersons.map(person => {
+      // 당월 실적 계산
+      const stats = db.prepare(`
+        SELECT 
+          COUNT(*) as total_db,
+          COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_count,
+          SUM(CASE WHEN contract_status = 'Y' THEN CAST(contract_client AS INTEGER) ELSE 0 END) as total_contract_fee
+        FROM sales_db
+        WHERE salesperson = ?
+          AND strftime('%Y', proposal_date) = ?
+          AND strftime('%m', proposal_date) = ?
+      `).get(person.name, String(currentYear), currentMonth);
+      
+      const totalDB = stats.total_db || 0;
+      const contractCount = stats.contract_count || 0;
+      const totalContractFee = stats.total_contract_fee || 0;
+      const contractRate = totalDB > 0 ? (contractCount / totalDB * 100) : 0;
+      
+      return {
+        id: person.id,
+        name: person.name,
+        employee_code: person.employee_code,
+        total_db: totalDB,
+        contract_count: contractCount,
+        total_contract_fee: totalContractFee,
+        contract_rate: contractRate
+      };
+    });
+    
+    // 기장료 순위 (내림차순)
+    const feeRankings = [...rankings].sort((a, b) => b.total_contract_fee - a.total_contract_fee);
+    feeRankings.forEach((item, index) => {
+      item.fee_rank = index + 1;
+    });
+    
+    // 계약율 순위 (내림차순)
+    const rateRankings = [...rankings].sort((a, b) => b.contract_rate - a.contract_rate);
+    rateRankings.forEach((item, index) => {
+      item.rate_rank = index + 1;
+    });
+    
+    // 순위 정보 병합
+    const result = rankings.map(person => {
+      const feeRank = feeRankings.find(r => r.id === person.id)?.fee_rank || 0;
+      const rateRank = rateRankings.find(r => r.id === person.id)?.rate_rank || 0;
+      
+      return {
+        ...person,
+        fee_rank: feeRank,
+        rate_rank: rateRank
+      };
+    });
+    
+    // 기장료 순위로 정렬
+    result.sort((a, b) => a.fee_rank - b.fee_rank);
+    
+    res.json({ 
+      success: true, 
+      data: result,
+      period: `${currentYear}년 ${parseInt(currentMonth)}월`
+    });
+  } catch (error) {
+    console.error('실적 순위 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ========== 섭외자별 실적 통계 API ==========
+// 섭외자별 월별 실적 조회
+app.get('/api/recruiter-performance', (req, res) => {
+  try {
+    const { year, month, months } = req.query; // months: 평균 계산할 개월 수 (1, 3 등)
+    
+    // 모든 섭외자 목록 가져오기
+    const recruiters = db.prepare(`
+      SELECT id, name, employee_code 
+      FROM users 
+      WHERE role = 'recruiter'
+      ORDER BY name
+    `).all();
+    
+    const results = recruiters.map(recruiter => {
+      // 월별 실적 계산
+      if (year && month) {
+        const stats = db.prepare(`
+          SELECT 
+            COUNT(*) as total_db,
+            COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
+            COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed
+          FROM sales_db
+          WHERE proposer = ?
+            AND strftime('%Y', proposal_date) = ?
+            AND strftime('%m', proposal_date) = ?
+        `).get(recruiter.name, year, String(month).padStart(2, '0'));
+        
+        return {
+          ...recruiter,
+          period: `${year}년 ${month}월`,
+          ...stats
+        };
+      }
+      
+      // N개월 평균 실적 계산
+      if (months) {
+        const monthsNum = parseInt(months);
+        const now = new Date();
+        const startDate = new Date(now.getFullYear(), now.getMonth() - monthsNum + 1, 1);
+        const startYear = startDate.getFullYear();
+        const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+        
+        const stats = db.prepare(`
+          SELECT 
+            COUNT(*) as total_db,
+            COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
+            COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed
+          FROM sales_db
+          WHERE proposer = ?
+            AND proposal_date >= date('${startYear}-${startMonth}-01')
+        `).get(recruiter.name);
+        
+        return {
+          ...recruiter,
+          period: `최근 ${monthsNum}개월`,
+          total_db: Math.round((stats.total_db || 0) / monthsNum * 10) / 10,
+          meeting_completed: Math.round((stats.meeting_completed || 0) / monthsNum * 10) / 10,
+          contract_completed: Math.round((stats.contract_completed || 0) / monthsNum * 10) / 10
+        };
+      }
+      
+      // 기본: 이번 달 실적
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+      
+      const stats = db.prepare(`
+        SELECT 
+          COUNT(*) as total_db,
+          COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
+          COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed
+        FROM sales_db
+        WHERE proposer = ?
+          AND strftime('%Y', proposal_date) = ?
+          AND strftime('%m', proposal_date) = ?
+      `).get(recruiter.name, String(currentYear), currentMonth);
+      
+      return {
+        ...recruiter,
+        period: `${currentYear}년 ${parseInt(currentMonth)}월`,
+        ...stats
+      };
+    });
+    
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('섭외자 실적 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ========== 영업자별 실적 통계 API ==========
+// 영업자별 월별 실적 조회
+app.get('/api/salesperson-performance', (req, res) => {
+  try {
+    const { year, month, months } = req.query; // months: 평균 계산할 개월 수 (1, 3 등)
+    
+    // 모든 영업자 목록 가져오기
+    const salespersons = db.prepare(`
+      SELECT id, name, employee_code 
+      FROM users 
+      WHERE role = 'salesperson'
+      ORDER BY name
+    `).all();
+    
+    const results = salespersons.map(salesperson => {
+      // 월별 실적 계산
+      if (year && month) {
+        const stats = db.prepare(`
+          SELECT 
+            COUNT(*) as total_db,
+            COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
+            COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed,
+            COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN CAST(contract_client AS INTEGER) ELSE 0 END), 0) as total_contract_amount
+          FROM sales_db
+          WHERE salesperson_id = ?
+            AND strftime('%Y', proposal_date) = ?
+            AND strftime('%m', proposal_date) = ?
+        `).get(salesperson.id, year, String(month).padStart(2, '0'));
+        
+        return {
+          ...salesperson,
+          period: `${year}년 ${month}월`,
+          ...stats
+        };
+      }
+      
+      // N개월 평균 실적 계산
+      if (months) {
+        const monthsNum = parseInt(months);
+        const now = new Date();
+        const startDate = new Date(now.getFullYear(), now.getMonth() - monthsNum + 1, 1);
+        const startYear = startDate.getFullYear();
+        const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+        
+        const stats = db.prepare(`
+          SELECT 
+            COUNT(*) as total_db,
+            COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
+            COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed,
+            COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN CAST(contract_client AS INTEGER) ELSE 0 END), 0) as total_contract_amount
+          FROM sales_db
+          WHERE salesperson_id = ?
+            AND proposal_date >= date('${startYear}-${startMonth}-01')
+        `).get(salesperson.id);
+        
+        return {
+          ...salesperson,
+          period: `최근 ${monthsNum}개월`,
+          total_db: Math.round((stats.total_db || 0) / monthsNum * 10) / 10,
+          meeting_completed: Math.round((stats.meeting_completed || 0) / monthsNum * 10) / 10,
+          contract_completed: Math.round((stats.contract_completed || 0) / monthsNum * 10) / 10,
+          total_contract_amount: Math.round((stats.total_contract_amount || 0) / monthsNum)
+        };
+      }
+      
+      // 기본: 이번 달 실적
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+      
+      const stats = db.prepare(`
+        SELECT 
+          COUNT(*) as total_db,
+          COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
+          COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed,
+          COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN CAST(contract_client AS INTEGER) ELSE 0 END), 0) as total_contract_amount
+        FROM sales_db
+        WHERE salesperson_id = ?
+          AND strftime('%Y', proposal_date) = ?
+          AND strftime('%m', proposal_date) = ?
+      `).get(salesperson.id, String(currentYear), currentMonth);
+      
+      return {
+        ...salesperson,
+        period: `${currentYear}년 ${parseInt(currentMonth)}월`,
+        ...stats
+      };
+    });
+    
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('영업자 실적 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ========== 공지사항 API ==========
+// 모든 공지사항 조회
+app.get('/api/notices', (req, res) => {
+  try {
+    const { user_id } = req.query;
+    
+    const notices = db.prepare(`
+      SELECT 
+        n.*,
+        u.name as author_name,
+        CASE WHEN nr.id IS NOT NULL THEN 1 ELSE 0 END as is_read
+      FROM notices n
+      LEFT JOIN users u ON n.author_id = u.id
+      LEFT JOIN notice_reads nr ON n.id = nr.notice_id AND nr.user_id = ?
+      WHERE n.is_active = 1
+      ORDER BY n.is_important DESC, n.created_at DESC
+    `).all(user_id || 0);
+    
+    res.json({ success: true, data: notices });
+  } catch (error) {
+    console.error('공지사항 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 읽지 않은 공지사항 조회
+app.get('/api/notices/unread', (req, res) => {
+  try {
+    const { user_id } = req.query;
+    
+    if (!user_id) {
+      return res.json({ success: false, message: 'user_id is required' });
+    }
+    
+    const notices = db.prepare(`
+      SELECT 
+        n.*,
+        u.name as author_name
+      FROM notices n
+      LEFT JOIN users u ON n.author_id = u.id
+      LEFT JOIN notice_reads nr ON n.id = nr.notice_id AND nr.user_id = ?
+      WHERE n.is_active = 1 AND nr.id IS NULL
+      ORDER BY n.is_important DESC, n.created_at DESC
+    `).all(user_id);
+    
+    res.json({ success: true, data: notices });
+  } catch (error) {
+    console.error('읽지 않은 공지사항 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 공지사항 생성 (관리자용)
+app.post('/api/notices', (req, res) => {
+  try {
+    const { title, content, author_id, is_important } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO notices (title, content, author_id, is_important)
+      VALUES (?, ?, ?, ?)
+    `);
+    const result = stmt.run(title, content, author_id, is_important ? 1 : 0);
+    
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    console.error('공지사항 생성 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 공지사항 수정 (관리자용)
+app.put('/api/notices/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content, is_important, is_active } = req.body;
+    
+    const stmt = db.prepare(`
+      UPDATE notices 
+      SET title = ?, content = ?, is_important = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(title, content, is_important ? 1 : 0, is_active ? 1 : 0, id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('공지사항 수정 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 공지사항 삭제 (관리자용)
+app.delete('/api/notices/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 실제 삭제가 아닌 비활성화
+    db.prepare('UPDATE notices SET is_active = 0 WHERE id = ?').run(id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('공지사항 삭제 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 공지사항 읽음 처리
+app.post('/api/notices/:id/read', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT OR IGNORE INTO notice_reads (notice_id, user_id)
+      VALUES (?, ?)
+    `);
+    stmt.run(id, user_id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('공지사항 읽음 처리 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // Serve React app for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
+// ========== 생일 축하 자동 공지 ==========
+// 오늘이 생일인 사용자 확인 및 공지 생성
+function checkBirthdaysAndCreateNotices() {
+  try {
+    const today = new Date();
+    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const todayDay = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${todayMonth}${todayDay}`;
+    
+    console.log(`[생일 체크] ${today.toLocaleDateString('ko-KR')} - 오늘 생일인 직원 확인 중...`);
+    
+    // 모든 사용자 조회 (주민번호가 있는 경우만)
+    const users = db.prepare(`
+      SELECT id, name, social_security_number 
+      FROM users 
+      WHERE social_security_number IS NOT NULL 
+        AND social_security_number != ''
+    `).all();
+    
+    const birthdayUsers = [];
+    
+    users.forEach(user => {
+      if (user.social_security_number && user.social_security_number.length >= 6) {
+        // 주민번호 앞 6자리에서 MMDD 추출 (YYMMDD 형식)
+        const birthMMDD = user.social_security_number.substring(2, 6);
+        
+        if (birthMMDD === todayStr) {
+          birthdayUsers.push(user);
+        }
+      }
+    });
+    
+    if (birthdayUsers.length > 0) {
+      console.log(`[생일 체크] ${birthdayUsers.length}명의 생일 발견:`, birthdayUsers.map(u => u.name).join(', '));
+      
+      // 각 생일자에 대해 공지사항 생성
+      birthdayUsers.forEach(user => {
+        // 오늘 이미 해당 사용자의 생일 공지가 있는지 확인
+        const existingNotice = db.prepare(`
+          SELECT id FROM notices 
+          WHERE title LIKE ? 
+            AND DATE(created_at) = DATE('now')
+            AND is_active = 1
+        `).get(`🎉 ${user.name}님 생일 축하합니다! 🎂`);
+        
+        if (!existingNotice) {
+          // 관리자 계정 찾기 (시스템 계정으로 사용)
+          const admin = db.prepare('SELECT id FROM users WHERE role = ? LIMIT 1').get('admin');
+          const authorId = admin ? admin.id : 1;
+          
+          // 생일 축하 공지 생성
+          const stmt = db.prepare(`
+            INSERT INTO notices (title, content, author_id, is_important)
+            VALUES (?, ?, ?, ?)
+          `);
+          
+          const title = `🎉 ${user.name}님 생일 축하합니다! 🎂`;
+          const content = `오늘은 ${user.name}님의 소중한 생일입니다! 🎉
+
+${user.name}님께서 저희와 함께해주셔서 감사합니다.
+앞으로도 건강하시고 행복한 일만 가득하시길 바랍니다.
+
+다같이 축하해주세요! 🎂🎈🎁
+
+생일 축하합니다! 🥳`;
+          
+          stmt.run(title, content, authorId, 1); // is_important = 1 (중요 공지)
+          console.log(`[생일 공지 생성] ${user.name}님 생일 축하 공지가 생성되었습니다.`);
+        } else {
+          console.log(`[생일 공지 스킵] ${user.name}님 공지가 이미 존재합니다.`);
+        }
+      });
+    } else {
+      console.log('[생일 체크] 오늘 생일인 직원이 없습니다.');
+    }
+  } catch (error) {
+    console.error('[생일 체크 오류]', error);
+  }
+}
+
+// 매일 자정에 생일 체크 실행
+function scheduleBirthdayCheck() {
+  const now = new Date();
+  const night = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1, // 다음 날
+    0, 0, 0 // 자정
+  );
+  const msToMidnight = night.getTime() - now.getTime();
+  
+  setTimeout(() => {
+    checkBirthdaysAndCreateNotices();
+    // 자정에 실행 후 24시간마다 반복
+    setInterval(checkBirthdaysAndCreateNotices, 24 * 60 * 60 * 1000);
+  }, msToMidnight);
+  
+  console.log(`[생일 체크 스케줄러] 다음 실행 시간: ${night.toLocaleString('ko-KR')}`);
+}
+
 // Start server
 app.listen(PORT, () => {
   console.log(`ERP Server running on http://localhost:${PORT}`);
+  
+  // 서버 시작 시 즉시 한 번 실행
+  checkBirthdaysAndCreateNotices();
+  
+  // 매일 자정 실행 스케줄 등록
+  scheduleBirthdayCheck();
 });
 
 // Graceful shutdown

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search as SearchIcon, Trash2, Edit } from 'lucide-react';
+import { Search as SearchIcon, Trash2, Edit, X, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateToKorean } from '../../utils/dateFormat';
 
@@ -33,6 +33,10 @@ const SalesDBSearch: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<SalesDB[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
+  const [newFeedback, setNewFeedback] = useState('');
+  const [currentFeedbackId, setCurrentFeedbackId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSalesDB();
@@ -64,6 +68,67 @@ const SalesDBSearch: React.FC = () => {
     } catch (error) {
       console.error('DB 조회 실패:', error);
     }
+  };
+
+  const handleShowFeedback = async (id: number) => {
+    setCurrentFeedbackId(id);
+    try {
+      const response = await fetch(`http://localhost:3000/api/sales-db/${id}/feedback-history`);
+      const result = await response.json();
+      if (result.success) {
+        setFeedbackHistory(result.data || []);
+        setShowFeedbackModal(true);
+      } else {
+        alert('피드백 조회 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('피드백 조회 오류:', error);
+      alert('피드백 조회 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleAddFeedback = async () => {
+    if (!newFeedback.trim()) {
+      alert('피드백 내용을 입력하세요.');
+      return;
+    }
+    if (!user) {
+      alert('사용자 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/sales-db/${currentFeedbackId}/add-feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          author: user.name,
+          content: newFeedback
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setFeedbackHistory(result.data);
+        setNewFeedback('');
+        alert('피드백이 추가되었습니다.');
+        fetchSalesDB(); // 목록 새로고침
+      } else {
+        alert('피드백 추가 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('피드백 추가 오류:', error);
+      alert('피드백 추가 중 오류가 발생했습니다.');
+    }
+  };
+
+  const formatDateTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
   };
 
   const handleDelete = async (id: number) => {
@@ -296,8 +361,23 @@ const SalesDBSearch: React.FC = () => {
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                     {item.client_name || '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {item.feedback || '-'}
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleShowFeedback(item.id)}
+                      className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 transition"
+                    >
+                      <span className="text-sm font-medium">피드백 보기</span>
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+                        {(() => {
+                          try {
+                            const history = item.feedback ? JSON.parse(item.feedback) : [];
+                            return Array.isArray(history) ? history.length : 0;
+                          } catch {
+                            return item.feedback ? 1 : 0;
+                          }
+                        })()}
+                      </span>
+                    </button>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                     {item.april_type1_date || '-'}
@@ -306,6 +386,82 @@ const SalesDBSearch: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* 피드백 이력 모달 */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+              <h2 className="text-2xl font-bold">피드백 이력</h2>
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setNewFeedback('');
+                }}
+                className="text-white hover:text-gray-200 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* 피드백 이력 목록 */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {feedbackHistory.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <p>아직 작성된 피드백이 없습니다.</p>
+                  <p className="text-sm mt-2">첫 번째 피드백을 작성해보세요!</p>
+                </div>
+              ) : (
+                feedbackHistory.map((feedback, index) => (
+                  <div 
+                    key={index} 
+                    className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
+                          {feedback.author}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {formatDateTime(feedback.timestamp)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-400">#{index + 1}</span>
+                    </div>
+                    <div className="bg-white rounded p-3 mt-2 border border-gray-100">
+                      <p className="text-gray-800 whitespace-pre-wrap">{feedback.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* 새 피드백 작성 */}
+            <div className="border-t border-gray-200 p-6 bg-gray-50">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                새 피드백 작성
+              </label>
+              <textarea
+                value={newFeedback}
+                onChange={(e) => setNewFeedback(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                rows={3}
+                placeholder="피드백 내용을 입력하세요..."
+              />
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={handleAddFeedback}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>피드백 추가</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

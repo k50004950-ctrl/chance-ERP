@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, Users } from 'lucide-react';
+import { Edit, Save, X, Users, Plus } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 
@@ -48,6 +48,23 @@ const SalespersonMyData: React.FC = () => {
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
   const [salesClients, setSalesClients] = useState<SalesClient[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MyDataItem | null>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
+  const [newFeedback, setNewFeedback] = useState('');
+  const [currentFeedbackId, setCurrentFeedbackId] = useState<number | null>(null);
+  const [newData, setNewData] = useState({
+    company_name: '',
+    representative: '',
+    address: '',
+    contact: '',
+    industry: '',
+    sales_amount: 0,
+    existing_client: '',
+    proposal_date: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     // 로그인한 사용자 정보 가져오기
@@ -160,6 +177,81 @@ const SalespersonMyData: React.FC = () => {
     ));
   };
 
+  const handleShowDetail = (item: MyDataItem) => {
+    console.log('상세 정보 표시:', item);
+    setSelectedItem(item);
+    setShowDetailModal(true);
+  };
+
+  const handleShowFeedback = async (id: number) => {
+    console.log('피드백 조회 시작:', id);
+    setCurrentFeedbackId(id);
+    try {
+      const response = await fetch(`http://localhost:3000/api/sales-db/${id}/feedback-history`);
+      console.log('피드백 API 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP 오류! 상태: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('피드백 조회 결과:', result);
+      
+      if (result.success) {
+        setFeedbackHistory(result.data || []);
+        setShowFeedbackModal(true);
+      } else {
+        alert('피드백 조회 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('피드백 조회 오류:', error);
+      alert('피드백 조회 중 오류가 발생했습니다. 콘솔을 확인하세요.\n오류: ' + (error instanceof Error ? error.message : String(error)));
+    }
+  };
+
+  const handleAddFeedback = async () => {
+    if (!newFeedback.trim()) {
+      alert('피드백 내용을 입력하세요.');
+      return;
+    }
+    if (!currentUser) {
+      alert('사용자 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/sales-db/${currentFeedbackId}/add-feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          author: currentUser.name,
+          content: newFeedback
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setFeedbackHistory(result.data);
+        setNewFeedback('');
+        alert('피드백이 추가되었습니다.');
+      } else {
+        alert('피드백 추가 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('피드백 추가 오류:', error);
+      alert('피드백 추가 중 오류가 발생했습니다.');
+    }
+  };
+
+  const formatDateTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+  };
+
   if (!currentUser || (!isAdmin && currentUser.role !== 'salesperson')) {
     return (
       <div className="p-6">
@@ -180,19 +272,84 @@ const SalespersonMyData: React.FC = () => {
     );
   }
 
+  const handleAddNew = async () => {
+    if (!currentUser || !salespersonId) return;
+    
+    // 필수 입력 확인
+    if (!newData.company_name || !newData.representative) {
+      alert('업체명과 대표자는 필수 입력 항목입니다.');
+      return;
+    }
+    
+    try {
+      const response = await fetch('http://localhost:3000/api/sales-db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newData,
+          proposer: currentUser.name,
+          salesperson: currentUser.name,
+          salesperson_id: salespersonId,
+          meeting_status: '미팅대기중'
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('새 DB가 추가되었습니다!');
+        setShowAddModal(false);
+        setNewData({
+          company_name: '',
+          representative: '',
+          address: '',
+          contact: '',
+          industry: '',
+          sales_amount: 0,
+          existing_client: '',
+          proposal_date: new Date().toISOString().split('T')[0]
+        });
+        fetchMyData(); // 목록 새로고침
+      } else {
+        alert('DB 추가 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('DB 추가 오류:', error);
+      alert('DB 추가 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">영업자 DB 입력</h1>
-        <p className="text-gray-600 mt-1">
-          {isAdmin ? '영업자별 담당 업체 정보를 확인하고 수정하세요' : '내가 담당하는 업체 정보를 수정하세요'}
-        </p>
-        <p className="text-sm text-blue-600 mt-2">
-          ※ 계약날짜, 미팅여부, 거래처(매출거래처), 기타(피드백) 필드만 수정 가능합니다.
-        </p>
-        <p className="text-sm text-orange-600 mt-1">
-          ※ 거래처 선택 시 수수료가 자동으로 적용됩니다.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">영업자 DB 입력</h1>
+            <p className="text-gray-600 mt-1">
+              {isAdmin ? '영업자별 담당 업체 정보를 확인하고 수정하세요' : '내가 담당하는 업체 정보를 수정하세요'}
+            </p>
+            <p className="text-sm text-blue-600 mt-2">
+              ※ 계약날짜, 미팅여부, 거래처(매출거래처) 필드만 수정 가능합니다.
+            </p>
+            <p className="text-sm text-orange-600 mt-1">
+              ※ 거래처 선택 시 수수료가 자동으로 적용됩니다.
+            </p>
+            <p className="text-sm text-purple-600 mt-1">
+              ※ <strong>업체명</strong>을 클릭하면 상세 정보를 확인할 수 있습니다.
+            </p>
+            <p className="text-sm text-purple-600 mt-1">
+              ※ <strong>피드백 보기</strong> 버튼을 클릭하면 피드백을 조회하고 추가할 수 있습니다.
+            </p>
+          </div>
+          {!isAdmin && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition"
+            >
+              <Plus className="w-5 h-5" />
+              <span>새 DB 추가</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 관리자용 영업자 선택 드롭다운 */}
@@ -265,8 +422,13 @@ const SalespersonMyData: React.FC = () => {
                       <span className="text-sm text-gray-900">{formatDateToKorean(item.contract_date) || '-'}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                    {item.company_name}
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    <button
+                      onClick={() => handleShowDetail(item)}
+                      className="text-blue-600 hover:text-blue-800 hover:underline font-semibold cursor-pointer text-left"
+                    >
+                      {item.company_name}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                     {item.representative || '-'}
@@ -369,17 +531,22 @@ const SalespersonMyData: React.FC = () => {
                     )}
                   </td>
                   <td className="px-4 py-3 bg-blue-50">
-                    {editingId === item.id ? (
-                      <input
-                        type="text"
-                        value={item.feedback || ''}
-                        onChange={(e) => handleChange(item.id, 'feedback', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                        placeholder="기타(피드백)"
-                      />
-                    ) : (
-                      <span className="text-sm text-gray-900">{item.feedback || '-'}</span>
-                    )}
+                    <button
+                      onClick={() => handleShowFeedback(item.id)}
+                      className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 transition"
+                    >
+                      <span className="text-sm font-medium">피드백 보기</span>
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+                        {(() => {
+                          try {
+                            const history = item.feedback ? JSON.parse(item.feedback) : [];
+                            return Array.isArray(history) ? history.length : 0;
+                          } catch {
+                            return item.feedback ? 1 : 0;
+                          }
+                        })()}
+                      </span>
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-center">
                     {editingId === item.id ? (
@@ -415,6 +582,416 @@ const SalespersonMyData: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* 새 DB 추가 모달 */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-800">새 DB 추가</h2>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 업체명 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    업체명 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newData.company_name}
+                    onChange={(e) => setNewData({ ...newData, company_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="업체명 입력"
+                    required
+                  />
+                </div>
+
+                {/* 대표자 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    대표자 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newData.representative}
+                    onChange={(e) => setNewData({ ...newData, representative: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="대표자명 입력"
+                    required
+                  />
+                </div>
+
+                {/* 주소 */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    주소
+                  </label>
+                  <input
+                    type="text"
+                    value={newData.address}
+                    onChange={(e) => setNewData({ ...newData, address: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="주소 입력"
+                  />
+                </div>
+
+                {/* 연락처 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    연락처
+                  </label>
+                  <input
+                    type="text"
+                    value={newData.contact}
+                    onChange={(e) => setNewData({ ...newData, contact: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="연락처 입력"
+                  />
+                </div>
+
+                {/* 업종 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    업종
+                  </label>
+                  <input
+                    type="text"
+                    value={newData.industry}
+                    onChange={(e) => setNewData({ ...newData, industry: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="업종 입력"
+                  />
+                </div>
+
+                {/* 매출액 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    매출액 (원)
+                  </label>
+                  <input
+                    type="number"
+                    value={newData.sales_amount}
+                    onChange={(e) => setNewData({ ...newData, sales_amount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+
+                {/* 기존거래처 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    기존거래처
+                  </label>
+                  <input
+                    type="text"
+                    value={newData.existing_client}
+                    onChange={(e) => setNewData({ ...newData, existing_client: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="기존거래처 입력"
+                  />
+                </div>
+
+                {/* 섭외일 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    섭외일
+                  </label>
+                  <KoreanDatePicker
+                    selected={newData.proposal_date ? new Date(newData.proposal_date) : new Date()}
+                    onChange={(date) => {
+                      if (date) {
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        setNewData({ ...newData, proposal_date: `${year}-${month}-${day}` });
+                      }
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholderText="섭외일 선택"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  💡 새로운 DB를 추가합니다. 추가 후 미팅 상태, 계약 정보 등은 목록에서 수정할 수 있습니다.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleAddNew}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+              >
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 피드백 이력 모달 */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+              <h2 className="text-2xl font-bold">피드백 이력</h2>
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setNewFeedback('');
+                }}
+                className="text-white hover:text-gray-200 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* 피드백 이력 목록 */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {feedbackHistory.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <p>아직 작성된 피드백이 없습니다.</p>
+                  <p className="text-sm mt-2">첫 번째 피드백을 작성해보세요!</p>
+                </div>
+              ) : (
+                feedbackHistory.map((feedback, index) => (
+                  <div 
+                    key={index} 
+                    className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
+                          {feedback.author}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {formatDateTime(feedback.timestamp)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-400">#{index + 1}</span>
+                    </div>
+                    <div className="bg-white rounded p-3 mt-2 border border-gray-100">
+                      <p className="text-gray-800 whitespace-pre-wrap">{feedback.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* 새 피드백 작성 */}
+            <div className="border-t border-gray-200 p-6 bg-gray-50">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                새 피드백 작성
+              </label>
+              <textarea
+                value={newFeedback}
+                onChange={(e) => setNewFeedback(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                rows={3}
+                placeholder="피드백 내용을 입력하세요..."
+              />
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={handleAddFeedback}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>피드백 추가</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 상세 정보 모달 */}
+      {showDetailModal && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+              <h2 className="text-2xl font-bold">업체 상세 정보</h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="text-white hover:text-gray-200 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 기본 정보 섹션 */}
+                <div className="md:col-span-2 bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">1</span>
+                    기본 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">업체명</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.company_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">대표자</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.representative || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">연락처</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.contact || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">업종</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.industry || '-'}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-sm font-medium text-gray-500">주소</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.address || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 재무 정보 섹션 */}
+                <div className="md:col-span-2 bg-green-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">2</span>
+                    재무 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">매출액</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">
+                        {selectedItem.sales_amount ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.sales_amount)}원` : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">실제매출</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">
+                        {selectedItem.actual_sales ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.actual_sales)}원` : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">기존거래처</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.existing_client || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">해지월</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.termination_month || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 섭외/계약 정보 섹션 */}
+                <div className="md:col-span-2 bg-purple-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">3</span>
+                    섭외 및 계약 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">섭외일</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateToKorean(selectedItem.proposal_date) || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">섭외자</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.proposer || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">미팅 상태</p>
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-1 ${
+                        selectedItem.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                        selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {selectedItem.meeting_status || '미정'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">계약날짜</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateToKorean(selectedItem.contract_date) || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">계약기장료</p>
+                      <p className="text-lg font-semibold text-blue-600 mt-1">
+                        {selectedItem.contract_client ? `${new Intl.NumberFormat('ko-KR').format(Number(selectedItem.contract_client))}원` : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">계약월</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.contract_month || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">매출거래처</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.client_name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">계약 완료</p>
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-1 ${
+                        selectedItem.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
+                        selectedItem.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                        'bg-gray-50 text-gray-500'
+                      }`}>
+                        {selectedItem.contract_status || '-'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">4월1종날짜</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.april_type1_date || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 기타 정보 섹션 */}
+                <div className="md:col-span-2 bg-yellow-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-yellow-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">4</span>
+                    기타 정보
+                  </h3>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-2">피드백 / 기타사항</p>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <p className="text-gray-900 whitespace-pre-wrap">
+                        {selectedItem.feedback || '작성된 피드백이 없습니다.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

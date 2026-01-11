@@ -18,11 +18,14 @@ import {
   LogOut,
   BarChart3,
   ShoppingCart,
+  CheckCircle,
+  User,
   Search,
   Database,
   DollarSign,
   FileSignature,
-  TrendingUp
+  TrendingUp,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -121,6 +124,7 @@ const Sidebar: React.FC = () => {
       children: [
         { title: 'DB등록', path: '/sales-db/register', icon: <UserPlus className="w-4 h-4" /> },
         { title: 'DB검색', path: '/sales-db/search', icon: <Search className="w-4 h-4" /> },
+        { title: '섭외자 개인별 실적', path: '/admin/recruiter-performance', icon: <Users className="w-4 h-4" /> },
       ],
     },
     {
@@ -128,6 +132,7 @@ const Sidebar: React.FC = () => {
       icon: <TrendingUp className="w-4 h-4" />,
       children: [
         { title: '월별 실적 현황', path: '/admin/monthly-performance', icon: <BarChart3 className="w-4 h-4" /> },
+        { title: '영업자 개인별 실적', path: '/admin/salesperson-performance', icon: <Users className="w-4 h-4" /> },
         { title: '전체 수수료 요약', path: '/admin/commission-summary', icon: <TrendingUp className="w-4 h-4" /> },
         { title: '영업자 수수료 명세서', path: '/salesperson/commission-statement', icon: <FileText className="w-4 h-4" /> },
         { title: '영업자 DB 입력', path: '/salesperson/register', icon: <UserPlus className="w-4 h-4" /> },
@@ -147,8 +152,15 @@ const Sidebar: React.FC = () => {
       title: '설정관리',
       icon: <Settings className="w-4 h-4" />,
       children: [
-        { title: '계정설정', path: '/settings/accounts', icon: <Users className="w-4 h-4" /> },
-        { title: '회사 설정', path: '/settings/company', icon: <Briefcase className="w-4 h-4" /> },
+        ...(user?.role === 'admin' ? [
+          { title: '계정설정', path: '/settings/accounts', icon: <Users className="w-4 h-4" /> },
+          { title: '계정 변경 승인', path: '/admin/account-change-approval', icon: <CheckCircle className="w-4 h-4" /> },
+          { title: '공지사항 관리', path: '/admin/notice-management', icon: <Bell className="w-4 h-4" /> },
+        ] : []),
+        { title: '내 정보 수정', path: '/settings/my-account', icon: <User className="w-4 h-4" /> },
+        ...(user?.role === 'admin' ? [
+          { title: '회사 설정', path: '/settings/company', icon: <Briefcase className="w-4 h-4" /> },
+        ] : []),
       ],
     },
   ];
@@ -159,10 +171,18 @@ const Sidebar: React.FC = () => {
       title: '영업자 관리',
       icon: <TrendingUp className="w-4 h-4" />,
       children: [
+        { title: '당월 실적 순위', path: '/salesperson/monthly-ranking', icon: <BarChart3 className="w-4 h-4" /> },
         { title: '수수료 명세서', path: '/salesperson/commission-statement', icon: <FileText className="w-4 h-4" /> },
         { title: '내 DB 관리', path: '/salesperson/register', icon: <UserPlus className="w-4 h-4" /> },
         { title: '일정관리', path: '/salesperson/schedules', icon: <Calendar className="w-4 h-4" /> },
         { title: '메모관리', path: '/salesperson/memos', icon: <FileText className="w-4 h-4" /> },
+      ],
+    },
+    {
+      title: '설정관리',
+      icon: <Settings className="w-4 h-4" />,
+      children: [
+        { title: '내 정보 수정', path: '/settings/my-account', icon: <User className="w-4 h-4" /> },
       ],
     },
   ];
@@ -186,12 +206,31 @@ const Sidebar: React.FC = () => {
         { title: '메모관리', path: '/salesperson/memos', icon: <FileText className="w-4 h-4" /> },
       ],
     },
+    {
+      title: '설정관리',
+      icon: <Settings className="w-4 h-4" />,
+      children: [
+        { title: '내 정보 수정', path: '/settings/my-account', icon: <User className="w-4 h-4" /> },
+      ],
+    },
+  ];
+
+  // 일반사용자용 메뉴
+  const employeeMenuItems: MenuItem[] = [
+    {
+      title: '설정관리',
+      icon: <Settings className="w-4 h-4" />,
+      children: [
+        { title: '내 정보 수정', path: '/settings/my-account', icon: <User className="w-4 h-4" /> },
+      ],
+    },
   ];
 
   // 사용자 권한에 따라 메뉴 결정
   const menuItems = user?.role === 'admin' ? adminMenuItems : 
                     user?.role === 'salesperson' ? salespersonMenuItems :
-                    user?.role === 'recruiter' ? recruiterMenuItems : [];
+                    user?.role === 'recruiter' ? recruiterMenuItems : 
+                    employeeMenuItems;
 
   const toggleMenu = (title: string) => {
     setExpandedMenus((prev) =>

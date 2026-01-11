@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Plus, Key, Edit, Trash2, X } from 'lucide-react';
+import KoreanDatePicker from '../../components/KoreanDatePicker';
+import { formatDateToKorean } from '../../utils/dateFormat';
 
 interface Account {
   id: number;
@@ -13,6 +15,13 @@ interface Account {
   role: string;
   permissions: string;
   password?: string;
+  commission_rate?: number;
+  bank_name?: string;
+  account_number?: string;
+  social_security_number?: string;
+  hire_date?: string;
+  address?: string;
+  emergency_contact?: string;
 }
 
 const AccountSettings: React.FC = () => {
@@ -33,7 +42,13 @@ const AccountSettings: React.FC = () => {
     position: '',
     role: 'employee',
     permissions: '',
-    password: ''
+    password: '',
+    bank_name: '',
+    account_number: '',
+    social_security_number: '',
+    hire_date: '',
+    address: '',
+    emergency_contact: ''
   });
   
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -52,20 +67,27 @@ const AccountSettings: React.FC = () => {
   // API에서 계정 데이터 로드
   const fetchAccounts = async () => {
     try {
-      const response = await fetch('/api/users');
+      const response = await fetch('http://localhost:3000/api/users');
       const result = await response.json();
       if (result.success) {
         const accountsData = result.data.map((user: any) => ({
           id: user.id,
           username: user.username,
           name: user.name,
-          employeeCode: user.username === 'admin' ? 'ADMIN001' : `EMP${String(user.id).padStart(3, '0')}`,
+          employeeCode: user.employee_code || (user.username === 'admin' ? 'ADMIN001' : `EMP${String(user.id).padStart(3, '0')}`),
           employmentStatus: '재직' as const,
           accountStatus: '활성' as const,
-          department: user.username === 'admin' ? '관리부서' : user.role === 'salesperson' ? '영업팀' : '개발팀',
-          position: user.username === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업사원' : '사원',
+          department: user.department || (user.username === 'admin' ? '관리부서' : user.role === 'salesperson' ? '영업팀' : '개발팀'),
+          position: user.position || (user.username === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업사원' : '사원'),
           role: user.role === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업자' : user.role === 'recruiter' ? '섭외자' : '일반사용자',
           permissions: '',
+          commission_rate: user.commission_rate || 0,
+          bank_name: user.bank_name || '',
+          account_number: user.account_number || '',
+          social_security_number: user.social_security_number || '',
+          hire_date: user.hire_date || '',
+          address: user.address || '',
+          emergency_contact: user.emergency_contact || '',
         }));
         setAccounts(accountsData);
       }
@@ -97,7 +119,13 @@ const AccountSettings: React.FC = () => {
         position: '',
         role: 'employee',
         permissions: '',
-        password: ''
+        password: '',
+        bank_name: '',
+        account_number: '',
+        social_security_number: '',
+        hire_date: '',
+        address: '',
+        emergency_contact: ''
       });
     }
     setShowModal(true);
@@ -146,7 +174,7 @@ const AccountSettings: React.FC = () => {
         return roleMapping[role] || 'employee';
       };
       
-      const response = await fetch(`/api/users/${passwordData.accountId}`, {
+      const response = await fetch(`http://localhost:3000/api/users/${passwordData.accountId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -154,6 +182,14 @@ const AccountSettings: React.FC = () => {
           name: accountToUpdate.name,
           role: normalizeRole(accountToUpdate.role),
           password: passwordData.newPassword,
+          department: accountToUpdate.department,
+          position: accountToUpdate.position,
+          bank_name: accountToUpdate.bank_name,
+          account_number: accountToUpdate.account_number,
+          social_security_number: accountToUpdate.social_security_number,
+          hire_date: accountToUpdate.hire_date,
+          address: accountToUpdate.address,
+          emergency_contact: accountToUpdate.emergency_contact,
         }),
       });
       
@@ -184,7 +220,15 @@ const AccountSettings: React.FC = () => {
       department: '',
       position: '',
       role: 'employee',
-      permissions: ''
+      permissions: '',
+      password: '',
+      commission_rate: 0,
+      bank_name: '',
+      account_number: '',
+      social_security_number: '',
+      hire_date: '',
+      address: '',
+      emergency_contact: ''
     });
   };
 
@@ -213,7 +257,7 @@ const AccountSettings: React.FC = () => {
     try {
       if (isEditing && editingId) {
         // 수정
-        const response = await fetch(`/api/users/${editingId}`, {
+        const response = await fetch(`http://localhost:3000/api/users/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -221,6 +265,14 @@ const AccountSettings: React.FC = () => {
             name: formData.name,
             role: normalizeRole(formData.role),
             password: formData.password || undefined,
+            department: formData.department,
+            position: formData.position,
+            bank_name: formData.bank_name,
+            account_number: formData.account_number,
+            social_security_number: formData.social_security_number,
+            hire_date: formData.hire_date,
+            address: formData.address,
+            emergency_contact: formData.emergency_contact,
           }),
         });
         
@@ -239,7 +291,7 @@ const AccountSettings: React.FC = () => {
           return;
         }
         
-        const response = await fetch('/api/users', {
+        const response = await fetch('http://localhost:3000/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -247,6 +299,15 @@ const AccountSettings: React.FC = () => {
             name: formData.name,
             role: normalizeRole(formData.role),
             password: formData.password,
+            department: formData.department,
+            position: formData.position,
+            commission_rate: formData.commission_rate || 0,
+            bank_name: formData.bank_name,
+            account_number: formData.account_number,
+            social_security_number: formData.social_security_number,
+            hire_date: formData.hire_date,
+            address: formData.address,
+            emergency_contact: formData.emergency_contact,
           }),
         });
         
@@ -269,7 +330,7 @@ const AccountSettings: React.FC = () => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     
     try {
-      const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      const response = await fetch(`http://localhost:3000/api/users/${id}`, { method: 'DELETE' });
       const result = await response.json();
       if (result.success) {
         alert('삭제되었습니다.');
@@ -524,15 +585,14 @@ const AccountSettings: React.FC = () => {
                 {/* 사원번호 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    사원번호 <span className="text-red-500">*</span>
+                    사원번호 <span className="text-gray-500 text-xs ml-2">(자동생성)</span>
                   </label>
                   <input
                     type="text"
-                    value={formData.employeeCode}
-                    onChange={(e) => handleInputChange('employeeCode', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="EMP001"
-                    required
+                    value={formData.employeeCode || '자동생성됩니다'}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    placeholder="자동생성됩니다"
                   />
                 </div>
 
@@ -629,6 +689,91 @@ const AccountSettings: React.FC = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="최소 4자 이상"
                     required={!isEditing}
+                  />
+                </div>
+
+                {/* 주민번호 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    주민번호
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.social_security_number || ''}
+                    onChange={(e) => handleInputChange('social_security_number', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="000000-0000000"
+                  />
+                </div>
+
+                {/* 은행명 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    은행
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.bank_name || ''}
+                    onChange={(e) => handleInputChange('bank_name', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="국민은행"
+                  />
+                </div>
+
+                {/* 계좌번호 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    계좌번호
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.account_number || ''}
+                    onChange={(e) => handleInputChange('account_number', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="000000-00-000000"
+                  />
+                </div>
+
+                {/* 입사일 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    입사일
+                  </label>
+                  <KoreanDatePicker
+                    selectedDate={formData.hire_date ? new Date(formData.hire_date) : null}
+                    onChange={(date) => {
+                      const isoDate = date ? date.toISOString().split('T')[0] : '';
+                      handleInputChange('hire_date', isoDate);
+                    }}
+                    placeholderText="입사일 선택"
+                  />
+                </div>
+
+                {/* 비상연락망 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    비상연락망
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.emergency_contact || ''}
+                    onChange={(e) => handleInputChange('emergency_contact', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="010-0000-0000"
+                  />
+                </div>
+
+                {/* 주소 */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    주소
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.address || ''}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="서울시 강남구 테헤란로 123"
                   />
                 </div>
               </div>

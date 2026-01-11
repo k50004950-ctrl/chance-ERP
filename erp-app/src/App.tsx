@@ -26,6 +26,7 @@ import SalespersonCommissionStatement from './pages/salesperson/CommissionStatem
 import SalespersonRegister from './pages/salesperson/Register';
 import ScheduleManagement from './pages/salesperson/ScheduleManagement';
 import MemoManagement from './pages/salesperson/MemoManagement';
+import MonthlyRanking from './pages/salesperson/MonthlyRanking';
 
 // 섭외자 관리
 import RecruiterMyData from './pages/recruiter/MyData';
@@ -37,6 +38,14 @@ import RecruitmentCommission from './pages/contract/RecruitmentCommission';
 // 설정
 import AccountSettings from './pages/settings/AccountSettings';
 import CompanySettings from './pages/settings/CompanySettings';
+import MyAccountEdit from './pages/settings/MyAccountEdit';
+import CompleteProfile from './pages/settings/CompleteProfile';
+
+// 관리자 - 계정 변경 승인
+import AccountChangeApproval from './pages/admin/AccountChangeApproval';
+import SalespersonPerformance from './pages/admin/SalespersonPerformance';
+import RecruiterPerformance from './pages/admin/RecruiterPerformance';
+import NoticeManagement from './pages/admin/NoticeManagement';
 
 // 출퇴근
 import ClockIn from './pages/attendance/ClockIn';
@@ -49,6 +58,9 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          {/* 프로필 완성 페이지 (Layout 없이) */}
+          <Route path="/settings/complete-profile" element={<CompleteProfile />} />
+          
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
@@ -68,7 +80,11 @@ function App() {
             <Route path="admin/salesperson-schedules" element={<SalespersonSchedules />} />
             <Route path="admin/sales-clients" element={<SalesClientsManagement />} />
             <Route path="admin/monthly-performance" element={<MonthlyPerformance />} />
+            <Route path="admin/salesperson-performance" element={<SalespersonPerformance />} />
+            <Route path="admin/recruiter-performance" element={<RecruiterPerformance />} />
             <Route path="admin/commission-summary" element={<CommissionSummary />} />
+            <Route path="admin/account-change-approval" element={<AccountChangeApproval />} />
+            <Route path="admin/notice-management" element={<NoticeManagement />} />
             
             {/* DB관리 */}
             <Route path="sales-db/register" element={<SalesDBRegister />} />
@@ -79,6 +95,7 @@ function App() {
             <Route path="salesperson/register" element={<SalespersonRegister />} />
             <Route path="salesperson/schedules" element={<ScheduleManagement />} />
             <Route path="salesperson/memos" element={<MemoManagement />} />
+            <Route path="salesperson/monthly-ranking" element={<MonthlyRanking />} />
             
             {/* 섭외자 관리 */}
             <Route path="recruiter/my-data" element={<RecruiterMyData />} />
@@ -90,6 +107,7 @@ function App() {
             {/* 설정 */}
             <Route path="settings/accounts" element={<AccountSettings />} />
             <Route path="settings/company" element={<CompanySettings />} />
+            <Route path="settings/my-account" element={<MyAccountEdit />} />
           </Route>
         </Routes>
       </Router>

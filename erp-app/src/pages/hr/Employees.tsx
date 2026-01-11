@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Edit, Trash2, Save, X } from 'lucide-react';
+import { formatDateToKorean } from '../../utils/dateFormat';
 
 interface Employee {
   id: number;
   user_id?: number;
   username: string;
   name: string;
+  user_name?: string;
   role: string;
   employee_code: string;
   department: string;
@@ -14,6 +16,12 @@ interface Employee {
   phone?: string | null;
   email?: string | null;
   created_at?: string;
+  commission_rate?: number;
+  bank_name?: string;
+  account_number?: string;
+  social_security_number?: string;
+  address?: string;
+  emergency_contact?: string;
 }
 
 const Employees: React.FC = () => {
@@ -39,7 +47,7 @@ const Employees: React.FC = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/employees');
+      const response = await fetch('http://localhost:3000/api/employees');
       const result = await response.json();
       if (result.success) {
         setEmployees(result.data);
@@ -375,7 +383,22 @@ const Employees: React.FC = () => {
                     입사일
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    수수료율
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    은행/계좌
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    주민번호
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     연락처
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    비상연락망
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    주소
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     작업
@@ -386,7 +409,7 @@ const Employees: React.FC = () => {
                 {employees.map((emp) => (
                   <tr key={emp.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {emp.name}
+                      {emp.user_name || emp.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {emp.employee_code}
@@ -404,10 +427,25 @@ const Employees: React.FC = () => {
                       {emp.position || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {emp.hire_date || '-'}
+                      {emp.hire_date ? formatDateToKorean(emp.hire_date) : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {emp.commission_rate ? `${emp.commission_rate}%` : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {emp.bank_name && emp.account_number ? `${emp.bank_name} ${emp.account_number}` : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {emp.social_security_number || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {emp.phone || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {emp.emergency_contact || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {emp.address || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">

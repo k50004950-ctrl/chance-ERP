@@ -158,18 +158,18 @@ const NoticeManagement: React.FC = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">공지사항 관리</h1>
-        <p className="text-gray-600 mt-2">전체 직원에게 공지사항을 전달하세요</p>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">공지사항 관리</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-2">전체 직원에게 공지사항을 전달하세요</p>
       </div>
 
       {/* Add Button */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+          className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 touch-target w-full sm:w-auto"
         >
           <Plus className="w-5 h-5" />
           <span>공지사항 등록</span>
@@ -188,46 +188,46 @@ const NoticeManagement: React.FC = () => {
             {notices.map((notice) => (
               <div
                 key={notice.id}
-                className="p-6 hover:bg-gray-50 transition-colors"
+                className="p-4 sm:p-6 hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-3 sm:space-y-0">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       {notice.is_important === 1 && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                           <AlertCircle className="w-3 h-3 mr-1" />
                           중요
                         </span>
                       )}
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                         {notice.title}
                       </h3>
                     </div>
-                    <p className="text-gray-600 mb-3 line-clamp-2">{notice.content}</p>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <p className="text-sm sm:text-base text-gray-600 mb-3 line-clamp-2">{notice.content}</p>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
                       <span>작성자: {notice.author_name}</span>
-                      <span>•</span>
+                      <span className="hidden sm:inline">•</span>
                       <span>{formatDateToKorean(notice.created_at)}</span>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2 ml-4">
+                  <div className="flex items-center space-x-2 sm:ml-4">
                     <button
                       onClick={() => handlePreview(notice)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="touch-target p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="미리보기"
                     >
                       <Eye className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleOpenModal(notice)}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      className="touch-target p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                       title="수정"
                     >
                       <Edit className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDelete(notice.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="touch-target p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="삭제"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -242,21 +242,21 @@ const NoticeManagement: React.FC = () => {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-800">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-content">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                 {isEditing ? '공지사항 수정' : '공지사항 등록'}
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition"
+                className="text-gray-400 hover:text-gray-600 transition touch-target"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               {/* 중요 공지 체크박스 */}
               <div className="flex items-center">
                 <input
@@ -264,9 +264,9 @@ const NoticeManagement: React.FC = () => {
                   id="is_important"
                   checked={formData.is_important}
                   onChange={(e) => setFormData({ ...formData, is_important: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <label htmlFor="is_important" className="ml-2 text-sm font-medium text-gray-700">
+                <label htmlFor="is_important" className="ml-2 text-sm sm:text-base font-medium text-gray-700">
                   중요 공지사항
                 </label>
               </div>
@@ -280,7 +280,7 @@ const NoticeManagement: React.FC = () => {
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mobile-form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="공지사항 제목을 입력하세요"
                   required
                 />
@@ -294,24 +294,24 @@ const NoticeManagement: React.FC = () => {
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mobile-form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={10}
                   placeholder="공지사항 내용을 입력하세요"
                   required
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  className="mobile-btn px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition w-full sm:w-auto"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                  className="mobile-btn px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition w-full sm:w-auto"
                 >
                   {isEditing ? '수정' : '등록'}
                 </button>
@@ -323,13 +323,13 @@ const NoticeManagement: React.FC = () => {
 
       {/* Preview Modal */}
       {showPreview && previewNotice && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-800">공지사항 미리보기</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-content">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">공지사항 미리보기</h2>
               <button
                 onClick={() => setShowPreview(false)}
-                className="text-gray-400 hover:text-gray-600 transition"
+                className="text-gray-400 hover:text-gray-600 transition touch-target"
               >
                 <X className="w-6 h-6" />
               </button>

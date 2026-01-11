@@ -108,3 +108,74 @@ body {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
+
+/* 모바일 최적화 스타일 */
+@layer utilities {
+  /* 모바일 테이블 스크롤 */
+  .mobile-table-container {
+    @apply overflow-x-auto -mx-4 sm:mx-0;
+  }
+  
+  .mobile-table-container table {
+    @apply min-w-full;
+  }
+  
+  /* 모바일 터치 타겟 크기 */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* 모바일 폼 최적화 */
+  .mobile-form-input {
+    @apply text-base; /* iOS에서 자동 줌 방지를 위해 16px 이상 */
+  }
+  
+  /* 모바일 카드 스타일 */
+  .mobile-card {
+    @apply p-4 sm:p-6;
+  }
+  
+  /* 모바일 버튼 */
+  .mobile-btn {
+    @apply py-3 px-4 text-base font-medium;
+  }
+}
+
+/* 테이블 반응형 개선 */
+@media (max-width: 768px) {
+  table {
+    font-size: 0.875rem;
+  }
+  
+  th, td {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  /* 작은 화면에서 불필요한 패딩 제거 */
+  .container-mobile {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* iOS Safari 입력 필드 줌 방지 */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* 모바일 스크롤 개선 */
+@media (max-width: 768px) {
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 모바일 모달 최적화 */
+@media (max-width: 640px) {
+  .modal-content {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}

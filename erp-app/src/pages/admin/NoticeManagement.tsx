@@ -107,7 +107,7 @@ const NoticeManagement: React.FC = () => {
         }
       } else {
         // 추가
-        const response = await fetch('${API_BASE_URL}/api/notices', {
+        const response = await fetch(`${API_BASE_URL}/api/notices`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

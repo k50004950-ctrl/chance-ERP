@@ -765,10 +765,52 @@ app.put('/api/users/:id', (req, res) => {
 app.delete('/api/users/:id', (req, res) => {
   try {
     const { id } = req.params;
-    db.prepare('DELETE FROM users WHERE id = ?').run(id);
-    res.json({ success: true });
+    
+    // 트랜잭션 시작 - 모든 작업이 성공하거나 모두 롤백
+    const deleteUser = db.transaction(() => {
+      // 1. 해당 사용자의 employee 레코드 찾기
+      const employee = db.prepare('SELECT id FROM employees WHERE user_id = ?').get(id);
+      
+      if (employee) {
+        // 근태 기록 삭제
+        db.prepare('DELETE FROM attendance WHERE employee_id = ?').run(employee.id);
+        
+        // 휴가 기록 삭제
+        db.prepare('DELETE FROM leaves WHERE employee_id = ?').run(employee.id);
+        
+        // employee 레코드 삭제
+        db.prepare('DELETE FROM employees WHERE id = ?').run(employee.id);
+      }
+      
+      // 영업자 관련 데이터 삭제
+      db.prepare('DELETE FROM salespersons WHERE salesperson_id = ?').run(id);
+      db.prepare('DELETE FROM sales_db WHERE salesperson_id = ?').run(id);
+      db.prepare('DELETE FROM sales_contracts WHERE salesperson_id = ?').run(id);
+      db.prepare('DELETE FROM commission_statements WHERE salesperson_id = ?').run(id);
+      db.prepare('DELETE FROM misc_commissions WHERE salesperson_id = ?').run(id);
+      
+      // 일정 및 메모 삭제
+      db.prepare('DELETE FROM schedules WHERE user_id = ?').run(id);
+      db.prepare('DELETE FROM memos WHERE user_id = ?').run(id);
+      
+      // 계정 변경 요청 삭제
+      db.prepare('DELETE FROM account_change_requests WHERE user_id = ? OR reviewed_by = ?').run(id, id);
+      
+      // 공지사항 읽음 기록 삭제
+      db.prepare('DELETE FROM notice_reads WHERE user_id = ?').run(id);
+      
+      // 작성한 공지사항의 author_id를 NULL로 설정
+      db.prepare('UPDATE notices SET author_id = NULL WHERE author_id = ?').run(id);
+      
+      // 마지막으로 사용자 삭제
+      db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    });
+    
+    deleteUser();
+    res.json({ success: true, message: '계정이 삭제되었습니다.' });
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    console.error('계정 삭제 오류:', error);
+    res.json({ success: false, message: '계정 삭제 중 오류가 발생했습니다: ' + error.message });
   }
 });
 

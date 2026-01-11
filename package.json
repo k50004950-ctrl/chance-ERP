@@ -2,6 +2,6 @@
   "scripts": {
     "install": "cd erp-app && npm install",
     "build": "cd erp-app && npm run build",
-    "start": "cd erp-app && node server/index.js"
+    "start": "node erp-app/server/index.js"
   }
 }

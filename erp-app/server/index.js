@@ -318,6 +318,14 @@ function initDatabase() {
     );
   }
 
+  // 개발/테스트 환경에서 모든 계정의 비밀번호를 1234로 재설정
+  if (process.env.RESET_PASSWORDS === 'true') {
+    console.log('Resetting all passwords to 1234...');
+    db.prepare('UPDATE users SET password = ?').run('1234');
+    console.log('All passwords have been reset to: 1234');
+  }
+}
+
   // 기존 sales_db 테이블에 commission_rate 필드 추가 (없으면)
   try {
     db.exec('ALTER TABLE sales_db ADD COLUMN commission_rate REAL DEFAULT 500');

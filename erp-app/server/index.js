@@ -332,10 +332,9 @@ function initDatabase() {
     );
     console.log('Default admin account created (username: admin, password: 1234)');
   } else {
-    // Update admin account to ensure it has all required fields
+    // Update admin account to ensure it has all required fields (but keep existing password)
     db.prepare(`
       UPDATE users SET 
-        password = '1234',
         bank_name = COALESCE(bank_name, '국민은행'),
         account_number = COALESCE(account_number, '123456-78-901234'),
         social_security_number = COALESCE(social_security_number, '800101-1234567'),
@@ -347,47 +346,12 @@ function initDatabase() {
         position = COALESCE(position, '대표')
       WHERE username = 'admin'
     `).run();
-    console.log('Admin account updated with required fields (password: 1234)');
+    console.log('Admin account updated with required fields (password kept as is)');
   }
 
-  // Create default test accounts if they don't exist
-  const testAccounts = [
-    { username: 'test_sales', password: '1234', name: '영업사원1', role: 'salesperson', employee_code: 'EMP001', department: '영업팀', position: '대리', commission_rate: 30 },
-    { username: 'test_sales2', password: '1234', name: '영업사원2', role: 'salesperson', employee_code: 'EMP002', department: '영업팀', position: '사원', commission_rate: 25 },
-    { username: 'test_recruiter', password: '1234', name: '채용담당자1', role: 'recruiter', employee_code: 'EMP003', department: '인사팀', position: '과장', commission_rate: 20 },
-    { username: 'test_employee', password: '1234', name: '일반직원1', role: 'employee', employee_code: 'EMP004', department: '관리팀', position: '주임', commission_rate: 0 }
-  ];
-
-  testAccounts.forEach(account => {
-    const exists = db.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get(account.username);
-    if (exists.count === 0) {
-      db.prepare(`
-        INSERT INTO users (username, password, name, role, employee_code, department, position, commission_rate,
-                          bank_name, account_number, social_security_number, hire_date, address, emergency_contact)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        account.username,
-        account.password,
-        account.name,
-        account.role,
-        account.employee_code,
-        account.department,
-        account.position,
-        account.commission_rate,
-        '국민은행',
-        '123456-78-901234',
-        '900101-1234567',
-        '2024-01-01',
-        '서울특별시 강남구 테헤란로 123',
-        '010-1234-5678'
-      );
-      console.log(`Test account created: ${account.username} (password: 1234)`);
-    }
-  });
-
-  // Always reset admin password to 1234 for easy access
-  db.prepare('UPDATE users SET password = ? WHERE username = ?').run('1234', 'admin');
-  console.log('Admin password ensured to be: 1234');
+  // Note: Test accounts are no longer auto-created on server start
+  // Use POST /api/create-test-accounts endpoint to manually create test accounts if needed
+  console.log('Database initialized. Use /api/create-test-accounts to create test accounts if needed.');
 
   // 기존 sales_db 테이블에 commission_rate 필드 추가 (없으면)
   try {

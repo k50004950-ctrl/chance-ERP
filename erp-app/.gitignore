@@ -7,9 +7,9 @@ dist/
 release/
 build/
 
-# Database (개인 데이터이므로 제외)
-server/erp.db
-*.db
+# Database (개인 데이터이므로 제외) - Railway 배포를 위해 임시로 포함
+# server/erp.db
+# *.db
 *.sqlite
 *.sqlite3
 

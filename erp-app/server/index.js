@@ -2797,9 +2797,22 @@ app.post('/api/notices/:id/read', (req, res) => {
   }
 });
 
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'ERP Server is running' });
+});
+
 // Serve React app for all other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
+  const indexPath = path.join(__dirname, '../dist/index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(200).json({ 
+      status: 'server_running', 
+      message: 'ERP Backend is running. Frontend build not found. Please check build logs.' 
+    });
+  }
 });
 
 // ========== 생일 축하 자동 공지 ==========

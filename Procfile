@@ -1,1 +1,1 @@
-web: cd erp-app && npm run server
+web: cd erp-app && node server/index.js

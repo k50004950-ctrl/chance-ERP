@@ -13,6 +13,7 @@ interface CommissionDetail {
   company_name: string;
   contract_client: string;
   contract_date: string;
+  actual_sales: number;
   commission_rate: number;
   commission_base: number;
   commission_amount: number;
@@ -390,7 +391,7 @@ const SalespersonCommissionStatement: React.FC = () => {
                       {detail.company_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {detail.contract_client ? formatCurrency(parseFloat(detail.contract_client)) : '-'}
+                      {detail.actual_sales ? formatCurrency(detail.actual_sales) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900">
                       {editingId === detail.id ? (

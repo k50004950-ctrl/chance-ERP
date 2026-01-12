@@ -1982,9 +1982,10 @@ app.get('/api/salesperson/:id/commission-details', (req, res) => {
           s.contract_client,
           s.contract_date,
           s.client_name,
+          COALESCE(s.actual_sales, 0) as actual_sales,
           COALESCE(c.commission_rate, 500) as commission_rate,
-          CAST(REPLACE(s.contract_client, ',', '') AS INTEGER) as commission_base,
-          CAST((CAST(REPLACE(s.contract_client, ',', '') AS INTEGER) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER) as commission_amount,
+          COALESCE(s.actual_sales, 0) as commission_base,
+          CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER) as commission_amount,
           s.contract_status
         FROM sales_db s
         LEFT JOIN sales_clients c ON s.client_name = c.client_name

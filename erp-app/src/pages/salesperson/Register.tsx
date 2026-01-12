@@ -299,7 +299,9 @@ const SalespersonMyData: React.FC = () => {
           salesperson_id: salespersonId,
           meeting_status: '미팅완료',
           contract_status: 'Y',  // 영업자가 입력하면 무조건 계약 완료
-          contract_date: new Date().toISOString().split('T')[0]
+          contract_date: new Date().toISOString().split('T')[0],
+          client_name: newData.existing_client,  // 거래처 이름을 client_name에도 저장
+          contract_client: newData.existing_client  // 계약 거래처에도 저장
         })
       });
       

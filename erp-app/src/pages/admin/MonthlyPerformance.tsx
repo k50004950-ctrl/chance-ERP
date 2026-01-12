@@ -41,7 +41,9 @@ const MonthlyPerformance: React.FC = () => {
     contractedCount: 0,
     notContractedCount: 0,
     meetingCompleted: 0,
-    totalContractAmount: 0
+    totalContractAmount: 0,
+    correctionCount: 0,
+    correctionRefundAmount: 0
   });
 
   // 매출거래처 목록 가져오기
@@ -98,6 +100,26 @@ const MonthlyPerformance: React.FC = () => {
     }
   };
 
+  // 경정청구 통계 가져오기
+  const fetchCorrectionStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/correction-requests/stats/monthly?year=${selectedYear}&month=${selectedMonth}`);
+      const result = await response.json();
+      if (result.success) {
+        const correctionCount = result.data.reduce((sum: number, item: any) => sum + item.total_count, 0);
+        const correctionRefundAmount = result.data.reduce((sum: number, item: any) => sum + item.total_refund, 0);
+        
+        setStats(prev => ({
+          ...prev,
+          correctionCount,
+          correctionRefundAmount
+        }));
+      }
+    } catch (error) {
+      console.error('경정청구 통계 조회 오류:', error);
+    }
+  };
+
   // 통계 계산
   const calculateStats = (performanceData: PerformanceData[]) => {
     const totalCount = performanceData.length;
@@ -109,7 +131,8 @@ const MonthlyPerformance: React.FC = () => {
       .filter(d => d.contract_status === 'Y')
       .reduce((sum, d) => sum + (Number(d.contract_client) || 0), 0);
     
-    setStats({
+    setStats(prev => ({
+      ...prev,
       totalCount,
       contractedCount,
       notContractedCount,
@@ -124,6 +147,7 @@ const MonthlyPerformance: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    fetchCorrectionStats();
   }, [selectedYear, selectedMonth, contractFilter, clientFilter]);
 
   // 엑셀 다운로드 함수
@@ -263,7 +287,7 @@ const MonthlyPerformance: React.FC = () => {
         </div>
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
           <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
             <div className="text-sm text-blue-600 font-semibold mb-1">전체 건수</div>
             <div className="text-2xl font-bold text-blue-700">{stats.totalCount}건</div>
@@ -288,6 +312,18 @@ const MonthlyPerformance: React.FC = () => {
             <div className="text-sm text-indigo-600 font-semibold mb-1">총 계약 기장료</div>
             <div className="text-2xl font-bold text-indigo-700">
               {stats.totalContractAmount.toLocaleString()}원
+            </div>
+          </div>
+
+          <div className="bg-pink-50 rounded-lg p-4 border border-pink-200">
+            <div className="text-sm text-pink-600 font-semibold mb-1">경정청구 건수</div>
+            <div className="text-2xl font-bold text-pink-700">{stats.correctionCount}건</div>
+          </div>
+
+          <div className="bg-teal-50 rounded-lg p-4 border border-teal-200">
+            <div className="text-sm text-teal-600 font-semibold mb-1">경정청구 환급액</div>
+            <div className="text-2xl font-bold text-teal-700">
+              {stats.correctionRefundAmount.toLocaleString()}원
             </div>
           </div>
         </div>

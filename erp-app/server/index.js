@@ -66,7 +66,7 @@ function initDatabase() {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       name TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall')),
+      role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall', 'reviewer')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       employee_code TEXT,
       department TEXT,
@@ -308,6 +308,38 @@ function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (happycall_staff_id) REFERENCES users(id),
       FOREIGN KEY (salesperson_id) REFERENCES users(id)
+    );
+
+    -- 경정청구 테이블
+    CREATE TABLE IF NOT EXISTS correction_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      writer_id INTEGER NOT NULL,
+      writer_name TEXT NOT NULL,
+      company_name TEXT NOT NULL,
+      representative TEXT NOT NULL,
+      special_relation TEXT,
+      first_startup TEXT CHECK(first_startup IN ('O', 'X')),
+      correction_in_progress TEXT CHECK(correction_in_progress IN ('Y', 'N')),
+      additional_workplace TEXT,
+      review_status TEXT CHECK(review_status IN ('대기', '환급가능', '환급불가', '자료수집X')),
+      refund_amount INTEGER DEFAULT 0,
+      document_delivered TEXT CHECK(document_delivered IN ('Y', 'N')) DEFAULT 'N',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (writer_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- 경정청구 피드백 테이블
+    CREATE TABLE IF NOT EXISTS correction_feedbacks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      correction_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      user_name TEXT NOT NULL,
+      user_role TEXT NOT NULL,
+      feedback_content TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (correction_id) REFERENCES correction_requests(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
@@ -3666,6 +3698,203 @@ function scheduleBirthdayCheck() {
   
   console.log(`[생일 체크 스케줄러] 다음 실행 시간: ${night.toLocaleString('ko-KR')}`);
 }
+
+// ========== 경정청구 API ==========
+// 경정청구 목록 조회
+app.get('/api/correction-requests', (req, res) => {
+  try {
+    const { user_id, role } = req.query;
+    
+    let query = `
+      SELECT cr.*, 
+        (SELECT COUNT(*) FROM correction_feedbacks WHERE correction_id = cr.id) as feedback_count
+      FROM correction_requests cr
+    `;
+    
+    // 작성자 본인 데이터만 조회 (검토담당자와 관리자는 전체 조회)
+    if (role !== 'reviewer' && role !== 'admin') {
+      query += ` WHERE cr.writer_id = ?`;
+      const requests = db.prepare(query + ' ORDER BY cr.created_at DESC').all(user_id);
+      return res.json({ success: true, data: requests });
+    }
+    
+    const requests = db.prepare(query + ' ORDER BY cr.created_at DESC').all();
+    res.json({ success: true, data: requests });
+  } catch (error) {
+    console.error('경정청구 목록 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 경정청구 상세 조회
+app.get('/api/correction-requests/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = db.prepare('SELECT * FROM correction_requests WHERE id = ?').get(id);
+    
+    if (!request) {
+      return res.json({ success: false, message: '경정청구를 찾을 수 없습니다.' });
+    }
+    
+    // 피드백 조회
+    const feedbacks = db.prepare(`
+      SELECT * FROM correction_feedbacks 
+      WHERE correction_id = ? 
+      ORDER BY created_at ASC
+    `).all(id);
+    
+    res.json({ success: true, data: { ...request, feedbacks } });
+  } catch (error) {
+    console.error('경정청구 상세 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 경정청구 등록
+app.post('/api/correction-requests', (req, res) => {
+  try {
+    const {
+      writer_id,
+      writer_name,
+      company_name,
+      representative,
+      special_relation,
+      first_startup,
+      correction_in_progress,
+      additional_workplace
+    } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO correction_requests (
+        writer_id, writer_name, company_name, representative,
+        special_relation, first_startup, correction_in_progress,
+        additional_workplace, review_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '대기')
+    `);
+    
+    const result = stmt.run(
+      writer_id, writer_name, company_name, representative,
+      special_relation, first_startup, correction_in_progress, additional_workplace
+    );
+    
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    console.error('경정청구 등록 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 경정청구 수정 (검토담당자가 검토 결과 입력)
+app.put('/api/correction-requests/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      review_status,
+      refund_amount,
+      document_delivered
+    } = req.body;
+    
+    const stmt = db.prepare(`
+      UPDATE correction_requests 
+      SET review_status = ?, refund_amount = ?, document_delivered = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    stmt.run(review_status, refund_amount || 0, document_delivered || 'N', id);
+    
+    // 환급가능이고 금액이 있으면 공지 생성
+    if (review_status === '환급가능' && refund_amount > 0) {
+      const request = db.prepare('SELECT * FROM correction_requests WHERE id = ?').get(id);
+      if (request) {
+        db.prepare(`
+          INSERT INTO notices (title, content, author_id, author_name, priority)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(
+          `[경정청구 환급가능] ${request.company_name}`,
+          `${request.company_name} 업체의 경정청구가 환급 가능으로 확정되었습니다.\n환급금액: ${refund_amount.toLocaleString()}원\n\n담당자: ${request.writer_name}`,
+          1, // 시스템 관리자
+          '시스템',
+          'high'
+        );
+      }
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('경정청구 수정 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 경정청구 삭제
+app.delete('/api/correction-requests/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM correction_requests WHERE id = ?').run(id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('경정청구 삭제 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 피드백 추가
+app.post('/api/correction-feedbacks', (req, res) => {
+  try {
+    const {
+      correction_id,
+      user_id,
+      user_name,
+      user_role,
+      feedback_content
+    } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO correction_feedbacks (
+        correction_id, user_id, user_name, user_role, feedback_content
+      ) VALUES (?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(correction_id, user_id, user_name, user_role, feedback_content);
+    
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    console.error('피드백 추가 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 경정청구 통계 (월별 실적 현황용)
+app.get('/api/correction-requests/stats/monthly', (req, res) => {
+  try {
+    const { year, month } = req.query;
+    
+    if (!year || !month) {
+      return res.json({ success: false, message: '연도와 월을 입력하세요.' });
+    }
+    
+    const yearMonth = `${year}-${month.padStart(2, '0')}`;
+    
+    // 서류전달 완료된 경정청구 통계
+    const stats = db.prepare(`
+      SELECT 
+        writer_id,
+        writer_name,
+        COUNT(*) as total_count,
+        SUM(refund_amount) as total_refund
+      FROM correction_requests
+      WHERE document_delivered = 'Y'
+        AND review_status != '자료수집X'
+        AND substr(created_at, 1, 7) = ?
+      GROUP BY writer_id, writer_name
+    `).all(yearMonth);
+    
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('경정청구 통계 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

@@ -127,6 +127,13 @@ const Sidebar: React.FC = () => {
       ],
     },
     {
+      title: '경정청구',
+      icon: <FileSignature className="w-4 h-4" />,
+      children: [
+        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+      ],
+    },
+    {
       title: 'DB관리',
       icon: <Database className="w-4 h-4" />,
       children: [
@@ -187,6 +194,13 @@ const Sidebar: React.FC = () => {
       ],
     },
     {
+      title: '경정청구',
+      icon: <FileSignature className="w-4 h-4" />,
+      children: [
+        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+      ],
+    },
+    {
       title: '설정관리',
       icon: <Settings className="w-4 h-4" />,
       children: [
@@ -204,6 +218,13 @@ const Sidebar: React.FC = () => {
         { title: '내 DB 관리', path: '/recruiter/my-data', icon: <FileText className="w-4 h-4" /> },
         { title: 'DB등록', path: '/sales-db/register', icon: <UserPlus className="w-4 h-4" /> },
         { title: 'DB검색', path: '/sales-db/search', icon: <Search className="w-4 h-4" /> },
+      ],
+    },
+    {
+      title: '경정청구',
+      icon: <FileSignature className="w-4 h-4" />,
+      children: [
+        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -226,6 +247,13 @@ const Sidebar: React.FC = () => {
   // 일반사용자용 메뉴
   const employeeMenuItems: MenuItem[] = [
     {
+      title: '경정청구',
+      icon: <FileSignature className="w-4 h-4" />,
+      children: [
+        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+      ],
+    },
+    {
       title: '설정관리',
       icon: <Settings className="w-4 h-4" />,
       children: [
@@ -243,6 +271,13 @@ const Sidebar: React.FC = () => {
         { title: 'DB 조회 및 해피콜 입력', path: '/happycall/db-list', icon: <FileText className="w-4 h-4" /> },
         { title: '해피콜 등록', path: '/happycall/register', icon: <Phone className="w-4 h-4" /> },
         { title: '내 해피콜 내역', path: '/happycall/list', icon: <ClipboardList className="w-4 h-4" /> },
+      ],
+    },
+    {
+      title: '경정청구',
+      icon: <FileSignature className="w-4 h-4" />,
+      children: [
+        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {

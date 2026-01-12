@@ -58,6 +58,11 @@ import HappyCallRegister from './pages/happycall/HappyCallRegister';
 import HappyCallList from './pages/happycall/HappyCallList';
 import HappyCallDBList from './pages/happycall/DBList';
 
+// 경정청구
+import CorrectionList from './pages/correction/CorrectionList';
+import CorrectionRegister from './pages/correction/CorrectionRegister';
+import CorrectionDetail from './pages/correction/CorrectionDetail';
+
 function App() {
   return (
     <AuthProvider>
@@ -111,6 +116,11 @@ function App() {
             <Route path="happycall/register" element={<HappyCallRegister />} />
             <Route path="happycall/list" element={<HappyCallList />} />
             <Route path="happycall/db-list" element={<HappyCallDBList />} />
+            
+            {/* 경정청구 */}
+            <Route path="correction/list" element={<CorrectionList />} />
+            <Route path="correction/register" element={<CorrectionRegister />} />
+            <Route path="correction/detail/:id" element={<CorrectionDetail />} />
             
             {/* 계약 관리 */}
             <Route path="contract/sales-commission" element={<SalesCommission />} />

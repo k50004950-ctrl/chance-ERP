@@ -61,7 +61,8 @@ const AccountSettings: React.FC = () => {
       'admin': '관리자',
       'salesperson': '영업자',
       'recruiter': '섭외자',
-      'happycall': '해피콜직원'
+      'happycall': '해피콜직원',
+      'reviewer': '검토담당자'
     };
     return roleMap[role] || role;
   };
@@ -81,7 +82,7 @@ const AccountSettings: React.FC = () => {
           accountStatus: '활성' as const,
           department: user.department || (user.username === 'admin' ? '관리부서' : user.role === 'salesperson' ? '영업팀' : '개발팀'),
           position: user.position || (user.username === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업사원' : '사원'),
-          role: user.role === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업자' : user.role === 'recruiter' ? '섭외자' : user.role === 'happycall' ? '해피콜직원' : '일반사용자',
+          role: user.role === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업자' : user.role === 'recruiter' ? '섭외자' : user.role === 'happycall' ? '해피콜직원' : user.role === 'reviewer' ? '검토담당자' : '일반사용자',
           permissions: '',
           commission_rate: user.commission_rate || 0,
           bank_name: user.bank_name || '',
@@ -166,6 +167,7 @@ const AccountSettings: React.FC = () => {
         '영업자': 'salesperson',
         '섭외자': 'recruiter',
         '해피콜직원': 'happycall',
+        '검토담당자': 'reviewer',
         '일반사용자': 'employee'
       };
       
@@ -244,6 +246,7 @@ const AccountSettings: React.FC = () => {
       '영업자': 'salesperson',
       '섭외자': 'recruiter',
       '해피콜직원': 'happycall',
+      '검토담당자': 'reviewer',
       '일반사용자': 'employee'
     };
     
@@ -651,6 +654,7 @@ const AccountSettings: React.FC = () => {
                     <option value="salesperson">영업자</option>
                     <option value="recruiter">섭외자</option>
                     <option value="happycall">해피콜직원</option>
+                    <option value="reviewer">검토담당자</option>
                   </select>
                 </div>
 

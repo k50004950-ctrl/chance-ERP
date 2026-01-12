@@ -21,7 +21,8 @@ const NoticePopup: React.FC = () => {
   const [isConfirmed, setIsConfirmed] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    // reviewer 역할에게는 공지사항 표시하지 않음
+    if (user && user.role !== 'reviewer') {
       fetchUnreadNotices();
     }
   }, [user]);

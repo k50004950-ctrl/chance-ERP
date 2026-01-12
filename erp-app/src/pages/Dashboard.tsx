@@ -36,6 +36,12 @@ const Dashboard: React.FC = () => {
     return <SalespersonDashboard />;
   }
   
+  // 검토담당자는 경정청구 페이지로 리다이렉트
+  if (user?.role === 'reviewer') {
+    navigate('/correction/list');
+    return null;
+  }
+  
   const [attendanceStats, setAttendanceStats] = useState({
     monthlyWork: {
       current: 0,

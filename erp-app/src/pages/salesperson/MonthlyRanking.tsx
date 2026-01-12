@@ -27,7 +27,7 @@ const MonthlyRanking: React.FC = () => {
 
   const fetchRankings = async () => {
     try {
-      const response = await fetch('${API_BASE_URL}/api/rankings/monthly');
+      const response = await fetch(`${API_BASE_URL}/api/rankings/monthly`);
       const result = await response.json();
       
       if (result.success) {

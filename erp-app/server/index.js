@@ -3001,7 +3001,7 @@ app.get('/api/rankings/monthly', (req, res) => {
         SELECT 
           COUNT(*) as total_db,
           COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_count,
-          SUM(CASE WHEN contract_status = 'Y' THEN CAST(contract_client AS INTEGER) ELSE 0 END) as total_contract_fee
+          SUM(CASE WHEN contract_status = 'Y' THEN COALESCE(actual_sales, 0) ELSE 0 END) as total_contract_fee
         FROM sales_db
         WHERE salesperson = ?
           AND strftime('%Y', proposal_date) = ?

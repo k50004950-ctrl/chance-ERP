@@ -67,6 +67,8 @@ const SalespersonMyData: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MyDataItem | null>(null);
+  const [isEditingDetail, setIsEditingDetail] = useState(false);
+  const [editedItem, setEditedItem] = useState<MyDataItem | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [newFeedback, setNewFeedback] = useState('');
@@ -335,7 +337,49 @@ const SalespersonMyData: React.FC = () => {
   const handleShowDetail = (item: MyDataItem) => {
     console.log('상세 정보 표시:', item);
     setSelectedItem(item);
+    setEditedItem(item);
+    setIsEditingDetail(false);
     setShowDetailModal(true);
+  };
+
+  const handleStartEdit = () => {
+    setIsEditingDetail(true);
+    setEditedItem({ ...selectedItem } as MyDataItem);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingDetail(false);
+    setEditedItem(selectedItem);
+  };
+
+  const handleSaveDetailEdit = async () => {
+    if (!editedItem || !editedItem.id) {
+      alert('저장할 데이터가 없습니다.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${editedItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editedItem),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('수정이 완료되었습니다.');
+        setSelectedItem(editedItem);
+        setIsEditingDetail(false);
+        setShowDetailModal(false);
+        fetchMyData(currentUser.name); // 목록 새로고침
+      } else {
+        alert('수정 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('수정 오류:', error);
+      alert('수정 중 오류가 발생했습니다.');
+    }
   };
 
   const handleShowFeedback = async (id: number) => {
@@ -1037,21 +1081,26 @@ const SalespersonMyData: React.FC = () => {
 
       {/* 상세 정보 모달 */}
       {showDetailModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-2 md:p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-              <h2 className="text-2xl font-bold">업체 상세 정보</h2>
+            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-600 text-white sticky top-0 z-10">
+              <h2 className="text-lg md:text-2xl font-bold">
+                {isEditingDetail ? '업체 정보 수정' : '업체 상세 정보'}
+              </h2>
               <button
-                onClick={() => setShowDetailModal(false)}
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setIsEditingDetail(false);
+                }}
                 className="text-white hover:text-gray-200 transition"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* 기본 정보 섹션 */}
                 <div className="md:col-span-2 bg-gray-50 rounded-lg p-4">
@@ -1061,24 +1110,69 @@ const SalespersonMyData: React.FC = () => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-500">업체명</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.company_name}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">업체명</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.company_name || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, company_name: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.company_name}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">대표자</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.representative || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">대표자</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.representative || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, representative: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.representative || '-'}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">연락처</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.contact || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">연락처</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.contact || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, contact: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.contact || '-'}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">업종</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.industry || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">업종</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.industry || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, industry: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.industry || '-'}</p>
+                      )}
                     </div>
                     <div className="md:col-span-2">
-                      <p className="text-sm font-medium text-gray-500">주소</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.address || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">주소</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.address || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, address: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.address || '-'}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1091,24 +1185,67 @@ const SalespersonMyData: React.FC = () => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-500">매출액</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">
-                        {selectedItem.sales_amount ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.sales_amount)}원` : '-'}
-                      </p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">매출액</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="number"
+                          value={editedItem.sales_amount || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, sales_amount: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">
+                          {selectedItem.sales_amount ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.sales_amount)}원` : '-'}
+                        </p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">실제매출</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">
-                        {selectedItem.actual_sales ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.actual_sales)}원` : '-'}
-                      </p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">실제매출</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="number"
+                          value={editedItem.actual_sales || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, actual_sales: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">
+                          {selectedItem.actual_sales ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.actual_sales)}원` : '-'}
+                        </p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">기존거래처</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.existing_client || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">기존거래처</p>
+                      {isEditingDetail && editedItem ? (
+                        <select
+                          value={editedItem.existing_client || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, existing_client: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="">선택하세요</option>
+                          {salesClients.map((client) => (
+                            <option key={client.id} value={client.client_name}>
+                              {client.client_name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.existing_client || '-'}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">해지월</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.termination_month || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">해지월</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.termination_month || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, termination_month: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="예: 2025-12"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.termination_month || '-'}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1121,54 +1258,150 @@ const SalespersonMyData: React.FC = () => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-500">섭외일</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateToKorean(selectedItem.proposal_date) || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">섭외일</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="date"
+                          value={editedItem.proposal_date || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, proposal_date: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{formatDateToKorean(selectedItem.proposal_date) || '-'}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">섭외자</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.proposer || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">섭외자</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.proposer || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, proposer: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                          readOnly
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.proposer || '-'}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">미팅 상태</p>
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-1 ${
-                        selectedItem.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
-                        selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {selectedItem.meeting_status || '미정'}
-                      </span>
+                      <p className="text-sm font-medium text-gray-500 mb-1">미팅 상태</p>
+                      {isEditingDetail && editedItem ? (
+                        <select
+                          value={editedItem.meeting_status || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, meeting_status: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="">선택하세요</option>
+                          <option value="미정">미정</option>
+                          <option value="미팅완료">미팅완료</option>
+                          <option value="미팅거절">미팅거절</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                          selectedItem.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                          selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {selectedItem.meeting_status || '미정'}
+                        </span>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">계약날짜</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateToKorean(selectedItem.contract_date) || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">계약날짜</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="date"
+                          value={editedItem.contract_date || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, contract_date: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{formatDateToKorean(selectedItem.contract_date) || '-'}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">계약기장료</p>
-                      <p className="text-lg font-semibold text-blue-600 mt-1">
-                        {selectedItem.contract_client ? `${new Intl.NumberFormat('ko-KR').format(Number(selectedItem.contract_client))}원` : '-'}
-                      </p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">계약기장료</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="number"
+                          value={editedItem.contract_client || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, contract_client: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-blue-600">
+                          {selectedItem.contract_client ? `${new Intl.NumberFormat('ko-KR').format(Number(selectedItem.contract_client))}원` : '-'}
+                        </p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">계약월</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.contract_month || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">계약월</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.contract_month || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, contract_month: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="예: 2025-12"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.contract_month || '-'}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">매출거래처</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.client_name || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">매출거래처</p>
+                      {isEditingDetail && editedItem ? (
+                        <select
+                          value={editedItem.client_name || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, client_name: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="">선택하세요</option>
+                          {salesClients.map((client) => (
+                            <option key={client.id} value={client.client_name}>
+                              {client.client_name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.client_name || '-'}</p>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">계약 완료</p>
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-1 ${
-                        selectedItem.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
-                        selectedItem.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
-                        'bg-gray-50 text-gray-500'
-                      }`}>
-                        {selectedItem.contract_status || '-'}
-                      </span>
+                      <p className="text-sm font-medium text-gray-500 mb-1">계약 완료</p>
+                      {isEditingDetail && editedItem ? (
+                        <select
+                          value={editedItem.contract_status || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, contract_status: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="">선택하세요</option>
+                          <option value="Y">Y</option>
+                          <option value="N">N</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                          selectedItem.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
+                          selectedItem.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                          'bg-gray-50 text-gray-500'
+                        }`}>
+                          {selectedItem.contract_status || '-'}
+                        </span>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">4월1종날짜</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedItem.april_type1_date || '-'}</p>
+                      <p className="text-sm font-medium text-gray-500 mb-1">4월1종날짜</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="text"
+                          value={editedItem.april_type1_date || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, april_type1_date: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">{selectedItem.april_type1_date || '-'}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1181,24 +1414,58 @@ const SalespersonMyData: React.FC = () => {
                   </h3>
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-2">피드백 / 기타사항</p>
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
-                      <p className="text-gray-900 whitespace-pre-wrap">
-                        {selectedItem.feedback || '작성된 피드백이 없습니다.'}
-                      </p>
-                    </div>
+                    {isEditingDetail && editedItem ? (
+                      <textarea
+                        value={editedItem.feedback || ''}
+                        onChange={(e) => setEditedItem({ ...editedItem, feedback: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm min-h-[100px]"
+                        placeholder="피드백이나 기타사항을 입력하세요..."
+                      />
+                    ) : (
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        <p className="text-gray-900 whitespace-pre-wrap">
+                          {selectedItem.feedback || '작성된 피드백이 없습니다.'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end p-6 border-t border-gray-200">
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-              >
-                닫기
-              </button>
+            <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-200 bg-gray-50">
+              {isEditingDetail ? (
+                <>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-4 md:px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition text-sm md:text-base"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveDetailEdit}
+                    className="px-4 md:px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm md:text-base"
+                  >
+                    저장
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleStartEdit}
+                    className="px-4 md:px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm md:text-base"
+                  >
+                    수정
+                  </button>
+                  <button
+                    onClick={() => setShowDetailModal(false)}
+                    className="px-4 md:px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition text-sm md:text-base"
+                  >
+                    닫기
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

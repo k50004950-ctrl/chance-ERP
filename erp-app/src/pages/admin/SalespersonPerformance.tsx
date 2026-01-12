@@ -26,7 +26,7 @@ const SalespersonPerformance: React.FC = () => {
 
   const fetchPerformanceData = async () => {
     try {
-      let url = '${API_BASE_URL}/api/salesperson-performance';
+      let url = `${API_BASE_URL}/api/salesperson-performance`;
       
       if (viewMode === 'custom') {
         url += `?year=${selectedYear}&month=${selectedMonth}`;
@@ -41,9 +41,11 @@ const SalespersonPerformance: React.FC = () => {
         setPerformanceData(result.data);
       } else {
         console.error('실적 조회 실패:', result.message);
+        alert('실적 조회에 실패했습니다: ' + result.message);
       }
     } catch (error) {
       console.error('실적 조회 오류:', error);
+      alert('실적 조회 중 오류가 발생했습니다.');
     }
   };
 

@@ -2457,6 +2457,31 @@ app.get('/api/commission-statements/summary', (req, res) => {
     const yearMonth = `${year}-${month.padStart(2, '0')}`;
     
     const summary = salespersons.map(sp => {
+      // 디버깅: 해당 영업자의 계약 데이터 조회
+      const contractDetails = db.prepare(`
+        SELECT 
+          s.id, s.company_name, s.salesperson_id, s.contract_date, 
+          s.actual_sales, s.contract_status, s.client_name,
+          c.commission_rate,
+          CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER) as calculated_commission
+        FROM sales_db s
+        LEFT JOIN sales_clients c ON s.client_name = c.client_name
+        WHERE s.salesperson_id = ? 
+          AND s.contract_status = 'Y'
+          AND substr(s.contract_date, 1, 7) = ?
+      `).all(sp.id, yearMonth);
+      
+      console.log(`\n[수수료 계산] ${sp.name} (ID: ${sp.id})`);
+      console.log(`  조회 기간: ${yearMonth}`);
+      console.log(`  계약 건수: ${contractDetails.length}`);
+      contractDetails.forEach((detail, idx) => {
+        console.log(`  계약 ${idx + 1}: ${detail.company_name}`);
+        console.log(`    - actual_sales: ${detail.actual_sales}`);
+        console.log(`    - commission_rate: ${detail.commission_rate || 500}`);
+        console.log(`    - calculated: ${detail.calculated_commission}원`);
+        console.log(`    - contract_date: ${detail.contract_date}`);
+      });
+      
       // 계약 수수료 계산
       const contractCommission = db.prepare(`
         SELECT 
@@ -2470,6 +2495,8 @@ app.get('/api/commission-statements/summary', (req, res) => {
           AND substr(s.contract_date, 1, 7) = ?
       `).get(sp.id, yearMonth);
       
+      console.log(`  총 계약 수수료: ${contractCommission?.total || 0}원`);
+      
       // 기타 수수료 계산
       const miscCommission = db.prepare(`
         SELECT COALESCE(SUM(amount), 0) as total
@@ -2477,9 +2504,13 @@ app.get('/api/commission-statements/summary', (req, res) => {
         WHERE salesperson_id = ? AND year = ? AND month = ?
       `).get(sp.id, year, month);
       
+      console.log(`  기타 수수료: ${miscCommission?.total || 0}원`);
+      
       const totalCommission = (contractCommission?.total || 0) + (miscCommission?.total || 0);
       const withholdingTax = Math.round(totalCommission * 0.033);
       const netPay = totalCommission - withholdingTax;
+      
+      console.log(`  최종 수수료: ${totalCommission}원\n`);
       
       // 확정 여부 확인
       const confirmed = db.prepare(`

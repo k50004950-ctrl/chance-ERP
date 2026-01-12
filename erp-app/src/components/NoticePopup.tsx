@@ -28,7 +28,7 @@ const NoticePopup: React.FC = () => {
   }, [user]);
 
   const fetchUnreadNotices = async () => {
-    if (!user) return;
+    if (!user || user.role === 'reviewer') return;
     
     try {
       const response = await fetch(`${API_BASE_URL}/api/notices/unread?user_id=${user.id}`);

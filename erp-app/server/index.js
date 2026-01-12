@@ -3460,6 +3460,7 @@ function scheduleBirthdayCheck() {
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`ERP Server running on http://0.0.0.0:${PORT}`);
+  console.log('Database initialized with happycall role support');
   
   // 서버 시작 시 즉시 한 번 실행
   checkBirthdaysAndCreateNotices();

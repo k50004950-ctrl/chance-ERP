@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, DollarSign, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../lib/api';
 
 interface CommissionSummary {
   salesperson_id: number;
@@ -25,7 +26,7 @@ const CommissionSummary: React.FC = () => {
 
   const fetchSummaries = async () => {
     try {
-      const response = await fetch(`/api/commission-statements/summary?year=${selectedYear}&month=${selectedMonth}`);
+      const response = await fetch(`${API_BASE_URL}/api/commission-statements/summary?year=${selectedYear}&month=${selectedMonth}`);
       const result = await response.json();
       if (result.success) {
         setSummaries(result.data);

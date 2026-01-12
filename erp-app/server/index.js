@@ -2461,7 +2461,7 @@ app.get('/api/commission-statements/summary', (req, res) => {
       const contractCommission = db.prepare(`
         SELECT 
           COALESCE(SUM(
-            CAST((CAST(REPLACE(s.contract_client, ',', '') AS INTEGER) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER)
+            CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER)
           ), 0) as total
         FROM sales_db s
         LEFT JOIN sales_clients c ON s.client_name = c.client_name

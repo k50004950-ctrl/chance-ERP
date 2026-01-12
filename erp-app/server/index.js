@@ -3788,14 +3788,13 @@ app.put('/api/correction-requests/:id', (req, res) => {
       const request = db.prepare('SELECT * FROM correction_requests WHERE id = ?').get(id);
       if (request) {
         db.prepare(`
-          INSERT INTO notices (title, content, author_id, author_name, priority)
-          VALUES (?, ?, ?, ?, ?)
+          INSERT INTO notices (title, content, author_id, is_important)
+          VALUES (?, ?, ?, ?)
         `).run(
           `[경정청구 환급가능] ${request.company_name}`,
           `${request.company_name} 업체의 경정청구가 환급 가능으로 확정되었습니다.\n환급금액: ${refund_amount.toLocaleString()}원\n\n담당자: ${request.writer_name}`,
           1, // 시스템 관리자
-          '시스템',
-          'high'
+          1  // 중요 공지
         );
       }
     }

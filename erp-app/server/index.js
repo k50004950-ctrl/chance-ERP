@@ -807,15 +807,15 @@ app.post('/api/admin/force-migration', (req, res) => {
         'account_change_requests', 'notices', 'notice_reads', 'happycalls'
       ];
       
-      tablesWithFK.forEach(table => {
+      tablesWithFK.forEach(tableName => {
         try {
-          const tableExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(table);
+          const tableExists = db.prepare(`SELECT name FROM sqlite_master WHERE type=? AND name=?`).get('table', tableName);
           if (tableExists) {
-            db.exec(`CREATE TABLE ${table}_backup AS SELECT * FROM ${table};`);
-            console.log(`✓ ${table} 백업 완료`);
+            db.exec(`CREATE TABLE ${tableName}_backup AS SELECT * FROM ${tableName};`);
+            console.log(`✓ ${tableName} 백업 완료`);
           }
         } catch (e) {
-          console.log(`${table} 백업 스킵:`, e.message);
+          console.log(`${tableName} 백업 스킵:`, e.message);
         }
       });
       

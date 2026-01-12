@@ -138,7 +138,7 @@ const MonthlyPerformance: React.FC = () => {
       notContractedCount,
       meetingCompleted,
       totalContractAmount
-    });
+    }));
   };
 
   useEffect(() => {

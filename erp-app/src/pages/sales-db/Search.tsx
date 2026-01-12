@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search as SearchIcon, Trash2, Edit, X, Plus } from 'lucide-react';
+import { Search as SearchIcon, Trash2, X, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../lib/api';
@@ -33,7 +33,6 @@ const SalesDBSearch: React.FC = () => {
   const [salesDB, setSalesDB] = useState<SalesDB[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<SalesDB[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [newFeedback, setNewFeedback] = useState('');
@@ -159,7 +158,6 @@ const SalesDBSearch: React.FC = () => {
       if (result.success) {
         alert('미팅여부가 업데이트되었습니다.');
         fetchSalesDB();
-        setEditingId(null);
       }
     } catch (error) {
       console.error('업데이트 실패:', error);

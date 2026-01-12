@@ -3,6 +3,7 @@ import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle, Plus
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 
 interface MyDataItem {
   id: number;
@@ -35,10 +36,10 @@ interface Salesperson {
 }
 
 const RecruiterMyData: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [myData, setMyData] = useState<MyDataItem[]>([]);
   const [filteredData, setFilteredData] = useState<MyDataItem[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>('');
@@ -56,15 +57,11 @@ const RecruiterMyData: React.FC = () => {
   const [recordingNotes, setRecordingNotes] = useState('');
 
   useEffect(() => {
-    // 로그인한 사용자 정보 가져오기
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setCurrentUser(user);
-    
-    if (user.role === 'recruiter') {
-      fetchMyData(user.name);
+    if (currentUser && currentUser.role === 'recruiter') {
+      fetchMyData(currentUser.name);
       fetchSalespersons();
     }
-  }, []);
+  }, [currentUser]);
 
   const fetchSalespersons = async () => {
     try {

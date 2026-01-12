@@ -25,7 +25,8 @@ import {
   DollarSign,
   FileSignature,
   TrendingUp,
-  Bell
+  Bell,
+  Phone
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -116,6 +117,13 @@ const Sidebar: React.FC = () => {
             { title: '휴가 개별승인', path: '/hr/leaves', icon: <CalendarCheck className="w-4 h-4" /> },
           ],
         },
+      ],
+    },
+    {
+      title: '해피콜',
+      icon: <Phone className="w-4 h-4" />,
+      children: [
+        { title: '해피콜 관리', path: '/happycall/list', icon: <Phone className="w-4 h-4" /> },
       ],
     },
     {
@@ -226,10 +234,30 @@ const Sidebar: React.FC = () => {
     },
   ];
 
+  // 해피콜 직원용 메뉴
+  const happycallMenuItems: MenuItem[] = [
+    {
+      title: '해피콜',
+      icon: <Phone className="w-4 h-4" />,
+      children: [
+        { title: '해피콜 등록', path: '/happycall/register', icon: <Phone className="w-4 h-4" /> },
+        { title: '내 해피콜 내역', path: '/happycall/list', icon: <ClipboardList className="w-4 h-4" /> },
+      ],
+    },
+    {
+      title: '설정관리',
+      icon: <Settings className="w-4 h-4" />,
+      children: [
+        { title: '내 정보 수정', path: '/settings/my-account', icon: <User className="w-4 h-4" /> },
+      ],
+    },
+  ];
+
   // 사용자 권한에 따라 메뉴 결정
   const menuItems = user?.role === 'admin' ? adminMenuItems : 
                     user?.role === 'salesperson' ? salespersonMenuItems :
-                    user?.role === 'recruiter' ? recruiterMenuItems : 
+                    user?.role === 'recruiter' ? recruiterMenuItems :
+                    user?.role === 'happycall' ? happycallMenuItems :
                     employeeMenuItems;
 
   const toggleMenu = (title: string) => {

@@ -420,6 +420,66 @@ const MobileNav: React.FC = () => {
                 </>
               )}
 
+              {/* 해피콜 - 관리자 */}
+              {user?.role === 'admin' && (
+                <>
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                    해피콜
+                  </div>
+                  <NavLink
+                    to="/happycall/list"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-lg">📞</span>
+                    <span className="text-sm font-medium">해피콜 관리</span>
+                  </NavLink>
+                </>
+              )}
+
+              {/* 해피콜 - 해피콜 직원 */}
+              {user?.role === 'happycall' && (
+                <>
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                    해피콜
+                  </div>
+                  <NavLink
+                    to="/happycall/register"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-lg">📞</span>
+                    <span className="text-sm font-medium">해피콜 등록</span>
+                  </NavLink>
+                  <NavLink
+                    to="/happycall/list"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-lg">📋</span>
+                    <span className="text-sm font-medium">내 해피콜 내역</span>
+                  </NavLink>
+                </>
+              )}
+
               {/* 설정관리 - 모든 사용자 */}
               <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
                 설정관리

@@ -53,6 +53,10 @@ import ClockIn from './pages/attendance/ClockIn';
 import ClockOut from './pages/attendance/ClockOut';
 import LeaveRequest from './pages/attendance/LeaveRequest';
 
+// 해피콜
+import HappyCallRegister from './pages/happycall/HappyCallRegister';
+import HappyCallList from './pages/happycall/HappyCallList';
+
 function App() {
   return (
     <AuthProvider>
@@ -101,6 +105,10 @@ function App() {
             
             {/* 섭외자 관리 */}
             <Route path="recruiter/my-data" element={<RecruiterMyData />} />
+            
+            {/* 해피콜 */}
+            <Route path="happycall/register" element={<HappyCallRegister />} />
+            <Route path="happycall/list" element={<HappyCallList />} />
             
             {/* 계약 관리 */}
             <Route path="contract/sales-commission" element={<SalesCommission />} />

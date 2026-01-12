@@ -66,7 +66,7 @@ function initDatabase() {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       name TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter')),
+      role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       employee_code TEXT,
       department TEXT,
@@ -289,6 +289,25 @@ function initDatabase() {
       FOREIGN KEY (notice_id) REFERENCES notices(id),
       FOREIGN KEY (user_id) REFERENCES users(id),
       UNIQUE(notice_id, user_id)
+    );
+
+    -- 해피콜 테이블
+    CREATE TABLE IF NOT EXISTS happycalls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      happycall_staff_id INTEGER NOT NULL,
+      happycall_staff_name TEXT NOT NULL,
+      salesperson_id INTEGER,
+      salesperson_name TEXT,
+      client_name TEXT NOT NULL,
+      client_contact TEXT,
+      call_date DATE NOT NULL,
+      call_content TEXT NOT NULL,
+      score TEXT NOT NULL CHECK(score IN ('상', '중', '하')),
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (happycall_staff_id) REFERENCES users(id),
+      FOREIGN KEY (salesperson_id) REFERENCES users(id)
     );
   `);
 
@@ -3015,6 +3034,180 @@ app.post('/api/notices/:id/read', (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('공지사항 읽음 처리 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ========== 해피콜 API ==========
+
+// 해피콜 목록 조회
+app.get('/api/happycalls', (req, res) => {
+  try {
+    const { staff_id, salesperson_id, score } = req.query;
+    
+    let query = 'SELECT * FROM happycalls WHERE 1=1';
+    const params = [];
+    
+    if (staff_id) {
+      query += ' AND happycall_staff_id = ?';
+      params.push(staff_id);
+    }
+    
+    if (salesperson_id) {
+      query += ' AND salesperson_id = ?';
+      params.push(salesperson_id);
+    }
+    
+    if (score) {
+      query += ' AND score = ?';
+      params.push(score);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const happycalls = db.prepare(query).all(...params);
+    res.json({ success: true, data: happycalls });
+  } catch (error) {
+    console.error('해피콜 목록 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 해피콜 등록
+app.post('/api/happycalls', (req, res) => {
+  try {
+    const {
+      happycall_staff_id,
+      happycall_staff_name,
+      salesperson_id,
+      salesperson_name,
+      client_name,
+      client_contact,
+      call_date,
+      call_content,
+      score,
+      notes
+    } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO happycalls (
+        happycall_staff_id, happycall_staff_name, salesperson_id, salesperson_name,
+        client_name, client_contact, call_date, call_content, score, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(
+      happycall_staff_id,
+      happycall_staff_name,
+      salesperson_id,
+      salesperson_name,
+      client_name,
+      client_contact,
+      call_date,
+      call_content,
+      score,
+      notes
+    );
+    
+    // 점수가 '하'인 경우 알림 생성
+    if (score === '하') {
+      // 관리자들 조회
+      const admins = db.prepare('SELECT id FROM users WHERE role = ?').all('admin');
+      
+      // 알림 제목과 내용
+      const noticeTitle = `[해피콜 경고] ${client_name} 고객 불만`;
+      const noticeContent = `해피콜 담당자 ${happycall_staff_name}님이 ${client_name} 고객의 해피콜 점수를 '하'로 평가했습니다.\n\n담당 영업자: ${salesperson_name || '미지정'}\n통화일: ${call_date}\n내용: ${call_content}`;
+      
+      // 관리자에게 공지사항 생성
+      if (admins.length > 0) {
+        const noticeStmt = db.prepare(`
+          INSERT INTO notices (title, content, author_id, is_important, is_active)
+          VALUES (?, ?, ?, 1, 1)
+        `);
+        noticeStmt.run(noticeTitle, noticeContent, happycall_staff_id);
+      }
+      
+      // 영업자에게도 알림 (영업자 ID가 있는 경우)
+      if (salesperson_id) {
+        const salesNoticeStmt = db.prepare(`
+          INSERT INTO notices (title, content, author_id, is_important, is_active)
+          VALUES (?, ?, ?, 1, 1)
+        `);
+        salesNoticeStmt.run(
+          `[해피콜] ${client_name} 고객 피드백`,
+          `고객 ${client_name}님의 해피콜 결과가 '하'로 기록되었습니다.\n\n통화일: ${call_date}\n내용: ${call_content}`,
+          happycall_staff_id
+        );
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      data: { id: result.lastInsertRowid },
+      message: '해피콜이 등록되었습니다.' + (score === '하' ? ' 관리자와 영업자에게 알림이 전송되었습니다.' : '')
+    });
+  } catch (error) {
+    console.error('해피콜 등록 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 해피콜 수정
+app.put('/api/happycalls/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      salesperson_id,
+      salesperson_name,
+      client_name,
+      client_contact,
+      call_date,
+      call_content,
+      score,
+      notes
+    } = req.body;
+    
+    const stmt = db.prepare(`
+      UPDATE happycalls SET
+        salesperson_id = ?,
+        salesperson_name = ?,
+        client_name = ?,
+        client_contact = ?,
+        call_date = ?,
+        call_content = ?,
+        score = ?,
+        notes = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    stmt.run(
+      salesperson_id,
+      salesperson_name,
+      client_name,
+      client_contact,
+      call_date,
+      call_content,
+      score,
+      notes,
+      id
+    );
+    
+    res.json({ success: true, message: '해피콜이 수정되었습니다.' });
+  } catch (error) {
+    console.error('해피콜 수정 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 해피콜 삭제
+app.delete('/api/happycalls/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM happycalls WHERE id = ?').run(id);
+    res.json({ success: true, message: '해피콜이 삭제되었습니다.' });
+  } catch (error) {
+    console.error('해피콜 삭제 오류:', error);
     res.json({ success: false, message: error.message });
   }
 });

@@ -290,10 +290,11 @@ const Sidebar: React.FC = () => {
   ];
 
   // 사용자 권한에 따라 메뉴 결정
-  // 임시: employee 역할도 해피콜 메뉴 접근 가능 (해피콜 담당자용)
+  // reviewer는 경정청구만, employee는 해피콜 메뉴 접근 가능
   const menuItems = user?.role === 'admin' ? adminMenuItems : 
                     user?.role === 'salesperson' ? salespersonMenuItems :
                     user?.role === 'recruiter' ? recruiterMenuItems :
+                    user?.role === 'reviewer' ? employeeMenuItems :
                     user?.role === 'happycall' || user?.role === 'employee' ? happycallMenuItems :
                     employeeMenuItems;
 

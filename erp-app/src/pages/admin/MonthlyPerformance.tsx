@@ -129,7 +129,7 @@ const MonthlyPerformance: React.FC = () => {
     
     const totalContractAmount = performanceData
       .filter(d => d.contract_status === 'Y')
-      .reduce((sum, d) => sum + (Number(d.contract_client) || 0), 0);
+      .reduce((sum, d) => sum + (Number(d.actual_sales) || 0), 0);
     
     setStats(prev => ({
       ...prev,

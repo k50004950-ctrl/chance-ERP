@@ -307,15 +307,22 @@ const SalesDBRegister: React.FC = () => {
 
   // 녹취 파일 선택 핸들러
   const handleRecordingSelect = (index: number, files: FileList | null) => {
-    if (!files || files.length === 0) return;
+    console.log('파일 선택 핸들러 실행:', index, files);
+    if (!files || files.length === 0) {
+      console.log('파일이 선택되지 않음');
+      return;
+    }
     
     const selectedFiles = Array.from(files);
+    console.log('선택된 파일:', selectedFiles.map(f => f.name));
+    
     setRows(prevRows => {
       const newRows = [...prevRows];
       newRows[index] = {
         ...newRows[index],
         recordings: [...(newRows[index].recordings || []), ...selectedFiles]
       };
+      console.log('업데이트된 행:', newRows[index]);
       return newRows;
     });
   };

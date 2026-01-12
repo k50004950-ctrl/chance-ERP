@@ -378,8 +378,8 @@ function initDatabase() {
     if (tableInfo && tableInfo.sql) {
       console.log('Current users table schema:', tableInfo.sql.substring(0, 200));
       
-      if (!tableInfo.sql.includes("'happycall'")) {
-        console.log('⚠️  Migration needed: adding happycall role support...');
+      if (!tableInfo.sql.includes("'happycall'") || !tableInfo.sql.includes("'reviewer'")) {
+        console.log('⚠️  Migration needed: adding happycall and reviewer role support...');
         
         // Disable foreign key constraints
         db.exec('PRAGMA foreign_keys = OFF;');
@@ -403,7 +403,7 @@ function initDatabase() {
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             name TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall')),
+            role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall', 'reviewer')),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             employee_code TEXT,
             department TEXT,
@@ -417,7 +417,7 @@ function initDatabase() {
             emergency_contact TEXT
           );
         `);
-        console.log('✓ Created new users table with happycall support');
+        console.log('✓ Created new users table with happycall and reviewer support');
         
         // Copy data from old table to new table
         db.exec(`INSERT INTO users_new SELECT * FROM users;`);
@@ -438,8 +438,9 @@ function initDatabase() {
         // Re-enable foreign key constraints
         db.exec('PRAGMA foreign_keys = ON;');
         console.log('✅ Users table migration completed successfully!');
+        console.log('Database initialized with happycall and reviewer role support');
       } else {
-        console.log('✓ Users table already supports happycall role - no migration needed');
+        console.log('✓ Users table already supports happycall and reviewer role - no migration needed');
       }
     }
   } catch (error) {

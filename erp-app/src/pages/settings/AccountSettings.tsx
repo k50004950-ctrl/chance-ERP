@@ -60,7 +60,8 @@ const AccountSettings: React.FC = () => {
       'employee': '일반사용자',
       'admin': '관리자',
       'salesperson': '영업자',
-      'recruiter': '섭외자'
+      'recruiter': '섭외자',
+      'happycall': '해피콜직원'
     };
     return roleMap[role] || role;
   };
@@ -80,7 +81,7 @@ const AccountSettings: React.FC = () => {
           accountStatus: '활성' as const,
           department: user.department || (user.username === 'admin' ? '관리부서' : user.role === 'salesperson' ? '영업팀' : '개발팀'),
           position: user.position || (user.username === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업사원' : '사원'),
-          role: user.role === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업자' : user.role === 'recruiter' ? '섭외자' : '일반사용자',
+          role: user.role === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업자' : user.role === 'recruiter' ? '섭외자' : user.role === 'happycall' ? '해피콜직원' : '일반사용자',
           permissions: '',
           commission_rate: user.commission_rate || 0,
           bank_name: user.bank_name || '',
@@ -164,12 +165,13 @@ const AccountSettings: React.FC = () => {
         '관리자': 'admin',
         '영업자': 'salesperson',
         '섭외자': 'recruiter',
+        '해피콜직원': 'happycall',
         '일반사용자': 'employee'
       };
       
       // 이미 영어면 그대로, 한글이면 변환
       const normalizeRole = (role: string): string => {
-        if (['admin', 'employee', 'salesperson', 'recruiter'].includes(role)) {
+        if (['admin', 'employee', 'salesperson', 'recruiter', 'happycall'].includes(role)) {
           return role;
         }
         return roleMapping[role] || 'employee';
@@ -241,6 +243,7 @@ const AccountSettings: React.FC = () => {
       '관리자': 'admin',
       '영업자': 'salesperson',
       '섭외자': 'recruiter',
+      '해피콜직원': 'happycall',
       '일반사용자': 'employee'
     };
     
@@ -248,7 +251,7 @@ const AccountSettings: React.FC = () => {
     const normalizeRole = (role: string | undefined): string => {
       if (!role) return 'employee';
       // 이미 영어 role 값이면 그대로 반환
-      if (['admin', 'employee', 'salesperson', 'recruiter'].includes(role)) {
+      if (['admin', 'employee', 'salesperson', 'recruiter', 'happycall'].includes(role)) {
         return role;
       }
       // 한글이면 변환
@@ -647,6 +650,7 @@ const AccountSettings: React.FC = () => {
                     <option value="admin">관리자</option>
                     <option value="salesperson">영업자</option>
                     <option value="recruiter">섭외자</option>
+                    <option value="happycall">해피콜직원</option>
                   </select>
                 </div>
 

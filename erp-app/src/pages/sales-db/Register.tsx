@@ -703,16 +703,20 @@ const SalesDBRegister: React.FC = () => {
                 </td>
                 <td className="border border-gray-300 px-1 py-1 bg-green-50">
                   <div className="flex flex-col gap-1 w-32">
-                    <label className="flex items-center gap-1 cursor-pointer px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition">
+                    <input
+                      type="file"
+                      id={`recording-file-${index}`}
+                      multiple
+                      accept="audio/*,video/*"
+                      onChange={(e) => handleRecordingSelect(index, e.target.files)}
+                      className="absolute w-0 h-0 opacity-0 pointer-events-none"
+                    />
+                    <label
+                      htmlFor={`recording-file-${index}`}
+                      className="flex items-center justify-center gap-1 cursor-pointer px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition"
+                    >
                       <FileAudio className="w-3 h-3" />
                       <span>파일 선택</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="audio/*,video/*"
-                        onChange={(e) => handleRecordingSelect(index, e.target.files)}
-                        className="hidden"
-                      />
                     </label>
                     {row.recordings && row.recordings.length > 0 && (
                       <div className="text-xs space-y-1">

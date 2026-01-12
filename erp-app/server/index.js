@@ -3897,10 +3897,16 @@ app.get('/api/correction-requests/stats/monthly', (req, res) => {
   }
 });
 
+// Catch-all route for React Router (SPA)
+// This must be AFTER all API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`ERP Server running on http://0.0.0.0:${PORT}`);
-  console.log('Database initialized with happycall role support');
+  console.log('Database initialized with happycall and reviewer role support');
   
   // 서버 시작 시 즉시 한 번 실행
   checkBirthdaysAndCreateNotices();

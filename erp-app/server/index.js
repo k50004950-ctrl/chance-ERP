@@ -2536,6 +2536,75 @@ app.get('/api/commission-statements/summary', (req, res) => {
   }
 });
 
+// 디버그: 특정 영업자의 계약 데이터 확인
+app.get('/api/debug/salesperson-contracts', (req, res) => {
+  try {
+    const { name, year, month } = req.query;
+    
+    if (!name) {
+      return res.json({ success: false, message: '영업자 이름을 입력하세요.' });
+    }
+    
+    // 영업자 정보 조회
+    const salesperson = db.prepare(`
+      SELECT id, name, username, employee_code FROM users WHERE name = ?
+    `).get(name);
+    
+    if (!salesperson) {
+      return res.json({ success: false, message: '해당 영업자를 찾을 수 없습니다.' });
+    }
+    
+    const yearMonth = year && month ? `${year}-${month.padStart(2, '0')}` : null;
+    
+    // 모든 계약 데이터 조회
+    let contractQuery = `
+      SELECT 
+        s.id, s.company_name, s.salesperson_id, s.contract_date, 
+        s.actual_sales, s.contract_client, s.contract_status, s.client_name,
+        c.commission_rate,
+        substr(s.contract_date, 1, 7) as year_month
+      FROM sales_db s
+      LEFT JOIN sales_clients c ON s.client_name = c.client_name
+      WHERE s.salesperson_id = ?
+    `;
+    
+    const contracts = yearMonth 
+      ? db.prepare(contractQuery + ` AND substr(s.contract_date, 1, 7) = ?`).all(salesperson.id, yearMonth)
+      : db.prepare(contractQuery).all(salesperson.id);
+    
+    // 계약 상태별 분류
+    const contractY = contracts.filter(c => c.contract_status === 'Y');
+    const contractN = contracts.filter(c => c.contract_status === 'N' || !c.contract_status);
+    
+    res.json({ 
+      success: true, 
+      data: {
+        salesperson: salesperson,
+        search_period: yearMonth || '전체',
+        total_contracts: contracts.length,
+        contract_y_count: contractY.length,
+        contract_n_count: contractN.length,
+        contracts_y: contractY.map(c => ({
+          ...c,
+          calculated_commission: Math.floor(
+            (c.actual_sales || 0) * (c.commission_rate || 500) / 100
+          )
+        })),
+        contracts_n: contractN.map(c => ({
+          id: c.id,
+          company_name: c.company_name,
+          contract_date: c.contract_date,
+          actual_sales: c.actual_sales,
+          contract_status: c.contract_status || 'NULL'
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('디버그 API 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // ========== 기타수수료 API (Miscellaneous Commissions) ==========
 // 기타수수료 조회 (특정 영업자의 특정 연월)
 app.get('/api/misc-commissions', (req, res) => {

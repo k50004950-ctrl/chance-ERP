@@ -3587,19 +3587,6 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'ERP Server is running' });
 });
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, '../dist/index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.status(200).json({ 
-      status: 'server_running', 
-      message: 'ERP Backend is running. Frontend build not found. Please check build logs.' 
-    });
-  }
-});
-
 // ========== 생일 축하 자동 공지 ==========
 // 오늘이 생일인 사용자 확인 및 공지 생성
 function checkBirthdaysAndCreateNotices() {

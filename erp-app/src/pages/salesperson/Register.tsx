@@ -61,6 +61,7 @@ const SalespersonMyData: React.FC = () => {
   const [salespersonId, setSalespersonId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
+  const [recruiters, setRecruiters] = useState<{ id: number; name: string; }[]>([]);
   const [salesClients, setSalesClients] = useState<SalesClient[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -84,6 +85,7 @@ const SalespersonMyData: React.FC = () => {
     sales_amount: 0,
     actual_sales: 0,
     existing_client: '',
+    proposer_name: '',
     proposal_date: new Date().toISOString().split('T')[0]
   });
 
@@ -92,8 +94,9 @@ const SalespersonMyData: React.FC = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     setCurrentUser(user);
     
-    // 거래처 목록은 항상 가져옴
+    // 거래처 목록과 섭외자 목록은 항상 가져옴
     fetchSalesClients();
+    fetchRecruiters();
     
     if (user.role === 'admin') {
       setIsAdmin(true);
@@ -130,6 +133,20 @@ const SalespersonMyData: React.FC = () => {
       }
     } catch (error) {
       console.error('거래처 목록 조회 실패:', error);
+    }
+  };
+
+  const fetchRecruiters = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users`);
+      const result = await response.json();
+      if (result.success) {
+        // 섭외자 역할만 필터링
+        const recruiterList = result.data.filter((user: any) => user.role === 'recruiter');
+        setRecruiters(recruiterList);
+      }
+    } catch (error) {
+      console.error('섭외자 목록 조회 실패:', error);
     }
   };
 
@@ -415,13 +432,19 @@ const SalespersonMyData: React.FC = () => {
       return;
     }
     
+    // 섭외자 확인
+    if (!newData.proposer_name) {
+      alert('섭외자를 선택해주세요.');
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/sales-db`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newData,
-          proposer: currentUser.name,
+          proposer: newData.proposer_name,
           salesperson: currentUser.name,
           salesperson_id: salespersonId,
           meeting_status: '미팅완료',
@@ -445,6 +468,7 @@ const SalespersonMyData: React.FC = () => {
           sales_amount: 0,
           actual_sales: 0,
           existing_client: '',
+          proposer_name: '',
           proposal_date: new Date().toISOString().split('T')[0]
         });
         fetchMyData(); // 목록 새로고침
@@ -864,6 +888,25 @@ const SalespersonMyData: React.FC = () => {
                     {salesClients.map((client) => (
                       <option key={client.id} value={client.client_name}>
                         {client.client_name} (수수료율: {client.commission_rate}%)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 섭외자 선택 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    섭외자 선택 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newData.proposer_name}
+                    onChange={(e) => setNewData({ ...newData, proposer_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">섭외자를 선택하세요</option>
+                    {recruiters.map((recruiter) => (
+                      <option key={recruiter.id} value={recruiter.name}>
+                        {recruiter.name}
                       </option>
                     ))}
                   </select>

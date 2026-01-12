@@ -630,6 +630,64 @@ app.get('/api/auth/debug-users', (req, res) => {
   }
 });
 
+// Migrate users table to support happycall role (for manual execution)
+app.post('/api/auth/migrate-happycall', (req, res) => {
+  try {
+    const { secret } = req.body;
+    
+    // Simple security check - require a secret key
+    if (secret !== 'migrate123') {
+      res.json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+    
+    console.log('Starting manual migration for happycall role support...');
+    
+    // Create temporary table with new constraint
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        employee_code TEXT,
+        department TEXT,
+        position TEXT,
+        commission_rate INTEGER DEFAULT 0,
+        bank_name TEXT,
+        account_number TEXT,
+        social_security_number TEXT,
+        hire_date DATE,
+        address TEXT,
+        emergency_contact TEXT
+      );
+    `);
+    
+    // Copy data from old table to new table
+    db.exec(`
+      INSERT INTO users_new SELECT * FROM users;
+    `);
+    
+    // Drop old table
+    db.exec(`DROP TABLE users;`);
+    
+    // Rename new table
+    db.exec(`ALTER TABLE users_new RENAME TO users;`);
+    
+    console.log('Manual migration completed successfully!');
+    
+    res.json({ 
+      success: true, 
+      message: 'Users 테이블이 성공적으로 마이그레이션되었습니다. 이제 해피콜직원 계정을 추가할 수 있습니다.'
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // Users API
 app.get('/api/users', (req, res) => {
   try {

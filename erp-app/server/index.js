@@ -902,11 +902,11 @@ app.delete('/api/users/:id', (req, res) => {
         db.prepare('DELETE FROM employees WHERE id = ?').run(employee.id);
       }
       
-      // 영업자 관련 데이터 삭제
-      db.prepare('DELETE FROM salespersons WHERE salesperson_id = ?').run(id);
-      db.prepare('DELETE FROM sales_db WHERE salesperson_id = ?').run(id);
-      db.prepare('DELETE FROM sales_contracts WHERE salesperson_id = ?').run(id);
-      db.prepare('DELETE FROM commission_statements WHERE salesperson_id = ?').run(id);
+      // 영업자 관련 데이터 삭제 (CASCADE로 자동 삭제됨)
+      // db.prepare('DELETE FROM salespersons WHERE salesperson_id = ?').run(id);
+      // db.prepare('DELETE FROM sales_db WHERE salesperson_id = ?').run(id);
+      // db.prepare('DELETE FROM sales_contracts WHERE salesperson_id = ?').run(id);
+      // db.prepare('DELETE FROM commission_statements WHERE salesperson_id = ?').run(id);
       db.prepare('DELETE FROM misc_commissions WHERE salesperson_id = ?').run(id);
       
       // 일정 및 메모 삭제
@@ -1237,18 +1237,18 @@ app.get('/api/sales-db', (req, res) => {
   try {
     const { search } = req.query;
     let query = `
-      SELECT sd.*, s.name as salesperson_name 
+      SELECT sd.*, u.name as salesperson_name 
       FROM sales_db sd
-      LEFT JOIN salespersons s ON sd.salesperson_id = s.id
+      LEFT JOIN users u ON sd.salesperson_id = u.id
       ORDER BY sd.proposal_date DESC, sd.created_at DESC
     `;
     
     let salesDB;
     if (search) {
       query = `
-        SELECT sd.*, s.name as salesperson_name 
+        SELECT sd.*, u.name as salesperson_name 
         FROM sales_db sd
-        LEFT JOIN salespersons s ON sd.salesperson_id = s.id
+        LEFT JOIN users u ON sd.salesperson_id = u.id
         WHERE sd.company_name LIKE ? OR sd.representative LIKE ? OR sd.contact LIKE ? OR sd.client_name LIKE ?
         ORDER BY sd.proposal_date DESC, sd.created_at DESC
       `;
@@ -1651,11 +1651,11 @@ app.delete('/api/employees/:id', (req, res) => {
       if (employee.user_id) {
         const userId = employee.user_id;
         
-        // 영업자 관련 데이터 삭제
-        db.prepare('DELETE FROM salespersons WHERE salesperson_id = ?').run(userId);
-        db.prepare('DELETE FROM sales_db WHERE salesperson_id = ?').run(userId);
-        db.prepare('DELETE FROM sales_contracts WHERE salesperson_id = ?').run(userId);
-        db.prepare('DELETE FROM commission_statements WHERE salesperson_id = ?').run(userId);
+        // 영업자 관련 데이터 삭제 (CASCADE로 자동 삭제됨)
+        // db.prepare('DELETE FROM salespersons WHERE salesperson_id = ?').run(userId);
+        // db.prepare('DELETE FROM sales_db WHERE salesperson_id = ?').run(userId);
+        // db.prepare('DELETE FROM sales_contracts WHERE salesperson_id = ?').run(userId);
+        // db.prepare('DELETE FROM commission_statements WHERE salesperson_id = ?').run(userId);
         db.prepare('DELETE FROM misc_commissions WHERE salesperson_id = ?').run(userId);
         
         // 일정 및 메모 삭제
@@ -1729,16 +1729,17 @@ app.put('/api/salespersons/:id', (req, res) => {
   }
 });
 
-app.delete('/api/salespersons/:id', (req, res) => {
-  try {
-    const { id } = req.params;
-    const stmt = db.prepare('DELETE FROM salespersons WHERE id = ?');
-    stmt.run(id);
-    res.json({ success: true });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
-});
+// 삭제된 API - salespersons 테이블은 더 이상 사용하지 않음
+// app.delete('/api/salespersons/:id', (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const stmt = db.prepare('DELETE FROM salespersons WHERE id = ?');
+//     stmt.run(id);
+//     res.json({ success: true });
+//   } catch (error) {
+//     res.json({ success: false, message: error.message });
+//   }
+// });
 
 // 영업자별 수수료 상세 조회 (계약여부='Y'인 데이터만, 월별 필터링)
 app.get('/api/salesperson/:id/commission-details', (req, res) => {
@@ -1866,7 +1867,7 @@ app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
 app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
   try {
     const { id } = req.params;
-    const { contract_date, meeting_status, contract_client, client_name, contract_status, feedback, salesperson_id } = req.body;
+    const { contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, salesperson_id } = req.body;
     
     // 본인 데이터인지 확인
     const record = db.prepare('SELECT salesperson_id FROM sales_db WHERE id = ?').get(id);
@@ -1876,10 +1877,10 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
     
     const stmt = db.prepare(`
       UPDATE sales_db 
-      SET contract_date = ?, meeting_status = ?, contract_client = ?, client_name = ?, contract_status = ?, feedback = ?, updated_at = CURRENT_TIMESTAMP
+      SET contract_date = ?, meeting_status = ?, contract_client = ?, client_name = ?, contract_status = ?, feedback = ?, actual_sales = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    stmt.run(contract_date, meeting_status, contract_client, client_name, contract_status, feedback, id);
+    stmt.run(contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, id);
     
     res.json({ success: true });
   } catch (error) {
@@ -1984,9 +1985,9 @@ app.get('/api/contracts', (req, res) => {
   try {
     const { type, salesperson_id } = req.query;
     let query = `
-      SELECT c.*, s.name as salesperson_name 
+      SELECT c.*, u.name as salesperson_name 
       FROM contracts c
-      LEFT JOIN salespersons s ON c.salesperson_id = s.id
+      LEFT JOIN users u ON c.salesperson_id = u.id
     `;
     
     const conditions = [];
@@ -2081,9 +2082,9 @@ app.get('/api/commission-statements', (req, res) => {
   try {
     const { salesperson_id } = req.query;
     let query = `
-      SELECT cs.*, s.name as salesperson_name 
+      SELECT cs.*, u.name as salesperson_name 
       FROM commission_statements cs
-      JOIN salespersons s ON cs.salesperson_id = s.id
+      JOIN users u ON cs.salesperson_id = u.id
     `;
     
     if (salesperson_id) {

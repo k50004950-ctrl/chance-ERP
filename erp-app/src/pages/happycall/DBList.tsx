@@ -58,22 +58,16 @@ const HappyCallDBList: React.FC = () => {
 
   const fetchSalesDB = async () => {
     try {
-      console.log('DB 조회 시작, API_BASE_URL:', API_BASE_URL);
       const response = await fetch(`${API_BASE_URL}/api/sales-db`);
-      console.log('응답 상태:', response.status);
       const result = await response.json();
-      console.log('조회 결과:', result);
       if (result.success) {
-        console.log('조회된 데이터 수:', result.data.length);
         setSalesDB(result.data);
         setFilteredData(result.data);
       } else {
         console.error('DB 조회 실패:', result.message);
-        alert('DB 조회 실패: ' + result.message);
       }
     } catch (error) {
       console.error('DB 조회 오류:', error);
-      alert('DB 조회 중 오류가 발생했습니다.');
     }
   };
 

@@ -155,6 +155,7 @@ const SalespersonMyData: React.FC = () => {
           client_name: item.client_name,
           contract_status: item.contract_status,
           feedback: item.feedback,
+          actual_sales: item.actual_sales,
           salesperson_id: salespersonId,
         }),
       });
@@ -472,15 +473,15 @@ const SalespersonMyData: React.FC = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 bg-blue-50">
+                  <td className="px-4 py-3">
                     {editingId === item.id ? (
                       <input
                         type="text"
-                        value={item.contract_client || ''}
+                        value={item.actual_sales || ''}
                         onChange={(e) => {
                           const value = e.target.value.replace(/,/g, '');
                           if (value === '' || /^\d+$/.test(value)) {
-                            handleChange(item.id, 'contract_client', value);
+                            handleChange(item.id, 'actual_sales', value);
                           }
                         }}
                         onBlur={(e) => {
@@ -499,7 +500,7 @@ const SalespersonMyData: React.FC = () => {
                         placeholder="계약기장료"
                       />
                     ) : (
-                      <span className="text-sm text-gray-900">{item.contract_client ? Number(item.contract_client.toString().replace(/,/g, '')).toLocaleString('ko-KR') : '-'}</span>
+                      <span className="text-sm text-gray-900">{item.actual_sales ? Number(item.actual_sales.toString().replace(/,/g, '')).toLocaleString('ko-KR') : '-'}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 bg-blue-50">

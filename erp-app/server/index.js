@@ -779,34 +779,53 @@ app.post('/api/users/force-create', (req, res) => {
     const nextId = maxIdResult.maxId + 1;
     const auto_employee_code = `EMP${String(nextId).padStart(3, '0')}`;
     
-    // constraint 체크 비활성화
-    db.exec('PRAGMA legacy_alter_table = ON;');
-    
-    // 직접 INSERT (CHECK constraint 우회)
-    const userStmt = db.prepare(`
-      INSERT INTO users (
-        username, password, name, role, employee_code,
-        department, position, commission_rate,
-        bank_name, account_number, social_security_number,
-        hire_date, address, emergency_contact
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    const userInfo = userStmt.run(
-      username, password, name, role, auto_employee_code,
-      department || '', position || '', commission_rate || 0,
-      bank_name || '', account_number || '', social_security_number || '',
-      hire_date || null, address || '', emergency_contact || ''
-    );
-    
-    // constraint 체크 복원
-    db.exec('PRAGMA legacy_alter_table = OFF;');
-    
-    res.json({ 
-      success: true, 
-      id: userInfo.lastInsertRowid,
-      message: 'User created successfully (force mode)'
-    });
+    try {
+      // 외래 키 제약 비활성화
+      db.exec('PRAGMA foreign_keys = OFF;');
+      
+      // raw SQL로 직접 삽입
+      db.exec(`
+        INSERT INTO users (
+          username, password, name, role, employee_code,
+          department, position, commission_rate,
+          bank_name, account_number, social_security_number,
+          hire_date, address, emergency_contact
+        ) VALUES (
+          '${username.replace(/'/g, "''")}',
+          '${password.replace(/'/g, "''")}',
+          '${name.replace(/'/g, "''")}',
+          '${role.replace(/'/g, "''")}',
+          '${auto_employee_code}',
+          '${(department || '').replace(/'/g, "''")}',
+          '${(position || '').replace(/'/g, "''")}',
+          ${commission_rate || 0},
+          '${(bank_name || '').replace(/'/g, "''")}',
+          '${(account_number || '').replace(/'/g, "''")}',
+          '${(social_security_number || '').replace(/'/g, "''")}',
+          ${hire_date ? `'${hire_date}'` : 'NULL'},
+          '${(address || '').replace(/'/g, "''")}',
+          '${(emergency_contact || '').replace(/'/g, "''")}'
+        );
+      `);
+      
+      // 외래 키 제약 다시 활성화
+      db.exec('PRAGMA foreign_keys = ON;');
+      
+      // 방금 생성된 사용자의 ID 조회
+      const newUser = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+      
+      res.json({ 
+        success: true, 
+        id: newUser.id,
+        message: 'User created successfully (force mode)'
+      });
+    } catch (innerError) {
+      // 오류 발생 시 외래 키 제약 복원
+      try {
+        db.exec('PRAGMA foreign_keys = ON;');
+      } catch (e) {}
+      throw innerError;
+    }
   } catch (error) {
     console.error('Force create user error:', error);
     res.json({ success: false, message: error.message });

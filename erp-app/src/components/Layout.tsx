@@ -7,22 +7,22 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../lib/api';
 
 const Layout: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
   const location = useLocation();
   const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       checkProfileCompletion();
     } else {
-      setLoading(false);
+      setProfileLoading(false);
     }
   }, [user?.id]); // user.id가 변경될 때만 재실행
 
   const checkProfileCompletion = async () => {
     if (!user) {
-      setLoading(false);
+      setProfileLoading(false);
       return;
     }
 
@@ -48,15 +48,26 @@ const Layout: React.FC = () => {
       console.error('프로필 확인 오류:', error);
       setIsProfileComplete(false);
     } finally {
-      setLoading(false);
+      setProfileLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (loading || isProfileComplete === null) {
+  if (profileLoading || isProfileComplete === null) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center">

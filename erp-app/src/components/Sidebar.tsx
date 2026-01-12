@@ -240,6 +240,7 @@ const Sidebar: React.FC = () => {
       title: '해피콜',
       icon: <Phone className="w-4 h-4" />,
       children: [
+        { title: 'DB 조회 및 해피콜 입력', path: '/happycall/db-list', icon: <FileText className="w-4 h-4" /> },
         { title: '해피콜 등록', path: '/happycall/register', icon: <Phone className="w-4 h-4" /> },
         { title: '내 해피콜 내역', path: '/happycall/list', icon: <ClipboardList className="w-4 h-4" /> },
       ],

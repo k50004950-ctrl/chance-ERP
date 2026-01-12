@@ -56,6 +56,7 @@ import LeaveRequest from './pages/attendance/LeaveRequest';
 // 해피콜
 import HappyCallRegister from './pages/happycall/HappyCallRegister';
 import HappyCallList from './pages/happycall/HappyCallList';
+import HappyCallDBList from './pages/happycall/DBList';
 
 function App() {
   return (
@@ -109,6 +110,7 @@ function App() {
             {/* 해피콜 */}
             <Route path="happycall/register" element={<HappyCallRegister />} />
             <Route path="happycall/list" element={<HappyCallList />} />
+            <Route path="happycall/db-list" element={<HappyCallDBList />} />
             
             {/* 계약 관리 */}
             <Route path="contract/sales-commission" element={<SalesCommission />} />

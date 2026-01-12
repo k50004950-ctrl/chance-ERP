@@ -57,7 +57,7 @@ const SalespersonCommissionStatement: React.FC = () => {
 
   const fetchSalespersons = async () => {
     try {
-      const response = await fetch('/api/salespersons');
+      const response = await fetch(`${API_BASE_URL}/api/salespersons`);
       const result = await response.json();
       if (result.success) {
         setSalespersons(result.data);
@@ -111,7 +111,7 @@ const SalespersonCommissionStatement: React.FC = () => {
     }
 
     try {
-      const response = await fetch('/api/misc-commissions', {
+      const response = await fetch(`${API_BASE_URL}/api/misc-commissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -168,7 +168,7 @@ const SalespersonCommissionStatement: React.FC = () => {
     }
 
     try {
-      const response = await fetch('/api/commission-statements/confirm', {
+      const response = await fetch(`${API_BASE_URL}/api/commission-statements/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -337,6 +337,57 @@ function initDatabase() {
   addColumnIfNotExists('users', 'address', 'TEXT');
   addColumnIfNotExists('users', 'emergency_contact', 'TEXT');
 
+  // Migrate users table to include 'happycall' role in CHECK constraint
+  try {
+    // Check if migration is needed by trying to insert a test happycall user
+    const testUser = db.prepare('SELECT * FROM users WHERE role = ?').get('happycall');
+    
+    // If no happycall user exists, check if the constraint needs updating
+    const tableInfo = db.prepare('SELECT sql FROM sqlite_master WHERE type="table" AND name="users"').get();
+    
+    if (tableInfo && tableInfo.sql && !tableInfo.sql.includes("'happycall'")) {
+      console.log('Migrating users table to support happycall role...');
+      
+      // Create temporary table with new constraint
+      db.exec(`
+        CREATE TABLE users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          name TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall')),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          employee_code TEXT,
+          department TEXT,
+          position TEXT,
+          commission_rate INTEGER DEFAULT 0,
+          bank_name TEXT,
+          account_number TEXT,
+          social_security_number TEXT,
+          hire_date DATE,
+          address TEXT,
+          emergency_contact TEXT
+        );
+      `);
+      
+      // Copy data from old table to new table
+      db.exec(`
+        INSERT INTO users_new SELECT * FROM users;
+      `);
+      
+      // Drop old table
+      db.exec(`DROP TABLE users;`);
+      
+      // Rename new table
+      db.exec(`ALTER TABLE users_new RENAME TO users;`);
+      
+      console.log('Users table migration completed successfully!');
+    }
+  } catch (error) {
+    console.error('Error during users table migration:', error.message);
+    // If migration fails, continue anyway - the table might already be correct
+  }
+
   // Insert default admin user if not exists
   const adminExists = db.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get('admin');
   if (adminExists.count === 0) {

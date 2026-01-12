@@ -373,7 +373,7 @@ function initDatabase() {
   console.log('Checking if users table migration is needed...');
   try {
     // Check if the constraint includes 'happycall'
-    const tableInfo = db.prepare('SELECT sql FROM sqlite_master WHERE type="table" AND name="users"').get();
+    const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get();
     
     if (tableInfo && tableInfo.sql) {
       console.log('Current users table schema:', tableInfo.sql.substring(0, 200));

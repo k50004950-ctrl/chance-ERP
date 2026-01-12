@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Save, Plus, Trash2, Download } from 'lucide-react';
+import { Upload, Save, Plus, Trash2, Download, FileAudio, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../lib/api';
 
 interface Salesperson {
   id: number;
@@ -30,6 +31,7 @@ interface SalesDBRow {
   client_name: string;
   feedback: string;
   april_type1_date: string;
+  recordings?: File[]; // 녹취 파일들
 }
 
 const emptyRow: SalesDBRow = {
@@ -231,7 +233,7 @@ const SalesDBRegister: React.FC = () => {
         };
 
         // 기존 데이터(id가 있는 경우) - UPDATE, 새 데이터 - INSERT
-        const url = row.id ? `/api/sales-db/${row.id}` : '/api/sales-db';
+        const url = row.id ? `${API_BASE_URL}/api/sales-db/${row.id}` : `${API_BASE_URL}/api/sales-db`;
         const method = row.id ? 'PUT' : 'POST';
         
         const response = await fetch(url, {
@@ -245,6 +247,14 @@ const SalesDBRegister: React.FC = () => {
 
         if (result.success) {
           successCount++;
+          
+          // 녹취 파일이 있으면 업로드
+          if (row.recordings && row.recordings.length > 0) {
+            const dbId = result.data?.id || row.id;
+            if (dbId) {
+              await uploadRecordings(dbId, row.recordings);
+            }
+          }
         } else {
           errorCount++;
           console.error('저장 실패:', result.message);
@@ -254,7 +264,11 @@ const SalesDBRegister: React.FC = () => {
       if (successCount > 0) {
         alert(`${successCount}건이 저장되었습니다.${errorCount > 0 ? ` (${errorCount}건 실패)` : ''}`);
         // 저장 후 데이터 다시 로드
-        await fetchExistingData();
+        if (currentUser?.role === 'recruiter') {
+          await fetchExistingDataForRecruiter(currentUser.name);
+        } else {
+          await fetchExistingData();
+        }
       } else {
         alert('저장할 데이터가 없습니다. 업체명은 필수 입력 항목입니다.');
       }
@@ -262,6 +276,62 @@ const SalesDBRegister: React.FC = () => {
       console.error('저장 중 오류 발생:', error);
       alert('저장 중 오류가 발생했습니다: ' + error.message);
     }
+  };
+
+  // 녹취 파일 업로드 함수
+  const uploadRecordings = async (dbId: number, files: File[]) => {
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('recording', file);
+        formData.append('uploaded_by', currentUser.id.toString());
+        formData.append('uploader_name', currentUser.name);
+        formData.append('uploader_role', currentUser.role);
+        formData.append('recording_type', '섭외녹취');
+        formData.append('notes', '');
+
+        const response = await fetch(`${API_BASE_URL}/api/sales-db/${dbId}/recordings`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          console.error(`녹취 파일 업로드 실패: ${file.name} - ${result.message}`);
+        }
+      }
+    } catch (error) {
+      console.error('녹취 파일 업로드 오류:', error);
+    }
+  };
+
+  // 녹취 파일 선택 핸들러
+  const handleRecordingSelect = (index: number, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    const selectedFiles = Array.from(files);
+    setRows(prevRows => {
+      const newRows = [...prevRows];
+      newRows[index] = {
+        ...newRows[index],
+        recordings: [...(newRows[index].recordings || []), ...selectedFiles]
+      };
+      return newRows;
+    });
+  };
+
+  // 녹취 파일 제거 핸들러
+  const handleRemoveRecording = (rowIndex: number, fileIndex: number) => {
+    setRows(prevRows => {
+      const newRows = [...prevRows];
+      const recordings = newRows[rowIndex].recordings || [];
+      recordings.splice(fileIndex, 1);
+      newRows[rowIndex] = {
+        ...newRows[rowIndex],
+        recordings
+      };
+      return newRows;
+    });
   };
 
   const downloadSampleFile = () => {
@@ -432,6 +502,7 @@ const SalesDBRegister: React.FC = () => {
               <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">거래처</th>
               <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">기타(피드백)</th>
               <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">해피콜내용</th>
+              <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700 bg-green-50">섭외녹취</th>
             </tr>
           </thead>
           <tbody>
@@ -622,6 +693,37 @@ const SalesDBRegister: React.FC = () => {
                     className="w-32 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
                     placeholder="한글 입력 가능"
                   />
+                </td>
+                <td className="border border-gray-300 px-1 py-1 bg-green-50">
+                  <div className="flex flex-col gap-1 w-32">
+                    <label className="flex items-center gap-1 cursor-pointer px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition">
+                      <FileAudio className="w-3 h-3" />
+                      <span>파일 선택</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="audio/*,video/*"
+                        onChange={(e) => handleRecordingSelect(index, e.target.files)}
+                        className="hidden"
+                      />
+                    </label>
+                    {row.recordings && row.recordings.length > 0 && (
+                      <div className="text-xs space-y-1">
+                        {row.recordings.map((file, fileIndex) => (
+                          <div key={fileIndex} className="flex items-center justify-between bg-white px-1 py-0.5 rounded border">
+                            <span className="truncate flex-1 text-xs" title={file.name}>{file.name.substring(0, 10)}...</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRecording(index, fileIndex)}
+                              className="text-red-600 hover:text-red-800 ml-1"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

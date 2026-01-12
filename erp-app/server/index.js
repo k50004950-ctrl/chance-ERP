@@ -1144,12 +1144,13 @@ app.delete('/api/users/:id', (req, res) => {
         db.prepare('DELETE FROM employees WHERE id = ?').run(employee.id);
       }
       
-      // 영업자 관련 데이터 삭제 (CASCADE로 자동 삭제됨)
-      // db.prepare('DELETE FROM salespersons WHERE salesperson_id = ?').run(id);
-      // db.prepare('DELETE FROM sales_db WHERE salesperson_id = ?').run(id);
-      // db.prepare('DELETE FROM sales_contracts WHERE salesperson_id = ?').run(id);
-      // db.prepare('DELETE FROM commission_statements WHERE salesperson_id = ?').run(id);
+      // 영업자 관련 데이터 삭제
+      db.prepare('DELETE FROM sales_db WHERE salesperson_id = ?').run(id);
+      db.prepare('DELETE FROM contracts WHERE salesperson_id = ?').run(id);
+      db.prepare('DELETE FROM commission_statements WHERE salesperson_id = ?').run(id);
       db.prepare('DELETE FROM misc_commissions WHERE salesperson_id = ?').run(id);
+      db.prepare('DELETE FROM happycalls WHERE salesperson_id = ?').run(id);
+      db.prepare('DELETE FROM happycalls WHERE happycall_staff_id = ?').run(id);
       
       // 일정 및 메모 삭제
       db.prepare('DELETE FROM schedules WHERE user_id = ?').run(id);

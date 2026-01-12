@@ -142,7 +142,15 @@ const SalespersonDashboard: React.FC = () => {
       const result = await response.json();
       
       if (result.success) {
-        setMonthlyRankings(result.data.slice(0, 10)); // 상위 10명만
+        // API 응답 데이터를 프론트엔드 형식에 맞게 변환
+        const mappedData = result.data.map((item: any) => ({
+          rank: item.fee_rank,
+          salesperson_id: item.id,
+          salesperson_name: item.name,
+          total_contract_fee: item.total_contract_fee,
+          contract_count: item.contract_count
+        }));
+        setMonthlyRankings(mappedData.slice(0, 10)); // 상위 10명만
       }
     } catch (error) {
       console.error('월별 순위 조회 실패:', error);

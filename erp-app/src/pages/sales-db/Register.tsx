@@ -190,8 +190,37 @@ const SalesDBRegister: React.FC = () => {
     }
   };
 
-  const handleRemoveRow = (index: number) => {
+  const handleRemoveRow = async (index: number) => {
     if (rows.length > 1) {
+      const row = rows[index];
+      
+      // DB에 이미 저장된 데이터(id가 있는 경우)는 API를 호출하여 삭제
+      if (row.id) {
+        if (!confirm('이 행을 삭제하시겠습니까? DB에서 영구적으로 삭제됩니다.')) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/sales-db/${row.id}`, {
+            method: 'DELETE',
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            alert('삭제되었습니다.');
+          } else {
+            alert('삭제 실패: ' + result.message);
+            return;
+          }
+        } catch (error) {
+          console.error('삭제 중 오류 발생:', error);
+          alert('삭제 중 오류가 발생했습니다.');
+          return;
+        }
+      }
+      
+      // UI에서 행 제거
       const newRows = rows.filter((_, i) => i !== index);
       setRows(newRows);
     }

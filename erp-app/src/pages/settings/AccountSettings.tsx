@@ -173,7 +173,7 @@ const AccountSettings: React.FC = () => {
       
       // 이미 영어면 그대로, 한글이면 변환
       const normalizeRole = (role: string): string => {
-        if (['admin', 'employee', 'salesperson', 'recruiter', 'happycall'].includes(role)) {
+        if (['admin', 'employee', 'salesperson', 'recruiter', 'happycall', 'reviewer'].includes(role)) {
           return role;
         }
         return roleMapping[role] || 'employee';
@@ -254,7 +254,7 @@ const AccountSettings: React.FC = () => {
     const normalizeRole = (role: string | undefined): string => {
       if (!role) return 'employee';
       // 이미 영어 role 값이면 그대로 반환
-      if (['admin', 'employee', 'salesperson', 'recruiter', 'happycall'].includes(role)) {
+      if (['admin', 'employee', 'salesperson', 'recruiter', 'happycall', 'reviewer'].includes(role)) {
         return role;
       }
       // 한글이면 변환

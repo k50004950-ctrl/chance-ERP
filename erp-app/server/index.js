@@ -3691,22 +3691,15 @@ function scheduleBirthdayCheck() {
 // 경정청구 목록 조회
 app.get('/api/correction-requests', (req, res) => {
   try {
-    const { user_id, role } = req.query;
-    
-    let query = `
+    const query = `
       SELECT cr.*, 
         (SELECT COUNT(*) FROM correction_feedbacks WHERE correction_id = cr.id) as feedback_count
       FROM correction_requests cr
+      ORDER BY cr.created_at DESC
     `;
     
-    // 작성자 본인 데이터만 조회 (검토담당자와 관리자는 전체 조회)
-    if (role !== 'reviewer' && role !== 'admin') {
-      query += ` WHERE cr.writer_id = ?`;
-      const requests = db.prepare(query + ' ORDER BY cr.created_at DESC').all(user_id);
-      return res.json({ success: true, data: requests });
-    }
-    
-    const requests = db.prepare(query + ' ORDER BY cr.created_at DESC').all();
+    // 모든 사용자가 전체 경정청구 목록을 조회할 수 있음
+    const requests = db.prepare(query).all();
     res.json({ success: true, data: requests });
   } catch (error) {
     console.error('경정청구 목록 조회 오류:', error);

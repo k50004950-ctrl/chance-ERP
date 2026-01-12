@@ -338,7 +338,9 @@ const Sidebar: React.FC = () => {
               <p className="text-xs text-gray-500">
                 {user?.role === 'admin' ? '관리자' : 
                  user?.role === 'salesperson' ? '영업자' : 
-                 user?.role === 'recruiter' ? '섭외자' : '직원'}
+                 user?.role === 'recruiter' ? '섭외자' : 
+                 user?.role === 'happycall' ? '해피콜직원' : 
+                 user?.role === 'reviewer' ? '검토담당자' : '직원'}
               </p>
             </div>
           </div>

@@ -7,6 +7,8 @@ import { formatDateToKorean } from '../../utils/dateFormat';
 interface PerformanceData {
   id: number;
   proposal_date: string;
+  contract_date: string;
+  effective_date: string; // 계약일 우선, 없으면 섭외일
   proposer: string;
   salesperson_name: string;
   meeting_status: string;
@@ -154,7 +156,7 @@ const MonthlyPerformance: React.FC = () => {
   const downloadExcel = () => {
     // CSV 형식으로 데이터 변환
     const headers = [
-      '섭외 날짜',
+      '계약일',
       '섭외자',
       '영업자',
       '회사명',
@@ -173,7 +175,7 @@ const MonthlyPerformance: React.FC = () => {
     const csvContent = [
       headers.join(','),
       ...data.map(row => [
-        formatDateToKorean(row.proposal_date),
+        formatDateToKorean(row.effective_date),
         row.proposer || '',
         row.salesperson_name || '',
         row.company_name,
@@ -340,7 +342,7 @@ const MonthlyPerformance: React.FC = () => {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      섭외 날짜
+                      계약일
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       섭외자
@@ -381,7 +383,7 @@ const MonthlyPerformance: React.FC = () => {
                       onClick={() => navigate('/sales-db/register', { state: { editId: row.id } })}
                       className="hover:bg-blue-50 cursor-pointer transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {formatDateToKorean(row.proposal_date)}
+                        {formatDateToKorean(row.effective_date)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         {row.proposer || '-'}

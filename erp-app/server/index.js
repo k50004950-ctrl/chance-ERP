@@ -2904,6 +2904,8 @@ app.get('/api/admin/monthly-performance', (req, res) => {
       SELECT 
         sd.id,
         sd.proposal_date,
+        sd.contract_date,
+        CASE WHEN sd.contract_date IS NULL OR sd.contract_date = '' THEN sd.proposal_date ELSE sd.contract_date END as effective_date,
         sd.proposer,
         u.name as salesperson_name,
         sd.meeting_status,
@@ -2925,15 +2927,15 @@ app.get('/api/admin/monthly-performance', (req, res) => {
     
     const params = [];
     
-    // 연도/월 필터
+    // 연도/월 필터 (계약일 기준, 없으면 섭외일 사용)
     if (year && month) {
-      query += ` AND strftime('%Y', sd.proposal_date) = ? AND strftime('%m', sd.proposal_date) = ?`;
+      query += ` AND strftime('%Y', CASE WHEN sd.contract_date IS NULL OR sd.contract_date = '' THEN sd.proposal_date ELSE sd.contract_date END) = ? AND strftime('%m', CASE WHEN sd.contract_date IS NULL OR sd.contract_date = '' THEN sd.proposal_date ELSE sd.contract_date END) = ?`;
       params.push(year, String(month).padStart(2, '0'));
     } else if (year) {
-      query += ` AND strftime('%Y', sd.proposal_date) = ?`;
+      query += ` AND strftime('%Y', CASE WHEN sd.contract_date IS NULL OR sd.contract_date = '' THEN sd.proposal_date ELSE sd.contract_date END) = ?`;
       params.push(year);
     } else if (month) {
-      query += ` AND strftime('%m', sd.proposal_date) = ?`;
+      query += ` AND strftime('%m', CASE WHEN sd.contract_date IS NULL OR sd.contract_date = '' THEN sd.proposal_date ELSE sd.contract_date END) = ?`;
       params.push(String(month).padStart(2, '0'));
     }
     
@@ -2949,7 +2951,7 @@ app.get('/api/admin/monthly-performance', (req, res) => {
       params.push(client_name);
     }
     
-    query += ` ORDER BY sd.proposal_date DESC`;
+    query += ` ORDER BY CASE WHEN sd.contract_date IS NULL OR sd.contract_date = '' THEN sd.proposal_date ELSE sd.contract_date END DESC`;
     
     const data = db.prepare(query).all(...params);
     res.json({ success: true, data });

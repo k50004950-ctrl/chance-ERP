@@ -30,6 +30,7 @@ const HappyCallDBList: React.FC = () => {
   const [filteredData, setFilteredData] = useState<SalesDB[]>([]);
   const [showHappyCallModal, setShowHappyCallModal] = useState(false);
   const [selectedDB, setSelectedDB] = useState<SalesDB | null>(null);
+  const [loading, setLoading] = useState(true);
   const [happyCallData, setHappyCallData] = useState({
     call_date: new Date().toISOString().split('T')[0],
     call_content: '',
@@ -57,17 +58,27 @@ const HappyCallDBList: React.FC = () => {
   }, [searchTerm, salesDB]);
 
   const fetchSalesDB = async () => {
+    setLoading(true);
     try {
+      console.log('API 호출 시작:', `${API_BASE_URL}/api/sales-db`);
       const response = await fetch(`${API_BASE_URL}/api/sales-db`);
+      console.log('응답 상태:', response.status);
       const result = await response.json();
+      console.log('조회 결과:', result);
+      
       if (result.success) {
-        setSalesDB(result.data);
-        setFilteredData(result.data);
+        console.log('조회된 DB 수:', result.data.length);
+        setSalesDB(result.data || []);
+        setFilteredData(result.data || []);
       } else {
         console.error('DB 조회 실패:', result.message);
+        alert('DB 조회에 실패했습니다: ' + result.message);
       }
     } catch (error) {
       console.error('DB 조회 오류:', error);
+      alert('DB 조회 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -98,7 +109,9 @@ const HappyCallDBList: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           happycall_staff_id: currentUser.id,
+          happycall_staff_name: currentUser.name,
           salesperson_id: selectedDB.salesperson_id,
+          salesperson_name: selectedDB.salesperson_name,
           client_name: selectedDB.company_name,
           client_contact: selectedDB.contact,
           call_date: happyCallData.call_date,
@@ -163,10 +176,22 @@ const HappyCallDBList: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredData.length === 0 ? (
+              {loading ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
-                    조회된 데이터가 없습니다.
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      <span>데이터를 불러오는 중...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredData.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                    <div>
+                      <p className="text-lg font-medium mb-2">조회된 데이터가 없습니다.</p>
+                      <p className="text-sm">영업자가 등록한 DB가 없거나 검색 조건에 맞는 데이터가 없습니다.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (

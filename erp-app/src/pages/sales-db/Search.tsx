@@ -60,7 +60,7 @@ const SalesDBSearch: React.FC = () => {
 
   const fetchSalesDB = async () => {
     try {
-      const response = await fetch('/api/sales-db');
+      const response = await fetch(`${API_BASE_URL}/api/sales-db`);
       const result = await response.json();
       if (result.success) {
         setSalesDB(result.data);
@@ -136,7 +136,7 @@ const SalesDBSearch: React.FC = () => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     
     try {
-      const response = await fetch(`/api/sales-db/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${id}`, { method: 'DELETE' });
       const result = await response.json();
       if (result.success) {
         alert('삭제되었습니다.');
@@ -150,7 +150,7 @@ const SalesDBSearch: React.FC = () => {
 
   const handleMeetingStatusUpdate = async (id: number, newStatus: string) => {
     try {
-      const response = await fetch(`/api/sales-db/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ meeting_status: newStatus }),

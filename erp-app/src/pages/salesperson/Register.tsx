@@ -87,7 +87,7 @@ const SalespersonMyData: React.FC = () => {
 
   const fetchSalespersons = async () => {
     try {
-      const response = await fetch('/api/salespersons');
+      const response = await fetch(`${API_BASE_URL}/api/salespersons`);
       const result = await response.json();
       if (result.success) {
         setSalespersons(result.data);
@@ -103,7 +103,7 @@ const SalespersonMyData: React.FC = () => {
 
   const fetchSalesClients = async () => {
     try {
-      const response = await fetch('/api/sales-clients');
+      const response = await fetch(`${API_BASE_URL}/api/sales-clients`);
       const result = await response.json();
       if (result.success) {
         setSalesClients(result.data);
@@ -123,7 +123,7 @@ const SalespersonMyData: React.FC = () => {
     if (!salespersonId) return;
     
     try {
-      const response = await fetch(`/api/sales-db/my-data?salesperson_id=${salespersonId}`);
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/my-data?salesperson_id=${salespersonId}`);
       const result = await response.json();
       if (result.success) {
         setMyData(result.data);
@@ -144,7 +144,7 @@ const SalespersonMyData: React.FC = () => {
 
   const handleSave = async (item: MyDataItem) => {
     try {
-      const response = await fetch(`/api/sales-db/${item.id}/salesperson-update`, {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${item.id}/salesperson-update`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,8 +282,14 @@ const SalespersonMyData: React.FC = () => {
       return;
     }
     
+    // 거래처 확인
+    if (!newData.existing_client) {
+      alert('거래처를 선택해주세요.');
+      return;
+    }
+    
     try {
-      const response = await fetch('${API_BASE_URL}/api/sales-db', {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -291,7 +297,9 @@ const SalespersonMyData: React.FC = () => {
           proposer: currentUser.name,
           salesperson: currentUser.name,
           salesperson_id: salespersonId,
-          meeting_status: '미팅대기중'
+          meeting_status: '미팅완료',
+          contract_status: 'Y',  // 영업자가 입력하면 무조건 계약 완료
+          contract_date: new Date().toISOString().split('T')[0]
         })
       });
       
@@ -688,18 +696,23 @@ const SalespersonMyData: React.FC = () => {
                   />
                 </div>
 
-                {/* 기존거래처 */}
+                {/* 거래처 선택 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    기존거래처
+                    거래처 선택 <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={newData.existing_client}
                     onChange={(e) => setNewData({ ...newData, existing_client: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="기존거래처 입력"
-                  />
+                  >
+                    <option value="">거래처를 선택하세요</option>
+                    {salesClients.map((client) => (
+                      <option key={client.id} value={client.client_name}>
+                        {client.client_name} (수수료율: {client.commission_rate}%)
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* 섭외일 */}

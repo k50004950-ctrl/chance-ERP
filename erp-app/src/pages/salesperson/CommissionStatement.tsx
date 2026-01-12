@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Plus, DollarSign, Edit, Save } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../lib/api';
 
 interface Salesperson {
   id: number;
@@ -79,7 +80,7 @@ const SalespersonCommissionStatement: React.FC = () => {
     if (!selectedSalesperson) return;
     
     try {
-      const response = await fetch(`/api/salesperson/${selectedSalesperson}/commission-details?year=${selectedYear}&month=${selectedMonth}`);
+      const response = await fetch(`${API_BASE_URL}/api/salesperson/${selectedSalesperson}/commission-details?year=${selectedYear}&month=${selectedMonth}`);
       const result = await response.json();
       if (result.success) {
         setDetails(result.data);
@@ -94,7 +95,7 @@ const SalespersonCommissionStatement: React.FC = () => {
     if (!selectedSalesperson) return;
     
     try {
-      const response = await fetch(`/api/misc-commissions?salesperson_id=${selectedSalesperson}&year=${selectedYear}&month=${selectedMonth}`);
+      const response = await fetch(`${API_BASE_URL}/api/misc-commissions?salesperson_id=${selectedSalesperson}&year=${selectedYear}&month=${selectedMonth}`);
       const result = await response.json();
       if (result.success) {
         setMiscCommissions(result.data);
@@ -145,7 +146,7 @@ const SalespersonCommissionStatement: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/misc-commissions/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/misc-commissions/${id}`, {
         method: 'DELETE'
       });
 
@@ -221,7 +222,7 @@ const SalespersonCommissionStatement: React.FC = () => {
 
   const handleSave = async (id: number) => {
     try {
-      const response = await fetch(`/api/sales-db/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

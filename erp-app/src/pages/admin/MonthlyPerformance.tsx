@@ -422,7 +422,7 @@ const MonthlyPerformance: React.FC = () => {
                         {row.client_name || '-'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {row.contract_client ? `${row.contract_client.toLocaleString()}원` : '-'}
+                        {row.actual_sales ? `${row.actual_sales.toLocaleString()}원` : '-'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                         {row.commission_rate ? `${row.commission_rate}%` : '-'}

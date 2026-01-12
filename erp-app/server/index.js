@@ -3228,7 +3228,7 @@ app.get('/api/salesperson-performance', (req, res) => {
             COUNT(*) as total_db,
             COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
             COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed,
-            COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN CAST(contract_client AS INTEGER) ELSE 0 END), 0) as total_contract_amount
+            COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN actual_sales ELSE 0 END), 0) as total_contract_amount
           FROM sales_db
           WHERE salesperson_id = ?
             AND strftime('%Y', proposal_date) = ?
@@ -3255,7 +3255,7 @@ app.get('/api/salesperson-performance', (req, res) => {
             COUNT(*) as total_db,
             COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
             COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed,
-            COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN CAST(contract_client AS INTEGER) ELSE 0 END), 0) as total_contract_amount
+            COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN actual_sales ELSE 0 END), 0) as total_contract_amount
           FROM sales_db
           WHERE salesperson_id = ?
             AND proposal_date >= date('${startYear}-${startMonth}-01')
@@ -3281,7 +3281,7 @@ app.get('/api/salesperson-performance', (req, res) => {
           COUNT(*) as total_db,
           COUNT(CASE WHEN meeting_status = '미팅완료' THEN 1 END) as meeting_completed,
           COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed,
-          COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN CAST(contract_client AS INTEGER) ELSE 0 END), 0) as total_contract_amount
+          COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN actual_sales ELSE 0 END), 0) as total_contract_amount
         FROM sales_db
         WHERE salesperson_id = ?
           AND strftime('%Y', proposal_date) = ?

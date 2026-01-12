@@ -764,6 +764,129 @@ app.get('/api/users/:id', (req, res) => {
 });
 
 // Users API (계속)
+// 데이터베이스 마이그레이션 강제 실행 API (관리자 전용)
+app.post('/api/admin/force-migration', (req, res) => {
+  try {
+    console.log('=== 강제 마이그레이션 시작 ===');
+    
+    // 백업 테이블 이름들
+    const backupTables = [
+      'employees_backup',
+      'attendance_backup', 
+      'leaves_backup',
+      'sales_db_backup',
+      'sales_contracts_backup',
+      'commission_statements_backup',
+      'misc_commissions_backup',
+      'schedules_backup',
+      'memos_backup',
+      'account_change_requests_backup',
+      'notices_backup',
+      'notice_reads_backup',
+      'happycalls_backup'
+    ];
+    
+    // 기존 백업 테이블 삭제
+    backupTables.forEach(table => {
+      try {
+        db.exec(`DROP TABLE IF EXISTS ${table};`);
+      } catch (e) {}
+    });
+    
+    // users 테이블의 현재 스키마 확인
+    const currentSchema = db.prepare('SELECT sql FROM sqlite_master WHERE type="table" AND name="users"').get();
+    console.log('현재 users 스키마:', currentSchema?.sql?.substring(0, 100));
+    
+    if (currentSchema && !currentSchema.sql.includes("'happycall'")) {
+      console.log('마이그레이션 필요 - happycall 역할 추가 중...');
+      
+      // 모든 외래 키가 있는 테이블을 백업으로 복사
+      const tablesWithFK = [
+        'employees', 'attendance', 'leaves', 'sales_db', 'sales_contracts',
+        'commission_statements', 'misc_commissions', 'schedules', 'memos',
+        'account_change_requests', 'notices', 'notice_reads', 'happycalls'
+      ];
+      
+      tablesWithFK.forEach(table => {
+        try {
+          const tableExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(table);
+          if (tableExists) {
+            db.exec(`CREATE TABLE ${table}_backup AS SELECT * FROM ${table};`);
+            console.log(`✓ ${table} 백업 완료`);
+          }
+        } catch (e) {
+          console.log(`${table} 백업 스킵:`, e.message);
+        }
+      });
+      
+      // users 데이터 백업
+      db.exec(`CREATE TABLE users_backup AS SELECT * FROM users;`);
+      console.log('✓ users 백업 완료');
+      
+      // PRAGMA로 외래 키 제약 비활성화
+      db.exec('PRAGMA foreign_keys = OFF;');
+      console.log('✓ 외래 키 제약 비활성화');
+      
+      // users 테이블 삭제
+      db.exec(`DROP TABLE IF EXISTS users;`);
+      console.log('✓ users 테이블 삭제');
+      
+      // 새로운 users 테이블 생성 (happycall 포함)
+      db.exec(`
+        CREATE TABLE users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          name TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall')),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          employee_code TEXT,
+          department TEXT,
+          position TEXT,
+          commission_rate INTEGER DEFAULT 0,
+          bank_name TEXT,
+          account_number TEXT,
+          social_security_number TEXT,
+          hire_date DATE,
+          address TEXT,
+          emergency_contact TEXT
+        );
+      `);
+      console.log('✓ 새로운 users 테이블 생성 (happycall 지원)');
+      
+      // 백업에서 데이터 복구
+      db.exec(`INSERT INTO users SELECT * FROM users_backup;`);
+      console.log('✓ users 데이터 복구');
+      
+      // 외래 키 제약 다시 활성화
+      db.exec('PRAGMA foreign_keys = ON;');
+      console.log('✓ 외래 키 제약 활성화');
+      
+      // 백업 테이블 모두 삭제
+      db.exec(`DROP TABLE users_backup;`);
+      [...backupTables].forEach(table => {
+        try {
+          db.exec(`DROP TABLE IF EXISTS ${table};`);
+        } catch (e) {}
+      });
+      console.log('✓ 백업 테이블 삭제');
+      
+      res.json({ 
+        success: true, 
+        message: 'Migration completed successfully! You can now create happycall users.'
+      });
+    } else {
+      res.json({ 
+        success: true, 
+        message: 'No migration needed - happycall role already supported'
+      });
+    }
+  } catch (error) {
+    console.error('마이그레이션 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // CHECK constraint를 우회하는 특별 API (해피콜 역할 등 새로운 역할 추가용)
 app.post('/api/users/force-create', (req, res) => {
   try {

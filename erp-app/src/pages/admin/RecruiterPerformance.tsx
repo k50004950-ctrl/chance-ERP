@@ -25,7 +25,7 @@ const RecruiterPerformance: React.FC = () => {
 
   const fetchPerformanceData = async () => {
     try {
-      let url = '${API_BASE_URL}/api/recruiter-performance';
+      let url = `${API_BASE_URL}/api/recruiter-performance`;
       
       if (viewMode === 'custom') {
         url += `?year=${selectedYear}&month=${selectedMonth}`;

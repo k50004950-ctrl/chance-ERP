@@ -3164,8 +3164,8 @@ app.get('/api/recruiter-performance', (req, res) => {
             COUNT(CASE WHEN contract_status = 'Y' THEN 1 END) as contract_completed
           FROM sales_db
           WHERE proposer = ?
-            AND proposal_date >= date('${startYear}-${startMonth}-01')
-        `).get(recruiter.name);
+            AND proposal_date >= date(?)
+        `).get(recruiter.name, `${startYear}-${startMonth}-01`);
         
         return {
           ...recruiter,

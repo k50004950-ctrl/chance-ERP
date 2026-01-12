@@ -68,8 +68,8 @@ const Dashboard: React.FC = () => {
       return;
     }
     
-    // 해피콜 직원은 DB 조회 페이지로 리다이렉트
-    if (user?.role === 'happycall') {
+    // 해피콜 직원은 DB 조회 페이지로 리다이렉트 (임시: employee도 포함)
+    if (user?.role === 'happycall' || user?.role === 'employee') {
       navigate('/happycall/db-list', { replace: true });
       return;
     }

@@ -443,8 +443,8 @@ const MobileNav: React.FC = () => {
                 </>
               )}
 
-              {/* 해피콜 - 해피콜 직원 */}
-              {user?.role === 'happycall' && (
+              {/* 해피콜 - 해피콜 직원 (임시: employee도 접근 가능) */}
+              {(user?.role === 'happycall' || user?.role === 'employee') && (
                 <>
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
                     해피콜

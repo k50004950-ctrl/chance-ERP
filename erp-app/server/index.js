@@ -3321,7 +3321,7 @@ app.get('/api/salesperson-performance', (req, res) => {
     `).all();
     
     const results = salespersons.map(salesperson => {
-      // 월별 실적 계산
+      // 월별 실적 계산 (contract_date 우선, 없으면 proposal_date 사용)
       if (year && month) {
         const stats = db.prepare(`
           SELECT 
@@ -3331,8 +3331,8 @@ app.get('/api/salesperson-performance', (req, res) => {
             COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN actual_sales ELSE 0 END), 0) as total_contract_amount
           FROM sales_db
           WHERE salesperson_id = ?
-            AND strftime('%Y', proposal_date) = ?
-            AND strftime('%m', proposal_date) = ?
+            AND strftime('%Y', CASE WHEN contract_date IS NULL OR contract_date = '' THEN proposal_date ELSE contract_date END) = ?
+            AND strftime('%m', CASE WHEN contract_date IS NULL OR contract_date = '' THEN proposal_date ELSE contract_date END) = ?
         `).get(salesperson.id, year, String(month).padStart(2, '0'));
         
         return {
@@ -3358,8 +3358,8 @@ app.get('/api/salesperson-performance', (req, res) => {
             COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN actual_sales ELSE 0 END), 0) as total_contract_amount
           FROM sales_db
           WHERE salesperson_id = ?
-            AND proposal_date >= date('${startYear}-${startMonth}-01')
-        `).get(salesperson.id);
+            AND CASE WHEN contract_date IS NULL OR contract_date = '' THEN proposal_date ELSE contract_date END >= date(?)
+        `).get(salesperson.id, `${startYear}-${startMonth}-01`);
         
         return {
           ...salesperson,
@@ -3384,8 +3384,8 @@ app.get('/api/salesperson-performance', (req, res) => {
           COALESCE(SUM(CASE WHEN contract_status = 'Y' THEN actual_sales ELSE 0 END), 0) as total_contract_amount
         FROM sales_db
         WHERE salesperson_id = ?
-          AND strftime('%Y', proposal_date) = ?
-          AND strftime('%m', proposal_date) = ?
+          AND strftime('%Y', CASE WHEN contract_date IS NULL OR contract_date = '' THEN proposal_date ELSE contract_date END) = ?
+          AND strftime('%m', CASE WHEN contract_date IS NULL OR contract_date = '' THEN proposal_date ELSE contract_date END) = ?
       `).get(salesperson.id, String(currentYear), currentMonth);
       
       return {

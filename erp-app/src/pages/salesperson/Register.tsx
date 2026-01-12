@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, Users, Plus } from 'lucide-react';
+import { Edit, Save, X, Users, Plus, FileAudio, Upload, Download, Trash2 } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
+
+interface Recording {
+  id: number;
+  sales_db_id: number;
+  uploaded_by: number;
+  uploader_name: string;
+  uploader_role: string;
+  recording_type: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  notes: string;
+  created_at: string;
+}
 
 interface MyDataItem {
   id: number;
@@ -55,6 +69,11 @@ const SalespersonMyData: React.FC = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [newFeedback, setNewFeedback] = useState('');
+  const [showRecordingsModal, setShowRecordingsModal] = useState(false);
+  const [currentRecordings, setCurrentRecordings] = useState<Recording[]>([]);
+  const [selectedRecordingDbId, setSelectedRecordingDbId] = useState<number | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [recordingNotes, setRecordingNotes] = useState('');
   const [currentFeedbackId, setCurrentFeedbackId] = useState<number | null>(null);
   const [newData, setNewData] = useState({
     company_name: '',
@@ -178,6 +197,122 @@ const SalespersonMyData: React.FC = () => {
     setMyData(myData.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
+  };
+
+  // 녹취 파일 관리 함수들
+  const handleShowRecordings = async (dbId: number) => {
+    setSelectedRecordingDbId(dbId);
+    await fetchRecordings(dbId);
+    setShowRecordingsModal(true);
+  };
+
+  const fetchRecordings = async (dbId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${dbId}/recordings`);
+      const result = await response.json();
+      if (result.success) {
+        setCurrentRecordings(result.data);
+      }
+    } catch (error) {
+      console.error('녹취 파일 목록 조회 실패:', error);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setUploadingFiles(prev => [...prev, ...files]);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setUploadingFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUploadRecordings = async () => {
+    if (!selectedRecordingDbId || uploadingFiles.length === 0) {
+      alert('업로드할 파일을 선택하세요.');
+      return;
+    }
+
+    try {
+      for (const file of uploadingFiles) {
+        const formData = new FormData();
+        formData.append('recording', file);
+        formData.append('uploaded_by', currentUser.id.toString());
+        formData.append('uploader_name', currentUser.name);
+        formData.append('uploader_role', currentUser.role);
+        formData.append('recording_type', '미팅거절증거자료');
+        formData.append('notes', recordingNotes);
+
+        const response = await fetch(`${API_BASE_URL}/api/sales-db/${selectedRecordingDbId}/recordings`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          alert(`파일 업로드 실패: ${file.name} - ${result.message}`);
+          return;
+        }
+      }
+
+      alert('모든 녹취 파일이 업로드되었습니다.');
+      setUploadingFiles([]);
+      setRecordingNotes('');
+      await fetchRecordings(selectedRecordingDbId);
+    } catch (error) {
+      console.error('녹취 파일 업로드 실패:', error);
+      alert('녹취 파일 업로드 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDownloadRecording = async (recordingId: number) => {
+    try {
+      window.open(`${API_BASE_URL}/api/recordings/${recordingId}/download`, '_blank');
+    } catch (error) {
+      console.error('녹취 파일 다운로드 실패:', error);
+      alert('녹취 파일 다운로드 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteRecording = async (recordingId: number) => {
+    if (!confirm('이 녹취 파일을 삭제하시겠습니까?')) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/recordings/${recordingId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('녹취 파일이 삭제되었습니다.');
+        if (selectedRecordingDbId) {
+          await fetchRecordings(selectedRecordingDbId);
+        }
+      } else {
+        alert('삭제 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('녹취 파일 삭제 실패:', error);
+      alert('녹취 파일 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  const formatDateTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
   };
 
   const handleShowDetail = (item: MyDataItem) => {
@@ -401,6 +536,7 @@ const SalespersonMyData: React.FC = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약기장료</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">거래처</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-green-50">계약완료</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-red-50">미팅거절 증거</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">기타(피드백)</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 whitespace-nowrap">작업</th>
             </tr>
@@ -542,6 +678,19 @@ const SalespersonMyData: React.FC = () => {
                       }`}>
                         {item.contract_status || '-'}
                       </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 bg-red-50">
+                    {item.meeting_status === '미팅거절' ? (
+                      <button
+                        onClick={() => handleShowRecordings(item.id)}
+                        className="flex items-center space-x-1 text-red-600 hover:text-red-800 transition"
+                      >
+                        <FileAudio className="w-4 h-4" />
+                        <span className="text-sm font-medium">증거자료</span>
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">미팅거절 시 업로드</span>
                     )}
                   </td>
                   <td className="px-4 py-3 bg-blue-50">
@@ -1021,6 +1170,159 @@ const SalespersonMyData: React.FC = () => {
               >
                 닫기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 녹취 파일 관리 모달 */}
+      {showRecordingsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-red-500 to-red-600 text-white">
+              <div className="flex items-center space-x-3">
+                <FileAudio className="w-6 h-6" />
+                <h2 className="text-2xl font-bold">미팅거절 증거자료</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRecordingsModal(false);
+                  setUploadingFiles([]);
+                  setRecordingNotes('');
+                }}
+                className="text-white hover:text-gray-200 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* 파일 업로드 섹션 */}
+              <div className="bg-red-50 rounded-lg p-6 border border-red-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">새 증거자료 업로드</h3>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    녹취 파일 선택 (여러 개 선택 가능)
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="audio/*,video/*"
+                    onChange={handleFileSelect}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-500 file:text-white hover:file:bg-red-600 cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    미팅 거절 관련 녹취 또는 증거 파일을 업로드할 수 있습니다.
+                  </p>
+                </div>
+
+                {uploadingFiles.length > 0 && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      선택된 파일 ({uploadingFiles.length}개)
+                    </label>
+                    <div className="space-y-2">
+                      {uploadingFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                          <div className="flex items-center space-x-2">
+                            <FileAudio className="w-4 h-4 text-red-600" />
+                            <span className="text-sm text-gray-800">{file.name}</span>
+                            <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveFile(index)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    비고 (선택사항)
+                  </label>
+                  <textarea
+                    value={recordingNotes}
+                    onChange={(e) => setRecordingNotes(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    rows={2}
+                    placeholder="증거자료에 대한 메모를 입력하세요..."
+                  />
+                </div>
+
+                <button
+                  onClick={handleUploadRecordings}
+                  disabled={uploadingFiles.length === 0}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>업로드</span>
+                </button>
+              </div>
+
+              {/* 업로드된 증거자료 목록 */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">업로드된 증거자료</h3>
+                
+                {currentRecordings.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg">
+                    <FileAudio className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p>아직 업로드된 증거자료가 없습니다.</p>
+                    <p className="text-sm mt-2">첫 번째 증거자료를 업로드해보세요!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {currentRecordings.map((recording) => (
+                      <div 
+                        key={recording.id} 
+                        className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <FileAudio className="w-5 h-5 text-red-600" />
+                              <span className="font-medium text-gray-800">{recording.file_name}</span>
+                            </div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <p>업로더: <span className="font-medium">{recording.uploader_name}</span></p>
+                              <p>파일 크기: {formatFileSize(recording.file_size)}</p>
+                              <p>업로드 시간: {formatDateTime(recording.created_at)}</p>
+                              {recording.notes && (
+                                <p className="text-gray-700 mt-2 p-2 bg-white rounded border border-gray-200">
+                                  비고: {recording.notes}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 ml-4">
+                            <button
+                              onClick={() => handleDownloadRecording(recording.id)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                              title="다운로드"
+                            >
+                              <Download className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRecording(recording.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

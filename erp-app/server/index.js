@@ -41,7 +41,7 @@ function initDatabase() {
   // Ensure data directory exists
   if (!fs.existsSync(dataDir)) {
     try {
-      fs.mkdirSync(dataDir, { recursive: true });
+    fs.mkdirSync(dataDir, { recursive: true });
       console.log(`Created data directory: ${dataDir}`);
     } catch (err) {
       console.warn(`Could not create ${dataDir}, falling back to __dirname`);
@@ -308,6 +308,23 @@ function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (happycall_staff_id) REFERENCES users(id),
       FOREIGN KEY (salesperson_id) REFERENCES users(id)
+    );
+
+    -- 녹취 파일 관리 테이블
+    CREATE TABLE IF NOT EXISTS recordings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sales_db_id INTEGER NOT NULL,
+      uploaded_by INTEGER NOT NULL,
+      uploader_name TEXT NOT NULL,
+      uploader_role TEXT NOT NULL,
+      recording_type TEXT NOT NULL CHECK(recording_type IN ('섭외녹취', '미팅거절증거자료')),
+      file_name TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      file_size INTEGER,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sales_db_id) REFERENCES sales_db(id) ON DELETE CASCADE,
+      FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE
     );
 
     -- 경정청구 테이블
@@ -1038,7 +1055,7 @@ app.post('/api/users', (req, res) => {
     if (error.message && error.message.includes('UNIQUE constraint failed: users.username')) {
       res.json({ success: false, message: '이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.' });
     } else {
-      res.json({ success: false, message: error.message });
+    res.json({ success: false, message: error.message });
     }
   }
 });
@@ -1166,7 +1183,7 @@ app.delete('/api/users/:id', (req, res) => {
       db.prepare('UPDATE notices SET author_id = NULL WHERE author_id = ?').run(id);
       
       // 마지막으로 사용자 삭제
-      db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    db.prepare('DELETE FROM users WHERE id = ?').run(id);
     });
     
     deleteUser();
@@ -1888,8 +1905,8 @@ app.delete('/api/employees/:id', (req, res) => {
       db.prepare('DELETE FROM leaves WHERE employee_id = ?').run(id);
       
       // 3. 직원 레코드 삭제
-      db.prepare('DELETE FROM employees WHERE id = ?').run(id);
-      
+    db.prepare('DELETE FROM employees WHERE id = ?').run(id);
+    
       // 4. 연결된 사용자가 있으면 사용자 삭제 (모든 관련 데이터 포함)
       if (employee.user_id) {
         const userId = employee.user_id;
@@ -2008,9 +2025,9 @@ app.get('/api/salesperson/:id/commission-details', (req, res) => {
     } else {
       // 미확정인 경우: 실시간 데이터 반환 (월별 필터링)
       const yearMonth = `${year}-${month.padStart(2, '0')}`;
-      
-      const details = db.prepare(`
-        SELECT 
+    
+    const details = db.prepare(`
+      SELECT 
           s.id,
           s.company_name,
           s.contract_client,
@@ -3873,6 +3890,108 @@ app.get('/api/correction-requests/stats/monthly', (req, res) => {
     res.json({ success: true, data: stats });
   } catch (error) {
     console.error('경정청구 통계 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ==================== 녹취 파일 관리 API ====================
+
+// 녹취 파일 업로드
+app.post('/api/sales-db/:id/recordings', upload.single('recording'), (req, res) => {
+  try {
+    const { id } = req.params;
+    const { uploaded_by, uploader_name, uploader_role, recording_type, notes } = req.body;
+    const file = req.file;
+    
+    if (!file) {
+      return res.json({ success: false, message: '파일이 업로드되지 않았습니다.' });
+    }
+    
+    // 파일 정보 저장
+    const result = db.prepare(`
+      INSERT INTO recordings (sales_db_id, uploaded_by, uploader_name, uploader_role, recording_type, file_name, file_path, file_size, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, uploaded_by, uploader_name, uploader_role, recording_type, file.originalname, file.path, file.size, notes || '');
+    
+    res.json({ 
+      success: true, 
+      message: '녹취 파일이 업로드되었습니다.',
+      data: {
+        id: result.lastInsertRowid,
+        file_name: file.originalname,
+        file_size: file.size
+      }
+    });
+  } catch (error) {
+    console.error('녹취 파일 업로드 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 특정 DB의 녹취 파일 목록 조회
+app.get('/api/sales-db/:id/recordings', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const recordings = db.prepare(`
+      SELECT * FROM recordings 
+      WHERE sales_db_id = ?
+      ORDER BY created_at DESC
+    `).all(id);
+    
+    res.json({ success: true, data: recordings });
+  } catch (error) {
+    console.error('녹취 파일 목록 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 녹취 파일 다운로드
+app.get('/api/recordings/:id/download', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const recording = db.prepare('SELECT * FROM recordings WHERE id = ?').get(id);
+    
+    if (!recording) {
+      return res.status(404).json({ success: false, message: '파일을 찾을 수 없습니다.' });
+    }
+    
+    // 파일 존재 확인
+    if (!fs.existsSync(recording.file_path)) {
+      return res.status(404).json({ success: false, message: '파일이 서버에 존재하지 않습니다.' });
+    }
+    
+    // 파일 다운로드
+    res.download(recording.file_path, recording.file_name);
+  } catch (error) {
+    console.error('녹취 파일 다운로드 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 녹취 파일 삭제
+app.delete('/api/recordings/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const recording = db.prepare('SELECT * FROM recordings WHERE id = ?').get(id);
+    
+    if (!recording) {
+      return res.json({ success: false, message: '파일을 찾을 수 없습니다.' });
+    }
+    
+    // 파일 시스템에서 삭제
+    if (fs.existsSync(recording.file_path)) {
+      fs.unlinkSync(recording.file_path);
+    }
+    
+    // DB에서 삭제
+    db.prepare('DELETE FROM recordings WHERE id = ?').run(id);
+    
+    res.json({ success: true, message: '녹취 파일이 삭제되었습니다.' });
+  } catch (error) {
+    console.error('녹취 파일 삭제 오류:', error);
     res.json({ success: false, message: error.message });
   }
 });

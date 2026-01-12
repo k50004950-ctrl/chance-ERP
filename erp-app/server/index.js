@@ -349,6 +349,14 @@ function initDatabase() {
       if (!tableInfo.sql.includes("'happycall'")) {
         console.log('⚠️  Migration needed: adding happycall role support...');
         
+        // Disable foreign key constraints
+        db.exec('PRAGMA foreign_keys = OFF;');
+        console.log('✓ Foreign key constraints disabled');
+        
+        // Start transaction
+        db.exec('BEGIN TRANSACTION;');
+        console.log('✓ Transaction started');
+        
         // Drop users_new if exists (cleanup from previous failed attempts)
         try {
           db.exec(`DROP TABLE IF EXISTS users_new;`);
@@ -389,6 +397,14 @@ function initDatabase() {
         
         // Rename new table
         db.exec(`ALTER TABLE users_new RENAME TO users;`);
+        console.log('✓ Renamed new table to users');
+        
+        // Commit transaction
+        db.exec('COMMIT;');
+        console.log('✓ Transaction committed');
+        
+        // Re-enable foreign key constraints
+        db.exec('PRAGMA foreign_keys = ON;');
         console.log('✅ Users table migration completed successfully!');
       } else {
         console.log('✓ Users table already supports happycall role - no migration needed');
@@ -397,11 +413,13 @@ function initDatabase() {
   } catch (error) {
     console.error('❌ Error during users table migration:', error.message);
     console.error('Stack:', error.stack);
-    // Try to cleanup
+    // Try to rollback and cleanup
     try {
+      db.exec('ROLLBACK;');
+      db.exec('PRAGMA foreign_keys = ON;');
       db.exec(`DROP TABLE IF EXISTS users_new;`);
     } catch (e) {
-      // Ignore cleanup errors
+      console.error('Cleanup error:', e.message);
     }
   }
 

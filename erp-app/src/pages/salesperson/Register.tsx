@@ -63,6 +63,7 @@ const SalespersonMyData: React.FC = () => {
     contact: '',
     industry: '',
     sales_amount: 0,
+    actual_sales: 0,
     existing_client: '',
     proposal_date: new Date().toISOString().split('T')[0]
   });
@@ -316,6 +317,7 @@ const SalespersonMyData: React.FC = () => {
           contact: '',
           industry: '',
           sales_amount: 0,
+          actual_sales: 0,
           existing_client: '',
           proposal_date: new Date().toISOString().split('T')[0]
         });
@@ -693,6 +695,20 @@ const SalespersonMyData: React.FC = () => {
                     type="number"
                     value={newData.sales_amount}
                     onChange={(e) => setNewData({ ...newData, sales_amount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+
+                {/* 기장료 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    기장료 (원)
+                  </label>
+                  <input
+                    type="number"
+                    value={newData.actual_sales}
+                    onChange={(e) => setNewData({ ...newData, actual_sales: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="0"
                   />

@@ -338,54 +338,71 @@ function initDatabase() {
   addColumnIfNotExists('users', 'emergency_contact', 'TEXT');
 
   // Migrate users table to include 'happycall' role in CHECK constraint
+  console.log('Checking if users table migration is needed...');
   try {
-    // Check if migration is needed by trying to insert a test happycall user
-    const testUser = db.prepare('SELECT * FROM users WHERE role = ?').get('happycall');
-    
-    // If no happycall user exists, check if the constraint needs updating
+    // Check if the constraint includes 'happycall'
     const tableInfo = db.prepare('SELECT sql FROM sqlite_master WHERE type="table" AND name="users"').get();
     
-    if (tableInfo && tableInfo.sql && !tableInfo.sql.includes("'happycall'")) {
-      console.log('Migrating users table to support happycall role...');
+    if (tableInfo && tableInfo.sql) {
+      console.log('Current users table schema:', tableInfo.sql.substring(0, 200));
       
-      // Create temporary table with new constraint
-      db.exec(`
-        CREATE TABLE users_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT UNIQUE NOT NULL,
-          password TEXT NOT NULL,
-          name TEXT NOT NULL,
-          role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall')),
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          employee_code TEXT,
-          department TEXT,
-          position TEXT,
-          commission_rate INTEGER DEFAULT 0,
-          bank_name TEXT,
-          account_number TEXT,
-          social_security_number TEXT,
-          hire_date DATE,
-          address TEXT,
-          emergency_contact TEXT
-        );
-      `);
-      
-      // Copy data from old table to new table
-      db.exec(`
-        INSERT INTO users_new SELECT * FROM users;
-      `);
-      
-      // Drop old table
-      db.exec(`DROP TABLE users;`);
-      
-      // Rename new table
-      db.exec(`ALTER TABLE users_new RENAME TO users;`);
-      
-      console.log('Users table migration completed successfully!');
+      if (!tableInfo.sql.includes("'happycall'")) {
+        console.log('⚠️  Migration needed: adding happycall role support...');
+        
+        // Drop users_new if exists (cleanup from previous failed attempts)
+        try {
+          db.exec(`DROP TABLE IF EXISTS users_new;`);
+        } catch (e) {
+          // Ignore error if table doesn't exist
+        }
+        
+        // Create temporary table with new constraint
+        db.exec(`
+          CREATE TABLE users_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            name TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'salesperson', 'recruiter', 'happycall')),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            employee_code TEXT,
+            department TEXT,
+            position TEXT,
+            commission_rate INTEGER DEFAULT 0,
+            bank_name TEXT,
+            account_number TEXT,
+            social_security_number TEXT,
+            hire_date DATE,
+            address TEXT,
+            emergency_contact TEXT
+          );
+        `);
+        console.log('✓ Created new users table with happycall support');
+        
+        // Copy data from old table to new table
+        db.exec(`INSERT INTO users_new SELECT * FROM users;`);
+        console.log('✓ Copied existing user data');
+        
+        // Drop old table
+        db.exec(`DROP TABLE users;`);
+        console.log('✓ Dropped old users table');
+        
+        // Rename new table
+        db.exec(`ALTER TABLE users_new RENAME TO users;`);
+        console.log('✅ Users table migration completed successfully!');
+      } else {
+        console.log('✓ Users table already supports happycall role - no migration needed');
+      }
     }
   } catch (error) {
-    console.error('Error during users table migration:', error.message);
-    // If migration fails, continue anyway - the table might already be correct
+    console.error('❌ Error during users table migration:', error.message);
+    console.error('Stack:', error.stack);
+    // Try to cleanup
+    try {
+      db.exec(`DROP TABLE IF EXISTS users_new;`);
+    } catch (e) {
+      // Ignore cleanup errors
+    }
   }
 
   // Insert default admin user if not exists

@@ -526,8 +526,7 @@ const SalespersonMyData: React.FC = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약기장료</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">거래처</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-green-50">계약완료</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-green-50">섭외녹취</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-red-50">미팅거절 증거</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-purple-50">녹취관리</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">기타(피드백)</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 whitespace-nowrap">작업</th>
             </tr>
@@ -671,27 +670,14 @@ const SalespersonMyData: React.FC = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 bg-green-50">
+                  <td className="px-4 py-3 bg-purple-50">
                     <button
                       onClick={() => handleShowRecordings(item.id)}
-                      className="flex items-center space-x-1 text-green-600 hover:text-green-800 transition"
+                      className="flex items-center space-x-1 text-purple-600 hover:text-purple-800 transition"
                     >
                       <FileAudio className="w-4 h-4" />
-                      <span className="text-sm font-medium">섭외녹취</span>
+                      <span className="text-sm font-medium">녹취관리</span>
                     </button>
-                  </td>
-                  <td className="px-4 py-3 bg-red-50">
-                    {item.meeting_status === '미팅거절' ? (
-                      <button
-                        onClick={() => handleShowRecordings(item.id)}
-                        className="flex items-center space-x-1 text-red-600 hover:text-red-800 transition"
-                      >
-                        <FileAudio className="w-4 h-4" />
-                        <span className="text-sm font-medium">증거자료</span>
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">미팅거절 시 업로드</span>
-                    )}
                   </td>
                   <td className="px-4 py-3 bg-blue-50">
                     <button

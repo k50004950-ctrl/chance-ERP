@@ -1570,9 +1570,28 @@ app.post('/api/sales-db', (req, res) => {
     // 미팅희망날짜시간이 있고 영업자가 배정되어 있으면 자동으로 일정 추가
     if (meeting_request_datetime && salesperson_id) {
       try {
-        const dateTime = new Date(meeting_request_datetime);
-        const scheduleDate = dateTime.toISOString().split('T')[0];
-        const scheduleTime = dateTime.toTimeString().slice(0, 5);
+        console.log('일정 자동 추가 시작:', meeting_request_datetime, salesperson_id, company_name);
+        
+        // datetime-local 형식을 파싱: "2026-01-13T02:00"
+        let scheduleDate, scheduleTime;
+        
+        if (meeting_request_datetime.includes('T')) {
+          // ISO 형식 (datetime-local): "2026-01-13T02:00"
+          const parts = meeting_request_datetime.split('T');
+          scheduleDate = parts[0];
+          scheduleTime = parts[1] || '00:00';
+        } else if (meeting_request_datetime.includes(' ')) {
+          // 공백으로 구분된 형식: "2026-01-13 02:00"
+          const parts = meeting_request_datetime.split(' ');
+          scheduleDate = parts[0];
+          scheduleTime = parts[1] || '00:00';
+        } else {
+          // 날짜만 있는 경우
+          scheduleDate = meeting_request_datetime;
+          scheduleTime = '00:00';
+        }
+        
+        console.log('파싱된 일정:', scheduleDate, scheduleTime);
         
         const scheduleStmt = db.prepare(`
           INSERT INTO schedules (
@@ -1590,6 +1609,8 @@ app.post('/api/sales-db', (req, res) => {
           `섭외자: ${proposer}\n연락처: ${contact}\n대표자: ${representative}`,
           'scheduled'
         );
+        
+        console.log('일정 자동 추가 성공!');
       } catch (scheduleError) {
         console.error('일정 자동 추가 실패:', scheduleError);
         // 일정 추가 실패해도 DB 등록은 성공으로 처리
@@ -1645,9 +1666,28 @@ app.put('/api/sales-db/:id', (req, res) => {
     // 미팅희망날짜시간이 있고 영업자가 배정되어 있으면 일정 업데이트 또는 생성
     if (meeting_request_datetime && salesperson_id) {
       try {
-        const dateTime = new Date(meeting_request_datetime);
-        const scheduleDate = dateTime.toISOString().split('T')[0];
-        const scheduleTime = dateTime.toTimeString().slice(0, 5);
+        console.log('일정 자동 업데이트/생성 시작:', meeting_request_datetime, salesperson_id, company_name);
+        
+        // datetime-local 형식을 파싱: "2026-01-13T02:00"
+        let scheduleDate, scheduleTime;
+        
+        if (meeting_request_datetime.includes('T')) {
+          // ISO 형식 (datetime-local): "2026-01-13T02:00"
+          const parts = meeting_request_datetime.split('T');
+          scheduleDate = parts[0];
+          scheduleTime = parts[1] || '00:00';
+        } else if (meeting_request_datetime.includes(' ')) {
+          // 공백으로 구분된 형식: "2026-01-13 02:00"
+          const parts = meeting_request_datetime.split(' ');
+          scheduleDate = parts[0];
+          scheduleTime = parts[1] || '00:00';
+        } else {
+          // 날짜만 있는 경우
+          scheduleDate = meeting_request_datetime;
+          scheduleTime = '00:00';
+        }
+        
+        console.log('파싱된 일정:', scheduleDate, scheduleTime);
         
         // 해당 DB와 연결된 일정이 있는지 확인 (notes에 company_name 포함 여부로 판단)
         const existingSchedule = db.prepare(`
@@ -1658,6 +1698,7 @@ app.put('/api/sales-db/:id', (req, res) => {
         
         if (existingSchedule) {
           // 기존 일정 업데이트
+          console.log('기존 일정 업데이트:', existingSchedule.id);
           const updateScheduleStmt = db.prepare(`
             UPDATE schedules 
             SET schedule_date = ?, schedule_time = ?, title = ?, location = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
@@ -1673,6 +1714,7 @@ app.put('/api/sales-db/:id', (req, res) => {
           );
         } else {
           // 새 일정 생성
+          console.log('새 일정 생성');
           const scheduleStmt = db.prepare(`
             INSERT INTO schedules (
               user_id, title, schedule_date, schedule_time, client_name, location, notes, status

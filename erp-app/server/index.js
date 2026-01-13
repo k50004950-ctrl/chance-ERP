@@ -2878,6 +2878,34 @@ app.delete('/api/schedules/:id', (req, res) => {
   }
 });
 
+// DB 미팅 상태 자동 업데이트 (일정 완료 시 사용)
+app.put('/api/sales-db/update-meeting-status', (req, res) => {
+  try {
+    const { company_name, salesperson_id, meeting_status } = req.body;
+    
+    if (!company_name || !salesperson_id || !meeting_status) {
+      return res.json({ success: false, message: '필수 파라미터가 누락되었습니다.' });
+    }
+    
+    // 해당 업체명과 영업자로 DB 찾기
+    const stmt = db.prepare(`
+      UPDATE sales_db 
+      SET meeting_status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE company_name = ? AND salesperson_id = ?
+    `);
+    
+    const result = stmt.run(meeting_status, company_name, salesperson_id);
+    
+    if (result.changes > 0) {
+      res.json({ success: true, message: `${result.changes}건의 DB가 업데이트되었습니다.` });
+    } else {
+      res.json({ success: false, message: '해당하는 DB를 찾을 수 없습니다.' });
+    }
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // ========== 메모 API (Memos) ==========
 // 메모 조회 (본인 것만 조회, 관리자는 모든 메모 조회 가능)
 app.get('/api/memos', (req, res) => {

@@ -538,6 +538,14 @@ function initDatabase() {
     // 이미 컬럼이 존재하면 에러 발생, 무시
   }
 
+  // 기존 sales_db 테이블에 meeting_request_datetime 필드 추가 (없으면)
+  try {
+    db.exec('ALTER TABLE sales_db ADD COLUMN meeting_request_datetime TEXT');
+    console.log('meeting_request_datetime 필드가 sales_db 테이블에 추가되었습니다.');
+  } catch (e) {
+    // 이미 컬럼이 존재하면 에러 발생, 무시
+  }
+
   // 기존 attendance 테이블에 위치 정보 필드 추가 (없으면)
   try {
     db.exec('ALTER TABLE attendance ADD COLUMN check_in_location TEXT');
@@ -1540,25 +1548,25 @@ app.get('/api/sales-db/all', (req, res) => {
 app.post('/api/sales-db', (req, res) => {
   try {
     const { 
-      proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
+      proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
       address, contact, industry, sales_amount, existing_client, contract_status,
       termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date
     } = req.body;
     
     const stmt = db.prepare(`
       INSERT INTO sales_db (
-        proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
+        proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
         address, contact, industry, sales_amount, existing_client, contract_status,
         termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     const info = stmt.run(
-      proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
+      proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
       address, contact, industry, sales_amount, existing_client, contract_status,
       termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date
     );
-    res.json({ success: true, id: info.lastInsertRowid });
+    res.json({ success: true, id: info.lastInsertRowid, data: { id: info.lastInsertRowid } });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -1583,14 +1591,14 @@ app.put('/api/sales-db/:id', (req, res) => {
     
     // 전체 업데이트 (DB등록에서 호출)
     const { 
-      proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
+      proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
       address, contact, industry, sales_amount, existing_client, contract_status,
       termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date, commission_rate
     } = body;
     
     const stmt = db.prepare(`
       UPDATE sales_db 
-      SET proposal_date = ?, proposer = ?, salesperson_id = ?, meeting_status = ?, 
+      SET proposal_date = ?, proposer = ?, meeting_request_datetime = ?, salesperson_id = ?, meeting_status = ?, 
           company_name = ?, representative = ?, address = ?, contact = ?, industry = ?,
           sales_amount = ?, existing_client = ?, contract_status = ?, termination_month = ?,
           actual_sales = ?, contract_date = ?, contract_client = ?, contract_month = ?, client_name = ?,
@@ -1599,7 +1607,7 @@ app.put('/api/sales-db/:id', (req, res) => {
     `);
     
     stmt.run(
-      proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
+      proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
       address, contact, industry, sales_amount, existing_client, contract_status,
       termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date, commission_rate || 500, id
     );
@@ -1640,24 +1648,25 @@ app.post('/api/sales-db/upload-csv', upload.single('file'), (req, res) => {
     .on('end', () => {
       const stmt = db.prepare(`
         INSERT INTO sales_db (
-          proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
+          proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
           address, contact, industry, sales_amount, existing_client, contract_status,
           termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       let successCount = 0;
       results.forEach((row, index) => {
         try {
           // proposer 결정: CSV에 있으면 CSV 값, 없고 섭외자가 업로드했으면 섭외자 이름
-          let proposerValue = row.proposer || row['제안자'] || row['섭외자'] || null;
+          let proposerValue = row.proposer || row['섭외자'] || row['제안자'] || null;
           if (!proposerValue && uploaderRole === 'recruiter') {
             proposerValue = uploaderName;
           }
           
           stmt.run(
-            row.proposal_date || row['제안일자'] || row['섭외날짜'] || null,
+            row.proposal_date || row['섭외날짜'] || row['제안일자'] || null,
             proposerValue,
+            row.meeting_request_datetime || row['미팅희망날짜시간'] || null,
             row.salesperson_id || row['영업자ID'] || row['영업자'] || null,
             row.meeting_status || row['미팅여부'] || null,
             row.company_name || row['업체명'] || null,
@@ -1722,24 +1731,25 @@ app.post('/api/sales-db/upload-csv-stream', upload.single('file'), async (req, r
       try {
         const stmt = db.prepare(`
           INSERT INTO sales_db (
-            proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
+            proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
             address, contact, industry, sales_amount, existing_client, contract_status,
             termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const insertMany = db.transaction((rows) => {
           for (const row of rows) {
             try {
               // proposer 결정: CSV에 있으면 CSV 값, 없고 섭외자가 업로드했으면 섭외자 이름
-              let proposerValue = row.proposer || row['제안자'] || row['섭외자'] || null;
+              let proposerValue = row.proposer || row['섭외자'] || row['제안자'] || null;
               if (!proposerValue && uploaderRole === 'recruiter') {
                 proposerValue = uploaderName;
               }
               
               stmt.run(
-                row.proposal_date || row['제안일자'] || row['섭외날짜'] || null,
+                row.proposal_date || row['섭외날짜'] || row['제안일자'] || null,
                 proposerValue,
+                row.meeting_request_datetime || row['미팅희망날짜시간'] || null,
                 row.salesperson_id || row['영업자ID'] || row['영업자'] || null,
                 row.meeting_status || row['미팅여부'] || null,
                 row.company_name || row['업체명'] || null,

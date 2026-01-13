@@ -13,6 +13,7 @@ interface SalesDBRow {
   id?: number;
   proposal_date: string;
   proposer: string;
+  meeting_request_datetime: string;
   salesperson_id: string;
   meeting_status: string;
   company_name: string;
@@ -37,6 +38,7 @@ interface SalesDBRow {
 const emptyRow: SalesDBRow = {
   proposal_date: '',
   proposer: '',
+  meeting_request_datetime: '',
   salesperson_id: '',
   meeting_status: '',
   company_name: '',
@@ -114,6 +116,7 @@ const SalesDBRegister: React.FC = () => {
           id: item.id,
           proposal_date: item.proposal_date || '',
           proposer: item.proposer || '',
+          meeting_request_datetime: item.meeting_request_datetime || '',
           salesperson_id: item.salesperson_id ? String(item.salesperson_id) : '',
           meeting_status: item.meeting_status || '',
           company_name: item.company_name || '',
@@ -151,6 +154,7 @@ const SalesDBRegister: React.FC = () => {
           id: item.id,
           proposal_date: item.proposal_date || '',
           proposer: item.proposer || '',
+          meeting_request_datetime: item.meeting_request_datetime || '',
           salesperson_id: item.salesperson_id ? String(item.salesperson_id) : '',
           meeting_status: item.meeting_status || '',
           company_name: item.company_name || '',
@@ -374,8 +378,9 @@ const SalesDBRegister: React.FC = () => {
     // 샘플 데이터 생성
     const sampleData = [
       {
-        '제안일자': '2026-01-01',
-        '제안자': '홍길동',
+        '섭외날짜': '2026-01-01',
+        '섭외자': '홍길동',
+        '미팅희망날짜시간': '2026-01-05 14:00',
         '영업자ID': '1',
         '미팅여부': '완료',
         '업체명': '샘플회사',
@@ -402,8 +407,9 @@ const SalesDBRegister: React.FC = () => {
     
     // 컬럼 너비 설정
     const colWidths = [
-      { wch: 12 }, // 제안일자
-      { wch: 10 }, // 제안자
+      { wch: 12 }, // 섭외날짜
+      { wch: 10 }, // 섭외자
+      { wch: 18 }, // 미팅희망날짜시간
       { wch: 10 }, // 영업자ID
       { wch: 10 }, // 미팅여부
       { wch: 15 }, // 업체명
@@ -532,8 +538,9 @@ const SalesDBRegister: React.FC = () => {
           <thead className="bg-gray-50 sticky top-0">
             <tr>
               <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">작업</th>
-              <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">섭외날자</th>
+              <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">섭외날짜</th>
               <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">섭외자</th>
+              <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700 bg-yellow-50">미팅희망날짜시간</th>
               <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">영업자</th>
               <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">미팅여부</th>
               <th className="border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700">업체명<span className="text-red-500">*</span></th>
@@ -584,6 +591,14 @@ const SalesDBRegister: React.FC = () => {
                     className="w-24 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
                     readOnly={currentUser?.role === 'recruiter'}
                     style={{ backgroundColor: currentUser?.role === 'recruiter' ? '#f3f4f6' : 'transparent' }}
+                  />
+                </td>
+                <td className="border border-gray-300 px-1 py-1 bg-yellow-50">
+                  <input
+                    type="datetime-local"
+                    value={row.meeting_request_datetime}
+                    onChange={(e) => handleCellChange(index, 'meeting_request_datetime', e.target.value)}
+                    className="w-44 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
                   />
                 </td>
                 <td className="border border-gray-300 px-1 py-1">

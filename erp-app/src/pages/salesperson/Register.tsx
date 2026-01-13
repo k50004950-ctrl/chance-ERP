@@ -1348,13 +1348,13 @@ const SalespersonMyData: React.FC = () => {
                       {isEditingDetail && editedItem ? (
                         <input
                           type="number"
-                          value={editedItem.contract_client || ''}
-                          onChange={(e) => setEditedItem({ ...editedItem, contract_client: e.target.value })}
+                          value={editedItem.actual_sales || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, actual_sales: Number(e.target.value) })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                         />
                       ) : (
                         <p className="text-lg font-semibold text-blue-600">
-                          {selectedItem.contract_client ? `${new Intl.NumberFormat('ko-KR').format(Number(selectedItem.contract_client))}원` : '-'}
+                          {selectedItem.actual_sales ? `${new Intl.NumberFormat('ko-KR').format(Number(selectedItem.actual_sales))}원` : '-'}
                         </p>
                       )}
                     </div>

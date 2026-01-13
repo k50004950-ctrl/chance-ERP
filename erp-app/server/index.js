@@ -1566,6 +1566,36 @@ app.post('/api/sales-db', (req, res) => {
       address, contact, industry, sales_amount, existing_client, contract_status,
       termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date
     );
+    
+    // 미팅희망날짜시간이 있고 영업자가 배정되어 있으면 자동으로 일정 추가
+    if (meeting_request_datetime && salesperson_id) {
+      try {
+        const dateTime = new Date(meeting_request_datetime);
+        const scheduleDate = dateTime.toISOString().split('T')[0];
+        const scheduleTime = dateTime.toTimeString().slice(0, 5);
+        
+        const scheduleStmt = db.prepare(`
+          INSERT INTO schedules (
+            user_id, title, schedule_date, schedule_time, client_name, location, notes, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        scheduleStmt.run(
+          salesperson_id,
+          `고객 미팅: ${company_name}`,
+          scheduleDate,
+          scheduleTime,
+          company_name,
+          address || '',
+          `섭외자: ${proposer}\n연락처: ${contact}\n대표자: ${representative}`,
+          'scheduled'
+        );
+      } catch (scheduleError) {
+        console.error('일정 자동 추가 실패:', scheduleError);
+        // 일정 추가 실패해도 DB 등록은 성공으로 처리
+      }
+    }
+    
     res.json({ success: true, id: info.lastInsertRowid, data: { id: info.lastInsertRowid } });
   } catch (error) {
     res.json({ success: false, message: error.message });
@@ -1611,6 +1641,60 @@ app.put('/api/sales-db/:id', (req, res) => {
       address, contact, industry, sales_amount, existing_client, contract_status,
       termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date, commission_rate || 500, id
     );
+    
+    // 미팅희망날짜시간이 있고 영업자가 배정되어 있으면 일정 업데이트 또는 생성
+    if (meeting_request_datetime && salesperson_id) {
+      try {
+        const dateTime = new Date(meeting_request_datetime);
+        const scheduleDate = dateTime.toISOString().split('T')[0];
+        const scheduleTime = dateTime.toTimeString().slice(0, 5);
+        
+        // 해당 DB와 연결된 일정이 있는지 확인 (notes에 company_name 포함 여부로 판단)
+        const existingSchedule = db.prepare(`
+          SELECT id FROM schedules 
+          WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
+          ORDER BY created_at DESC LIMIT 1
+        `).get(salesperson_id, company_name);
+        
+        if (existingSchedule) {
+          // 기존 일정 업데이트
+          const updateScheduleStmt = db.prepare(`
+            UPDATE schedules 
+            SET schedule_date = ?, schedule_time = ?, title = ?, location = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `);
+          updateScheduleStmt.run(
+            scheduleDate,
+            scheduleTime,
+            `고객 미팅: ${company_name}`,
+            address || '',
+            `섭외자: ${proposer}\n연락처: ${contact}\n대표자: ${representative}`,
+            existingSchedule.id
+          );
+        } else {
+          // 새 일정 생성
+          const scheduleStmt = db.prepare(`
+            INSERT INTO schedules (
+              user_id, title, schedule_date, schedule_time, client_name, location, notes, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          scheduleStmt.run(
+            salesperson_id,
+            `고객 미팅: ${company_name}`,
+            scheduleDate,
+            scheduleTime,
+            company_name,
+            address || '',
+            `섭외자: ${proposer}\n연락처: ${contact}\n대표자: ${representative}`,
+            'scheduled'
+          );
+        }
+      } catch (scheduleError) {
+        console.error('일정 자동 추가/업데이트 실패:', scheduleError);
+        // 일정 추가 실패해도 DB 업데이트는 성공으로 처리
+      }
+    }
+    
     res.json({ success: true });
   } catch (error) {
     res.json({ success: false, message: error.message });

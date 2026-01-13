@@ -22,6 +22,7 @@ interface MyDataItem {
   id: number;
   proposal_date: string;
   proposer: string;
+  meeting_request_datetime: string;
   salesperson_id: number;
   meeting_status: string;
   company_name: string;
@@ -1282,6 +1283,28 @@ const SalespersonMyData: React.FC = () => {
                         />
                       ) : (
                         <p className="text-lg font-semibold text-gray-900">{selectedItem.proposer || '-'}</p>
+                      )}
+                    </div>
+                    <div className="col-span-3">
+                      <p className="text-sm font-medium text-gray-500 mb-1 bg-yellow-50 px-2 py-1 rounded">🗓️ 미팅 희망 날짜 및 시간</p>
+                      {isEditingDetail && editedItem ? (
+                        <input
+                          type="datetime-local"
+                          value={editedItem.meeting_request_datetime || ''}
+                          onChange={(e) => setEditedItem({ ...editedItem, meeting_request_datetime: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      ) : (
+                        <p className="text-lg font-semibold text-gray-900">
+                          {selectedItem.meeting_request_datetime ? 
+                            new Date(selectedItem.meeting_request_datetime).toLocaleString('ko-KR', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric', 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            }) : '-'}
+                        </p>
                       )}
                     </div>
                     <div>

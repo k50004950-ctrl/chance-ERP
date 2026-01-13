@@ -2948,6 +2948,95 @@ app.put('/api/sales-db/update-meeting-status', (req, res) => {
   }
 });
 
+// 기존 DB에서 일정 자동 생성 (미팅희망날짜시간이 있는데 일정이 없는 경우)
+app.post('/api/schedules/sync-from-db', (req, res) => {
+  try {
+    console.log('=== 일정 동기화 시작 ===');
+    
+    // meeting_request_datetime이 있고 salesperson_id가 있는 DB 조회
+    const dbRecords = db.prepare(`
+      SELECT id, meeting_request_datetime, salesperson_id, company_name, address, proposer, contact, representative
+      FROM sales_db 
+      WHERE meeting_request_datetime IS NOT NULL 
+        AND meeting_request_datetime != '' 
+        AND salesperson_id IS NOT NULL
+    `).all();
+    
+    console.log(`찾은 DB 레코드: ${dbRecords.length}개`);
+    
+    let createdCount = 0;
+    let skippedCount = 0;
+    
+    for (const record of dbRecords) {
+      // 이미 일정이 있는지 확인
+      const existingSchedule = db.prepare(`
+        SELECT id FROM schedules 
+        WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
+      `).get(record.salesperson_id, record.company_name);
+      
+      if (existingSchedule) {
+        console.log(`이미 일정 존재: ${record.company_name}`);
+        skippedCount++;
+        continue;
+      }
+      
+      // datetime 파싱
+      let scheduleDate, scheduleTime;
+      const datetime = record.meeting_request_datetime;
+      
+      if (datetime.includes('T')) {
+        const parts = datetime.split('T');
+        scheduleDate = parts[0];
+        scheduleTime = parts[1] || '00:00';
+      } else if (datetime.includes(' ')) {
+        const parts = datetime.split(' ');
+        scheduleDate = parts[0];
+        scheduleTime = parts[1] || '00:00';
+      } else {
+        scheduleDate = datetime;
+        scheduleTime = '00:00';
+      }
+      
+      // 일정 생성
+      try {
+        const scheduleStmt = db.prepare(`
+          INSERT INTO schedules (
+            user_id, title, schedule_date, schedule_time, client_name, location, notes, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        scheduleStmt.run(
+          record.salesperson_id,
+          `고객 미팅: ${record.company_name}`,
+          scheduleDate,
+          scheduleTime,
+          record.company_name,
+          record.address || '',
+          `섭외자: ${record.proposer || '-'}\n연락처: ${record.contact || '-'}\n대표자: ${record.representative || '-'}`,
+          'scheduled'
+        );
+        
+        console.log(`일정 생성 성공: ${record.company_name} (${scheduleDate} ${scheduleTime})`);
+        createdCount++;
+      } catch (error) {
+        console.error(`일정 생성 실패: ${record.company_name}`, error);
+      }
+    }
+    
+    console.log('=== 일정 동기화 완료 ===');
+    res.json({ 
+      success: true, 
+      message: `총 ${dbRecords.length}개 DB 중 ${createdCount}개 일정 생성, ${skippedCount}개 스킵`,
+      created: createdCount,
+      skipped: skippedCount,
+      total: dbRecords.length
+    });
+  } catch (error) {
+    console.error('일정 동기화 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // ========== 메모 API (Memos) ==========
 // 메모 조회 (본인 것만 조회, 관리자는 모든 메모 조회 가능)
 app.get('/api/memos', (req, res) => {

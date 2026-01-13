@@ -440,6 +440,13 @@ const SalesDBRegister: React.FC = () => {
     setIsUploading(true);
     const formData = new FormData();
     formData.append('file', file);
+    
+    // 섭외자인 경우 본인 정보 전달
+    if (currentUser) {
+      formData.append('uploader_role', currentUser.role);
+      formData.append('uploader_name', currentUser.name);
+      formData.append('uploader_id', String(currentUser.id));
+    }
 
     try {
       const response = await fetch('/api/sales-db/upload-csv', {
@@ -452,6 +459,13 @@ const SalesDBRegister: React.FC = () => {
         alert(`업로드 완료: ${result.successCount}개 데이터`);
         if (result.errors.length > 0) {
           console.error('업로드 오류:', result.errors);
+        }
+        
+        // 업로드 후 데이터 다시 로드
+        if (currentUser?.role === 'recruiter') {
+          await fetchExistingDataForRecruiter(currentUser.name);
+        } else {
+          await fetchExistingData();
         }
       } else {
         alert('업로드 실패: ' + result.message);

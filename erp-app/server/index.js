@@ -1629,6 +1629,11 @@ app.post('/api/sales-db/upload-csv', upload.single('file'), (req, res) => {
   const results = [];
   const errors = [];
   
+  // 업로더 정보 가져오기
+  const uploaderRole = req.body.uploader_role;
+  const uploaderName = req.body.uploader_name;
+  const uploaderId = req.body.uploader_id;
+  
   fs.createReadStream(req.file.path)
     .pipe(csv())
     .on('data', (data) => results.push(data))
@@ -1637,33 +1642,40 @@ app.post('/api/sales-db/upload-csv', upload.single('file'), (req, res) => {
         INSERT INTO sales_db (
           proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
           address, contact, industry, sales_amount, existing_client, contract_status,
-          termination_month, actual_sales, contract_client, contract_month, client_name, feedback, april_type1_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       let successCount = 0;
       results.forEach((row, index) => {
         try {
+          // proposer 결정: CSV에 있으면 CSV 값, 없고 섭외자가 업로드했으면 섭외자 이름
+          let proposerValue = row.proposer || row['제안자'] || row['섭외자'] || null;
+          if (!proposerValue && uploaderRole === 'recruiter') {
+            proposerValue = uploaderName;
+          }
+          
           stmt.run(
-            row.proposal_date || row['설의날짜'] || null,
-            row.proposer || row['설의자'] || null,
-            row.salesperson_id || row['영업자'] || null,
+            row.proposal_date || row['제안일자'] || row['섭외날짜'] || null,
+            proposerValue,
+            row.salesperson_id || row['영업자ID'] || row['영업자'] || null,
             row.meeting_status || row['미팅여부'] || null,
-            row.company_name || row['연차명'] || null,
+            row.company_name || row['업체명'] || null,
             row.representative || row['대표자'] || null,
             row.address || row['주소'] || null,
             row.contact || row['연락처'] || null,
             row.industry || row['업종'] || null,
-            row.sales_amount || row['매출'] || null,
+            row.sales_amount || row['연매출액'] || row['매출'] || null,
             row.existing_client || row['기존거래처'] || null,
-            row.contract_status || row['계약여부'] || null,
-            row.termination_month || row['해임월'] || null,
-            row.actual_sales || row['실제매출'] || null,
-            row.contract_client || row['계약거래처'] || null,
+            row.contract_status || row['계약상태'] || row['계약여부'] || null,
+            row.termination_month || row['해지월'] || row['해임월'] || null,
+            row.actual_sales || row['실매출액'] || row['실제매출'] || null,
+            row.contract_date || row['계약날짜'] || null,
+            row.contract_client || row['계약기장료'] || row['계약거래처'] || null,
             row.contract_month || row['계약월'] || null,
             row.client_name || row['거래처'] || null,
             row.feedback || row['기타(피드백)'] || null,
-            row.april_type1_date || row['4월1종날짜'] || null
+            row.april_type1_date || row['해피콜내용'] || row['4월1종날짜'] || null
           );
           successCount++;
         } catch (error) {
@@ -1699,6 +1711,11 @@ app.post('/api/sales-db/upload-csv-stream', upload.single('file'), async (req, r
   const BATCH_SIZE = 500; // 500개씩 배치 처리
   let batch = [];
   let isPaused = false;
+  
+  // 업로더 정보 가져오기
+  const uploaderRole = req.body.uploader_role;
+  const uploaderName = req.body.uploader_name;
+  const uploaderId = req.body.uploader_id;
 
   const processBatch = (rows) => {
     return new Promise((resolve, reject) => {
@@ -1707,33 +1724,40 @@ app.post('/api/sales-db/upload-csv-stream', upload.single('file'), async (req, r
           INSERT INTO sales_db (
             proposal_date, proposer, salesperson_id, meeting_status, company_name, representative,
             address, contact, industry, sales_amount, existing_client, contract_status,
-            termination_month, actual_sales, contract_client, contract_month, client_name, feedback, april_type1_date
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const insertMany = db.transaction((rows) => {
           for (const row of rows) {
             try {
+              // proposer 결정: CSV에 있으면 CSV 값, 없고 섭외자가 업로드했으면 섭외자 이름
+              let proposerValue = row.proposer || row['제안자'] || row['섭외자'] || null;
+              if (!proposerValue && uploaderRole === 'recruiter') {
+                proposerValue = uploaderName;
+              }
+              
               stmt.run(
-                row.proposal_date || row['설의날짜'] || null,
-                row.proposer || row['설의자'] || null,
-                row.salesperson_id || row['영업자'] || null,
+                row.proposal_date || row['제안일자'] || row['섭외날짜'] || null,
+                proposerValue,
+                row.salesperson_id || row['영업자ID'] || row['영업자'] || null,
                 row.meeting_status || row['미팅여부'] || null,
-                row.company_name || row['연차명'] || null,
+                row.company_name || row['업체명'] || null,
                 row.representative || row['대표자'] || null,
                 row.address || row['주소'] || null,
                 row.contact || row['연락처'] || null,
                 row.industry || row['업종'] || null,
-                row.sales_amount || row['매출'] || null,
+                row.sales_amount || row['연매출액'] || row['매출'] || null,
                 row.existing_client || row['기존거래처'] || null,
-                row.contract_status || row['계약여부'] || null,
-                row.termination_month || row['해임월'] || null,
-                row.actual_sales || row['실제매출'] || null,
-                row.contract_client || row['계약거래처'] || null,
+                row.contract_status || row['계약상태'] || row['계약여부'] || null,
+                row.termination_month || row['해지월'] || row['해임월'] || null,
+                row.actual_sales || row['실매출액'] || row['실제매출'] || null,
+                row.contract_date || row['계약날짜'] || null,
+                row.contract_client || row['계약기장료'] || row['계약거래처'] || null,
                 row.contract_month || row['계약월'] || null,
                 row.client_name || row['거래처'] || null,
                 row.feedback || row['기타(피드백)'] || null,
-                row.april_type1_date || row['4월1종날짜'] || null
+                row.april_type1_date || row['해피콜내용'] || row['4월1종날짜'] || null
               );
             } catch (err) {
               errors.push({ row: processedCount + rows.indexOf(row) + 1, error: err.message });

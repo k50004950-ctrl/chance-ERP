@@ -98,7 +98,7 @@ function App() {
             <Route path="admin/commission-summary" element={<CommissionSummary />} />
             <Route path="admin/account-change-approval" element={<AccountChangeApproval />} />
             <Route path="admin/notice-management" element={<NoticeManagement />} />
-            <Route path="admin/all-db" element={<AllDBManagement />} />
+            <Route path="admin/all-db-management" element={<AllDBManagement />} />
             
             {/* DB관리 */}
             <Route path="sales-db/register" element={<SalesDBRegister />} />

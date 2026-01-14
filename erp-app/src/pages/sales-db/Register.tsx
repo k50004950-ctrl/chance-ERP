@@ -62,8 +62,10 @@ const emptyRow: SalesDBRow = {
 const SalesDBRegister: React.FC = () => {
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
   const [rows, setRows] = useState<SalesDBRow[]>([{ ...emptyRow }]);
+  const [allRows, setAllRows] = useState<SalesDBRow[]>([]); // 전체 데이터 저장
   const [isUploading, setIsUploading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); // 기본값: 오늘
 
   // 천 단위 쉼표 포맷팅 함수
   const formatNumberWithCommas = (value: string): string => {
@@ -93,6 +95,13 @@ const SalesDBRegister: React.FC = () => {
       fetchExistingData();
     }
   }, []);
+
+  // 날짜 변경 시 필터링
+  useEffect(() => {
+    if (allRows.length > 0) {
+      filterRowsByDate(allRows, selectedDate);
+    }
+  }, [selectedDate]);
 
   const fetchSalespersons = async () => {
     try {
@@ -136,11 +145,33 @@ const SalesDBRegister: React.FC = () => {
           feedback: item.feedback || '',
           april_type1_date: item.april_type1_date || '',
         }));
-        // 기존 데이터 + 빈 행 하나 추가
-        setRows([...existingRows, { ...emptyRow }]);
+        setAllRows(existingRows);
+        // 날짜 필터 적용
+        filterRowsByDate(existingRows, selectedDate);
       }
     } catch (error) {
       console.error('기존 데이터 조회 실패:', error);
+    }
+  };
+
+  // 날짜별 필터링 함수
+  const filterRowsByDate = (data: SalesDBRow[], date: string) => {
+    let filtered = data;
+    
+    // 날짜가 선택되지 않으면 전체 데이터 표시
+    if (date) {
+      filtered = data.filter(row => {
+        if (!row.proposal_date) return false;
+        const rowDate = row.proposal_date.split('T')[0]; // YYYY-MM-DD 형식으로 변환
+        return rowDate === date;
+      });
+    }
+    
+    // 필터링된 데이터 + 빈 행 하나 추가
+    if (currentUser?.role === 'recruiter') {
+      setRows([...filtered, { ...emptyRow, proposer: currentUser.name }]);
+    } else {
+      setRows([...filtered, { ...emptyRow }]);
     }
   };
 
@@ -174,8 +205,14 @@ const SalesDBRegister: React.FC = () => {
           feedback: item.feedback || '',
           april_type1_date: item.april_type1_date || '',
         }));
-        // 기존 데이터 + 빈 행 하나 추가
-        setRows([...existingRows, { ...emptyRow, proposer: proposerName }]);
+        setAllRows(existingRows);
+        // 날짜 필터 적용
+        const filtered = existingRows.filter(row => {
+          if (!row.proposal_date) return false;
+          const rowDate = row.proposal_date.split('T')[0];
+          return rowDate === selectedDate;
+        });
+        setRows([...filtered, { ...emptyRow, proposer: proposerName }]);
       } else {
         // 데이터가 없으면 섭외자 이름이 자동 입력된 빈 행 추가
         setRows([{ ...emptyRow, proposer: proposerName }]);
@@ -488,7 +525,7 @@ const SalesDBRegister: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 flex items-center">
               <Save className="w-6 h-6 mr-2" />
@@ -529,6 +566,41 @@ const SalesDBRegister: React.FC = () => {
               <Save className="w-4 h-4 mr-2" />
               전체 저장
             </button>
+          </div>
+        </div>
+
+        {/* 날짜 필터 */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium text-gray-700">섭외 날짜:</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+            >
+              오늘
+            </button>
+            <button
+              onClick={() => {
+                setSelectedDate('');
+                if (currentUser?.role === 'recruiter') {
+                  setRows([...allRows, { ...emptyRow, proposer: currentUser.name }]);
+                } else {
+                  setRows([...allRows, { ...emptyRow }]);
+                }
+              }}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+            >
+              전체 보기
+            </button>
+            <span className="text-sm text-gray-600">
+              총 <span className="font-semibold text-blue-600">{rows.length - 1}</span>개 (빈 행 제외)
+            </span>
           </div>
         </div>
       </div>

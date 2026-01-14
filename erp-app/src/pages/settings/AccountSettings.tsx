@@ -131,7 +131,8 @@ const AccountSettings: React.FC = () => {
         social_security_number: '',
         hire_date: '',
         address: '',
-        emergency_contact: ''
+        emergency_contact: '',
+        notification_enabled: true
       });
     }
     setShowModal(true);
@@ -236,7 +237,8 @@ const AccountSettings: React.FC = () => {
       social_security_number: '',
       hire_date: '',
       address: '',
-      emergency_contact: ''
+      emergency_contact: '',
+      notification_enabled: true
     });
   };
 

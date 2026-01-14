@@ -1172,18 +1172,13 @@ const SalesDBRegister: React.FC = () => {
                   />
                 </td>
                 <td className="border border-gray-300 px-1 py-1">
-                  <select
+                  <input
+                    type="text"
                     value={row.contract_client}
-                    onChange={(e) => handleCellChange(index, 'contract_client', e.target.value)}
-                    className="w-32 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="">선택</option>
-                    {salesClients.map((client) => (
-                      <option key={client.id} value={client.client_name}>
-                        {client.client_name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(e) => handleContractClientChange(index, e.target.value)}
+                    className="w-32 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500 text-right"
+                    placeholder="0"
+                  />
                 </td>
                 <td className="border border-gray-300 px-1 py-1">
                   <input
@@ -1194,12 +1189,18 @@ const SalesDBRegister: React.FC = () => {
                   />
                 </td>
                 <td className="border border-gray-300 px-1 py-1">
-                  <input
-                    type="text"
+                  <select
                     value={row.client_name}
                     onChange={(e) => handleCellChange(index, 'client_name', e.target.value)}
-                    className="w-24 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="w-32 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">선택</option>
+                    {salesClients.map((client) => (
+                      <option key={client.id} value={client.client_name}>
+                        {client.client_name}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="border border-gray-300 px-1 py-1">
                   <input

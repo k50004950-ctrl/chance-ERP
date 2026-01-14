@@ -2333,7 +2333,7 @@ app.get('/api/sales-db/my-data-recruiter', (req, res) => {
 app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
   try {
     const { id } = req.params;
-    const { proposal_date, proposer, meeting_status, salesperson_id } = req.body;
+    const { proposal_date, proposer, meeting_status, salesperson_id, meeting_request_datetime } = req.body;
     
     // 본인 데이터인지 확인
     const record = db.prepare('SELECT proposer FROM sales_db WHERE id = ?').get(id);
@@ -2343,10 +2343,10 @@ app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
     
     const stmt = db.prepare(`
       UPDATE sales_db 
-      SET proposal_date = ?, meeting_status = ?, salesperson_id = ?, updated_at = CURRENT_TIMESTAMP
+      SET proposal_date = ?, meeting_status = ?, salesperson_id = ?, meeting_request_datetime = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    stmt.run(proposal_date, meeting_status, salesperson_id, id);
+    stmt.run(proposal_date, meeting_status, salesperson_id, meeting_request_datetime, id);
     
     res.json({ success: true });
   } catch (error) {
@@ -2366,12 +2366,19 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
       return res.json({ success: false, message: '권한이 없습니다.' });
     }
     
+    // 일정재섭외로 변경 시 영업자를 초기화 (null로 설정)
+    let finalSalespersonId = salesperson_id;
+    if (meeting_status === '일정재섭외' && meeting_status !== record.old_meeting_status) {
+      finalSalespersonId = null;
+      console.log(`일정재섭외로 변경됨 - 영업자 초기화: DB ID ${id}`);
+    }
+    
     const stmt = db.prepare(`
       UPDATE sales_db 
-      SET contract_date = ?, meeting_status = ?, contract_client = ?, client_name = ?, contract_status = ?, feedback = ?, actual_sales = ?, updated_at = CURRENT_TIMESTAMP
+      SET contract_date = ?, meeting_status = ?, contract_client = ?, client_name = ?, contract_status = ?, feedback = ?, actual_sales = ?, salesperson_id = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    stmt.run(contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, id);
+    stmt.run(contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, finalSalespersonId, id);
     
     // 알림 생성: meeting_status가 '일정재섭외' 또는 'AS'로 변경된 경우
     if (meeting_status && (meeting_status === '일정재섭외' || meeting_status === 'AS') && meeting_status !== record.old_meeting_status) {

@@ -28,6 +28,7 @@ interface MyDataItem {
   client_name: string;
   feedback: string;
   april_type1_date: string;
+  meeting_request_datetime: string;
 }
 
 interface Salesperson {
@@ -439,6 +440,7 @@ const RecruiterMyData: React.FC = () => {
           proposal_date: item.proposal_date,
           meeting_status: item.meeting_status,
           salesperson_id: item.salesperson_id,
+          meeting_request_datetime: item.meeting_request_datetime,
           proposer: currentUser.name,
         }),
       });
@@ -486,10 +488,10 @@ const RecruiterMyData: React.FC = () => {
           </div>
         </div>
         <p className="text-sm text-blue-600 mt-3">
-          ※ 설의날짜, 미팅여부, 담당영업자 필드만 수정 가능합니다.
+          ※ 설의날짜, 미팅희망날짜시간, 미팅여부, 담당영업자 필드만 수정 가능합니다.
         </p>
         <p className="text-sm text-purple-600 mt-1">
-          ※ <strong>업체명</strong>을 클릭하면 상세 정보를 확인할 수 있습니다.
+          ※ <strong>업체명</strong>을 클릭하면 DB등록 페이지로 이동하여 수정할 수 있습니다.
         </p>
       </div>
 
@@ -719,6 +721,7 @@ const RecruiterMyData: React.FC = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">설의날짜</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-yellow-50">미팅희망날짜시간</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">업체명</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">대표자</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">연락처</th>
@@ -733,7 +736,7 @@ const RecruiterMyData: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
                   {selectedYear || selectedMonth ? '해당 기간에 섭외한 업체가 없습니다.' : '섭외한 업체 데이터가 없습니다.'}
                 </td>
               </tr>
@@ -759,6 +762,28 @@ const RecruiterMyData: React.FC = () => {
                       />
                     ) : (
                       <span className="text-sm text-gray-900">{formatDateToKorean(item.proposal_date) || '-'}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 bg-yellow-50">
+                    {editingId === item.id ? (
+                      <input
+                        type="datetime-local"
+                        value={item.meeting_request_datetime || ''}
+                        onChange={(e) => handleChange(item.id, 'meeting_request_datetime', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="text-sm text-gray-900">
+                        {item.meeting_request_datetime 
+                          ? new Date(item.meeting_request_datetime).toLocaleString('ko-KR', { 
+                              year: 'numeric', 
+                              month: '2-digit', 
+                              day: '2-digit', 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })
+                          : '-'}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">

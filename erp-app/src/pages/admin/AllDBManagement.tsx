@@ -172,8 +172,16 @@ const AllDBManagement: React.FC = () => {
       filtered = filtered.filter((item) => !item.salesperson_id || item.salesperson_id === null);
     }
 
+    // 편집 중인 항목은 필터 조건과 관계없이 항상 표시
+    if (editingId) {
+      const editingItem = allData.find((item) => item.id === editingId);
+      if (editingItem && !filtered.find((item) => item.id === editingId)) {
+        filtered.push(editingItem);
+      }
+    }
+
     setFilteredData(filtered);
-  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, showUnassignedOnly, allData]);
+  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, showUnassignedOnly, allData, editingId]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);

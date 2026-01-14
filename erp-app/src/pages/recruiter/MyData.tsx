@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle, Plus, FileAudio, Upload, Download, Trash2, Bell, BellOff } from 'lucide-react';
+import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle, Plus, FileAudio, Upload, Download, Trash2, Bell, BellOff, ExternalLink } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface MyDataItem {
   id: number;
@@ -48,6 +49,7 @@ interface Notification {
 
 const RecruiterMyData: React.FC = () => {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const [myData, setMyData] = useState<MyDataItem[]>([]);
   const [filteredData, setFilteredData] = useState<MyDataItem[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -250,6 +252,11 @@ const RecruiterMyData: React.FC = () => {
   const handleShowDetail = (item: MyDataItem) => {
     setSelectedItem(item);
     setShowDetailModal(true);
+  };
+
+  const handleGoToDBRegister = (itemId: number) => {
+    // DB등록 페이지로 이동하면서 해당 항목을 편집할 수 있도록 ID 전달
+    navigate(`/sales-db/register?editId=${itemId}`);
   };
 
   const handleShowFeedback = async (id: number) => {
@@ -755,12 +762,16 @@ const RecruiterMyData: React.FC = () => {
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
-                    <button
-                      onClick={() => handleShowDetail(item)}
-                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition"
-                    >
-                      {item.company_name}
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleGoToDBRegister(item.id)}
+                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition flex items-center"
+                        title="DB등록에서 수정하기"
+                      >
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        {item.company_name}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                     {item.representative || '-'}

@@ -3,6 +3,7 @@ import { Upload, Save, Plus, Trash2, Download, FileAudio, X, AlertCircle } from 
 import * as XLSX from 'xlsx';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../lib/api';
+import { useSearchParams } from 'react-router-dom';
 
 interface Salesperson {
   id: number;
@@ -60,6 +61,7 @@ const emptyRow: SalesDBRow = {
 };
 
 const SalesDBRegister: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
   const [rows, setRows] = useState<SalesDBRow[]>([{ ...emptyRow }]);
   const [allRows, setAllRows] = useState<SalesDBRow[]>([]); // 전체 데이터 저장
@@ -71,6 +73,7 @@ const SalesDBRegister: React.FC = () => {
   const [endDate, setEndDate] = useState<string>(''); // 종료일
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle'); // 자동 저장 상태
   const tableContainerRef = useRef<HTMLDivElement>(null); // 테이블 컨테이너 ref
+  const [highlightedRowId, setHighlightedRowId] = useState<number | null>(null); // 하이라이트할 행 ID
 
   // 천 단위 쉼표 포맷팅 함수
   const formatNumberWithCommas = (value: string): string => {
@@ -156,6 +159,33 @@ const SalesDBRegister: React.FC = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [rows, currentUser]);
+
+  // URL 파라미터에서 editId를 읽어서 해당 항목 하이라이트 및 스크롤
+  useEffect(() => {
+    const editId = searchParams.get('editId');
+    if (editId && rows.length > 0) {
+      const targetId = parseInt(editId);
+      const targetIndex = rows.findIndex(row => row.id === targetId);
+      
+      if (targetIndex !== -1) {
+        // 하이라이트 설정
+        setHighlightedRowId(targetId);
+        
+        // 해당 행으로 스크롤
+        setTimeout(() => {
+          const rowElement = document.querySelector(`[data-row-id="${targetId}"]`);
+          if (rowElement) {
+            rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+        
+        // 3초 후 하이라이트 제거
+        setTimeout(() => {
+          setHighlightedRowId(null);
+        }, 3000);
+      }
+    }
+  }, [searchParams, rows]);
 
   // 키보드 방향키로 테이블 가로 스크롤
   useEffect(() => {
@@ -934,7 +964,13 @@ const SalesDBRegister: React.FC = () => {
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={index} className="hover:bg-gray-50">
+              <tr 
+                key={index} 
+                data-row-id={row.id}
+                className={`hover:bg-gray-50 transition-colors ${
+                  highlightedRowId === row.id ? 'bg-yellow-100 ring-2 ring-yellow-400' : ''
+                }`}
+              >
                 <td className="border border-gray-300 px-2 py-1">
                   <button
                     onClick={() => handleRemoveRow(index)}

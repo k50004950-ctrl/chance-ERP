@@ -766,12 +766,54 @@ const RecruiterMyData: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 bg-yellow-50">
                     {editingId === item.id ? (
-                      <input
-                        type="datetime-local"
-                        value={item.meeting_request_datetime || ''}
-                        onChange={(e) => handleChange(item.id, 'meeting_request_datetime', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                      />
+                      <div className="flex flex-col space-y-1">
+                        <KoreanDatePicker
+                          selected={item.meeting_request_datetime ? new Date(item.meeting_request_datetime) : null}
+                          onChange={(date) => {
+                            if (date) {
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              
+                              // 기존 시간 유지 (있으면)
+                              let time = '00:00';
+                              if (item.meeting_request_datetime) {
+                                const existingDate = new Date(item.meeting_request_datetime);
+                                const hours = String(existingDate.getHours()).padStart(2, '0');
+                                const minutes = String(existingDate.getMinutes()).padStart(2, '0');
+                                time = `${hours}:${minutes}`;
+                              }
+                              
+                              handleChange(item.id, 'meeting_request_datetime', `${year}-${month}-${day}T${time}`);
+                            } else {
+                              handleChange(item.id, 'meeting_request_datetime', '');
+                            }
+                          }}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                          placeholderText="날짜 선택"
+                        />
+                        <input
+                          type="time"
+                          value={item.meeting_request_datetime ? new Date(item.meeting_request_datetime).toTimeString().slice(0, 5) : ''}
+                          onChange={(e) => {
+                            if (item.meeting_request_datetime) {
+                              const date = new Date(item.meeting_request_datetime);
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              handleChange(item.id, 'meeting_request_datetime', `${year}-${month}-${day}T${e.target.value}`);
+                            } else {
+                              const today = new Date();
+                              const year = today.getFullYear();
+                              const month = String(today.getMonth() + 1).padStart(2, '0');
+                              const day = String(today.getDate()).padStart(2, '0');
+                              handleChange(item.id, 'meeting_request_datetime', `${year}-${month}-${day}T${e.target.value}`);
+                            }
+                          }}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                          placeholder="시간 선택"
+                        />
+                      </div>
                     ) : (
                       <span className="text-sm text-gray-900">
                         {item.meeting_request_datetime 

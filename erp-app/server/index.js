@@ -2360,15 +2360,20 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
     const { id } = req.params;
     const { contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, salesperson_id } = req.body;
     
-    // 본인 데이터인지 확인
+    // 본인 데이터인지 확인 (salesperson_id가 null인 경우도 허용)
     const record = db.prepare('SELECT salesperson_id, proposer, company_name, meeting_status as old_meeting_status FROM sales_db WHERE id = ?').get(id);
-    if (!record || record.salesperson_id != salesperson_id) {
+    if (!record) {
+      return res.json({ success: false, message: '데이터를 찾을 수 없습니다.' });
+    }
+    
+    // 권한 체크: salesperson_id가 null이 아닌 경우에만 비교
+    if (record.salesperson_id !== null && record.salesperson_id != salesperson_id) {
       return res.json({ success: false, message: '권한이 없습니다.' });
     }
     
     // 일정재섭외로 변경 시 영업자를 초기화 (null로 설정)
     let finalSalespersonId = salesperson_id;
-    if (meeting_status === '일정재섭외' && meeting_status !== record.old_meeting_status) {
+    if (meeting_status === '일정재섭외') {
       finalSalespersonId = null;
       console.log(`일정재섭외로 변경됨 - 영업자 초기화: DB ID ${id}`);
     }

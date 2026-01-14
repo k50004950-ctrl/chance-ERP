@@ -69,6 +69,7 @@ const SalesDBRegister: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); // 기본값: 오늘
   const [startDate, setStartDate] = useState<string>(''); // 시작일
   const [endDate, setEndDate] = useState<string>(''); // 종료일
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle'); // 자동 저장 상태
 
   // 천 단위 쉼표 포맷팅 함수
   const formatNumberWithCommas = (value: string): string => {
@@ -91,6 +92,26 @@ const SalesDBRegister: React.FC = () => {
     
     fetchSalespersons();
     
+    // 로컬 스토리지에서 임시 저장된 데이터 확인
+    const savedDraft = localStorage.getItem(`db_register_draft_${user.id}`);
+    
+    if (savedDraft) {
+      const shouldRestore = window.confirm('저장하지 않은 작업 중인 데이터가 있습니다. 복원하시겠습니까?');
+      if (shouldRestore) {
+        try {
+          const draftData = JSON.parse(savedDraft);
+          setRows(draftData);
+          alert('작업 중이던 데이터를 복원했습니다.');
+          return; // 복원했으면 서버에서 다시 로드하지 않음
+        } catch (error) {
+          console.error('임시 데이터 복원 실패:', error);
+          localStorage.removeItem(`db_register_draft_${user.id}`);
+        }
+      } else {
+        localStorage.removeItem(`db_register_draft_${user.id}`);
+      }
+    }
+    
     // 섭외자인 경우 본인이 등록한 것만 가져옴
     if (user.role === 'recruiter') {
       fetchExistingDataForRecruiter(user.name);
@@ -105,6 +126,35 @@ const SalesDBRegister: React.FC = () => {
       applyFilter();
     }
   }, [filterType, selectedDate, startDate, endDate, allRows]);
+
+  // 작업 중인 데이터 자동 저장 (로컬 스토리지)
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    // 빈 행만 있는 경우는 저장하지 않음
+    const hasData = rows.some(row => row.company_name || row.contact || row.representative);
+    
+    if (hasData) {
+      setAutoSaveStatus('saving');
+      
+      // 디바운스: 1초 후에 저장
+      const timeoutId = setTimeout(() => {
+        try {
+          localStorage.setItem(`db_register_draft_${currentUser.id}`, JSON.stringify(rows));
+          console.log('작업 내용이 자동 저장되었습니다.');
+          setAutoSaveStatus('saved');
+          
+          // 2초 후에 상태 초기화
+          setTimeout(() => setAutoSaveStatus('idle'), 2000);
+        } catch (error) {
+          console.error('자동 저장 실패:', error);
+          setAutoSaveStatus('idle');
+        }
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [rows, currentUser]);
 
   const fetchSalespersons = async () => {
     try {
@@ -410,6 +460,12 @@ const SalesDBRegister: React.FC = () => {
       }
 
       if (successCount > 0) {
+        // 저장 성공 시 로컬 스토리지의 임시 데이터 삭제
+        if (currentUser?.id) {
+          localStorage.removeItem(`db_register_draft_${currentUser.id}`);
+          console.log('임시 저장 데이터가 삭제되었습니다.');
+        }
+        
         alert(`${successCount}건이 저장되었습니다.${errorCount > 0 ? ` (${errorCount}건 실패)` : ''}`);
         // 저장 후 데이터 다시 로드
         if (currentUser?.role === 'recruiter') {
@@ -607,11 +663,25 @@ const SalesDBRegister: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-              <Save className="w-6 h-6 mr-2" />
-              DB 등록
-            </h1>
-            <p className="text-gray-600 mt-1">고객 정보를 테이블 형태로 입력하세요</p>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl font-bold text-gray-800 flex items-center">
+                <Save className="w-6 h-6 mr-2" />
+                DB 등록
+              </h1>
+              {autoSaveStatus === 'saved' && (
+                <span className="text-sm text-green-600 flex items-center animate-fade-in">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                  자동 저장됨
+                </span>
+              )}
+              {autoSaveStatus === 'saving' && (
+                <span className="text-sm text-blue-600 flex items-center">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
+                  저장 중...
+                </span>
+              )}
+            </div>
+            <p className="text-gray-600 mt-1">고객 정보를 테이블 형태로 입력하세요 (작업 내용은 자동으로 저장됩니다)</p>
           </div>
           <div className="flex space-x-3">
             <button
@@ -666,6 +736,23 @@ const SalesDBRegister: React.FC = () => {
                 중복 삭제
               </button>
             )}
+            <button
+              onClick={() => {
+                if (confirm('작업 중인 임시 저장 데이터를 삭제하고 새로 시작하시겠습니까?')) {
+                  if (currentUser?.id) {
+                    localStorage.removeItem(`db_register_draft_${currentUser.id}`);
+                    setRows([{ ...emptyRow }]);
+                    setAutoSaveStatus('idle');
+                    alert('임시 저장 데이터가 삭제되었습니다.');
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center text-sm"
+              title="임시 저장된 작업 내용을 삭제하고 새로 시작합니다"
+            >
+              <X className="w-4 h-4 mr-1" />
+              새로 시작
+            </button>
           </div>
         </div>
 

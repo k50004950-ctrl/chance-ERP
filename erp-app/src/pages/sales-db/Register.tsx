@@ -65,7 +65,10 @@ const SalesDBRegister: React.FC = () => {
   const [allRows, setAllRows] = useState<SalesDBRow[]>([]); // 전체 데이터 저장
   const [isUploading, setIsUploading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [filterType, setFilterType] = useState<'single' | 'range' | 'all'>('single'); // 필터 타입
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); // 기본값: 오늘
+  const [startDate, setStartDate] = useState<string>(''); // 시작일
+  const [endDate, setEndDate] = useState<string>(''); // 종료일
 
   // 천 단위 쉼표 포맷팅 함수
   const formatNumberWithCommas = (value: string): string => {
@@ -96,12 +99,12 @@ const SalesDBRegister: React.FC = () => {
     }
   }, []);
 
-  // 날짜 변경 시 필터링
+  // 필터 변경 시 필터링
   useEffect(() => {
     if (allRows.length > 0) {
-      filterRowsByDate(allRows, selectedDate);
+      applyFilter();
     }
-  }, [selectedDate]);
+  }, [filterType, selectedDate, startDate, endDate, allRows]);
 
   const fetchSalespersons = async () => {
     try {
@@ -146,26 +149,32 @@ const SalesDBRegister: React.FC = () => {
           april_type1_date: item.april_type1_date || '',
         }));
         setAllRows(existingRows);
-        // 날짜 필터 적용
-        filterRowsByDate(existingRows, selectedDate);
       }
     } catch (error) {
       console.error('기존 데이터 조회 실패:', error);
     }
   };
 
-  // 날짜별 필터링 함수
-  const filterRowsByDate = (data: SalesDBRow[], date: string) => {
-    let filtered = data;
+  // 필터 적용 함수
+  const applyFilter = () => {
+    let filtered = allRows;
     
-    // 날짜가 선택되지 않으면 전체 데이터 표시
-    if (date) {
-      filtered = data.filter(row => {
+    if (filterType === 'single' && selectedDate) {
+      // 특정 날짜 필터
+      filtered = allRows.filter(row => {
         if (!row.proposal_date) return false;
-        const rowDate = row.proposal_date.split('T')[0]; // YYYY-MM-DD 형식으로 변환
-        return rowDate === date;
+        const rowDate = row.proposal_date.split('T')[0];
+        return rowDate === selectedDate;
+      });
+    } else if (filterType === 'range' && startDate && endDate) {
+      // 날짜 범위 필터
+      filtered = allRows.filter(row => {
+        if (!row.proposal_date) return false;
+        const rowDate = row.proposal_date.split('T')[0];
+        return rowDate >= startDate && rowDate <= endDate;
       });
     }
+    // filterType === 'all'이면 filtered = allRows 그대로
     
     // 필터링된 데이터 + 빈 행 하나 추가
     if (currentUser?.role === 'recruiter') {
@@ -206,13 +215,6 @@ const SalesDBRegister: React.FC = () => {
           april_type1_date: item.april_type1_date || '',
         }));
         setAllRows(existingRows);
-        // 날짜 필터 적용
-        const filtered = existingRows.filter(row => {
-          if (!row.proposal_date) return false;
-          const rowDate = row.proposal_date.split('T')[0];
-          return rowDate === selectedDate;
-        });
-        setRows([...filtered, { ...emptyRow, proposer: proposerName }]);
       } else {
         // 데이터가 없으면 섭외자 이름이 자동 입력된 빈 행 추가
         setRows([{ ...emptyRow, proposer: proposerName }]);
@@ -571,36 +573,98 @@ const SalesDBRegister: React.FC = () => {
 
         {/* 날짜 필터 */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">섭외 날짜:</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-            />
+          {/* 필터 타입 선택 */}
+          <div className="flex items-center space-x-2 mb-3">
+            <label className="text-sm font-medium text-gray-700">필터:</label>
             <button
-              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+              onClick={() => {
+                setFilterType('single');
+                setSelectedDate(new Date().toISOString().split('T')[0]);
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                filterType === 'single'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
             >
-              오늘
+              특정일
             </button>
             <button
               onClick={() => {
-                setSelectedDate('');
-                if (currentUser?.role === 'recruiter') {
-                  setRows([...allRows, { ...emptyRow, proposer: currentUser.name }]);
-                } else {
-                  setRows([...allRows, { ...emptyRow }]);
-                }
+                setFilterType('range');
+                setStartDate('');
+                setEndDate('');
               }}
-              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                filterType === 'range'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
             >
-              전체 보기
+              기간
             </button>
-            <span className="text-sm text-gray-600">
-              총 <span className="font-semibold text-blue-600">{rows.length - 1}</span>개 (빈 행 제외)
-            </span>
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                filterType === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              전체
+            </button>
+          </div>
+
+          {/* 필터 입력 필드 */}
+          <div className="flex items-center space-x-4">
+            {filterType === 'single' && (
+              <>
+                <label className="text-sm font-medium text-gray-700">섭외 날짜:</label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <button
+                  onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                  className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+                >
+                  오늘
+                </button>
+              </>
+            )}
+
+            {filterType === 'range' && (
+              <>
+                <label className="text-sm font-medium text-gray-700">기간:</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  placeholder="시작일"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <span className="text-gray-600">~</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  placeholder="종료일"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </>
+            )}
+
+            {filterType === 'all' && (
+              <p className="text-sm text-gray-600">모든 날짜의 데이터를 표시합니다.</p>
+            )}
+
+            <div className="ml-auto">
+              <span className="text-sm text-gray-600">
+                총 <span className="font-semibold text-blue-600">{rows.length - 1}</span>개 (빈 행 제외)
+              </span>
+            </div>
           </div>
         </div>
       </div>

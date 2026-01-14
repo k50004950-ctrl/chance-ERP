@@ -1686,6 +1686,24 @@ app.put('/api/sales-db/:id', (req, res) => {
       termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date, commission_rate || 500, id
     );
     
+    // 담당영업자가 변경된 경우, 이전 담당자의 일정 삭제
+    if (existingData && existingData.salesperson_id && existingData.salesperson_id !== salesperson_id) {
+      try {
+        console.log('담당영업자 변경 감지:', existingData.salesperson_id, '->', salesperson_id);
+        console.log('이전 담당자의 일정 삭제:', existingData.salesperson_id, company_name);
+        
+        // 이전 담당자의 해당 DB 관련 일정 삭제
+        const deletePrevScheduleStmt = db.prepare(`
+          DELETE FROM schedules 
+          WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
+        `);
+        const deleteResult = deletePrevScheduleStmt.run(existingData.salesperson_id, company_name);
+        console.log('삭제된 일정 개수:', deleteResult.changes);
+      } catch (deleteError) {
+        console.error('이전 담당자 일정 삭제 실패:', deleteError);
+      }
+    }
+    
     // 미팅희망날짜시간이 있고 영업자가 배정되어 있으면 일정 업데이트 또는 생성
     if (meeting_request_datetime && salesperson_id) {
       try {
@@ -1712,7 +1730,7 @@ app.put('/api/sales-db/:id', (req, res) => {
         
         console.log('파싱된 일정:', scheduleDate, scheduleTime);
         
-        // 해당 DB와 연결된 일정이 있는지 확인 (notes에 company_name 포함 여부로 판단)
+        // 현재 담당자의 해당 DB와 연결된 일정이 있는지 확인
         const existingSchedule = db.prepare(`
           SELECT id FROM schedules 
           WHERE user_id = ? AND client_name = ? AND status = 'scheduled'

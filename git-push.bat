@@ -1,6 +1,6 @@
 @echo off
 cd /d "C:\chance erp\HRM"
 git add -A
-git commit -m "Fix: KoreanDatePicker prop name from selectedDate to selected"
+git commit -m "Fix: Delete previous salesperson schedule when reassigning DB"
 git push origin master
 pause

@@ -28,6 +28,7 @@ import SalespersonRegister from './pages/salesperson/Register';
 import ScheduleManagement from './pages/salesperson/ScheduleManagement';
 import MemoManagement from './pages/salesperson/MemoManagement';
 import MonthlyRanking from './pages/salesperson/MonthlyRanking';
+import TaxCalculator from './pages/salesperson/TaxCalculator';
 
 // 섭외자 관리
 import RecruiterMyData from './pages/recruiter/MyData';
@@ -110,6 +111,7 @@ function App() {
             <Route path="salesperson/schedules" element={<ScheduleManagement />} />
             <Route path="salesperson/memos" element={<MemoManagement />} />
             <Route path="salesperson/monthly-ranking" element={<MonthlyRanking />} />
+            <Route path="salesperson/tax-calculator" element={<TaxCalculator />} />
             
             {/* 섭외자 관리 */}
             <Route path="recruiter/my-data" element={<RecruiterMyData />} />

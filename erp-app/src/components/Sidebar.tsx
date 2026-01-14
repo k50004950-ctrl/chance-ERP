@@ -192,6 +192,7 @@ const Sidebar: React.FC = () => {
         { title: '내 DB 관리', path: '/salesperson/register', icon: <UserPlus className="w-4 h-4" /> },
         { title: '일정관리', path: '/salesperson/schedules', icon: <Calendar className="w-4 h-4" /> },
         { title: '메모관리', path: '/salesperson/memos', icon: <FileText className="w-4 h-4" /> },
+        { title: '종합소득세 계산기', path: '/salesperson/tax-calculator', icon: <Calculator className="w-4 h-4" /> },
       ],
     },
     {

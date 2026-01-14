@@ -407,6 +407,19 @@ const MobileNav: React.FC = () => {
                   >
                     <span className="text-sm font-medium">메모관리</span>
                   </NavLink>
+                  <NavLink
+                    to="/salesperson/tax-calculator"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-sm font-medium">종합소득세 계산기</span>
+                  </NavLink>
 
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
                     영업자 관리

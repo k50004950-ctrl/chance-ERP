@@ -4555,6 +4555,47 @@ app.put('/api/users/:id/notification-settings', (req, res) => {
   }
 });
 
+// 중복 데이터 확인 및 삭제 API
+app.post('/api/sales-db/remove-duplicates', (req, res) => {
+  try {
+    // 중복 데이터 찾기 (company_name, proposal_date, proposer가 같은 경우)
+    const duplicates = db.prepare(`
+      SELECT company_name, proposal_date, proposer, COUNT(*) as count, GROUP_CONCAT(id) as ids
+      FROM sales_db
+      GROUP BY company_name, proposal_date, proposer
+      HAVING count > 1
+    `).all();
+
+    if (duplicates.length === 0) {
+      return res.json({ success: true, message: '중복된 데이터가 없습니다.', removedCount: 0 });
+    }
+
+    let removedCount = 0;
+    
+    // 각 중복 그룹에서 가장 오래된 것만 남기고 나머지 삭제
+    for (const duplicate of duplicates) {
+      const ids = duplicate.ids.split(',').map(id => parseInt(id));
+      // 첫 번째 ID만 남기고 나머지 삭제
+      const idsToDelete = ids.slice(1);
+      
+      for (const id of idsToDelete) {
+        db.prepare('DELETE FROM sales_db WHERE id = ?').run(id);
+        removedCount++;
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${removedCount}개의 중복 데이터를 삭제했습니다.`,
+      removedCount,
+      duplicateGroups: duplicates.length
+    });
+  } catch (error) {
+    console.error('중복 데이터 삭제 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Catch-all route for React Router (SPA)
 // This must be AFTER all API routes
 app.get('*', (req, res) => {

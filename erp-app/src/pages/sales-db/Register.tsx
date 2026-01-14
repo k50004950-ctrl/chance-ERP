@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Save, Plus, Trash2, Download, FileAudio, X } from 'lucide-react';
+import { Upload, Save, Plus, Trash2, Download, FileAudio, X, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../lib/api';
@@ -283,8 +283,49 @@ const SalesDBRegister: React.FC = () => {
     setRows(newRows);
   };
 
-  const handleSaveAll = async () => {
+  // 중복 데이터 삭제 함수
+  const handleRemoveDuplicates = async () => {
+    if (!confirm('중복된 데이터를 삭제하시겠습니까? (같은 업체명, 섭외일, 섭외자의 중복 데이터 중 가장 오래된 것만 남기고 삭제됩니다)')) {
+      return;
+    }
+
     try {
+      setIsUploading(true);
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/remove-duplicates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        // 삭제 후 데이터 다시 로드
+        if (currentUser?.role === 'recruiter') {
+          await fetchExistingDataForRecruiter(currentUser.name);
+        } else {
+          await fetchExistingData();
+        }
+      } else {
+        alert('중복 데이터 삭제 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('중복 데이터 삭제 오류:', error);
+      alert('중복 데이터 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSaveAll = async () => {
+    // 이미 저장 중이면 중복 실행 방지
+    if (isUploading) {
+      console.log('이미 저장 중입니다.');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
       let successCount = 0;
       let errorCount = 0;
 
@@ -347,6 +388,8 @@ const SalesDBRegister: React.FC = () => {
     } catch (error) {
       console.error('저장 중 오류 발생:', error);
       alert('저장 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -563,11 +606,31 @@ const SalesDBRegister: React.FC = () => {
             </button>
             <button
               onClick={handleSaveAll}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center"
+              disabled={isUploading}
+              className={`px-4 py-2 text-white rounded-lg flex items-center ${
+                isUploading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-indigo-600 hover:bg-indigo-700'
+              }`}
             >
               <Save className="w-4 h-4 mr-2" />
-              전체 저장
+              {isUploading ? '저장 중...' : '전체 저장'}
             </button>
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={handleRemoveDuplicates}
+                disabled={isUploading}
+                className={`px-4 py-2 text-white rounded-lg flex items-center ${
+                  isUploading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+                title="같은 업체명, 섭외일, 섭외자의 중복 데이터를 삭제합니다"
+              >
+                <AlertCircle className="w-4 h-4 mr-2" />
+                중복 삭제
+              </button>
+            )}
           </div>
         </div>
 

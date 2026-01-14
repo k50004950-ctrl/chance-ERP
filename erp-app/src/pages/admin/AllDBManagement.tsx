@@ -185,9 +185,12 @@ const AllDBManagement: React.FC = () => {
   };
 
   const handleChange = (id: number, field: string, value: string | number) => {
-    setAllData(allData.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    // allData와 filteredData 모두 업데이트
+    const updateItem = (item: DBItem) => 
+      item.id === id ? { ...item, [field]: value } : item;
+    
+    setAllData(allData.map(updateItem));
+    setFilteredData(filteredData.map(updateItem));
   };
 
   const handleSave = async (item: DBItem) => {

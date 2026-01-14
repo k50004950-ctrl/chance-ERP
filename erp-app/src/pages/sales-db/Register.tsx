@@ -100,28 +100,45 @@ const SalesDBRegister: React.FC = () => {
     const savedDraft = localStorage.getItem(`db_register_draft_${user.id}`);
     
     if (savedDraft) {
-      const shouldRestore = window.confirm('저장하지 않은 작업 중인 데이터가 있습니다. 복원하시겠습니까?');
-      if (shouldRestore) {
-        try {
-          const draftData = JSON.parse(savedDraft);
-          
-          // 섭외자인 경우 본인의 데이터만 필터링
-          if (user.role === 'recruiter') {
-            const filteredData = draftData.filter((row: SalesDBRow) => 
-              !row.proposer || row.proposer === user.name
-            );
-            setRows(filteredData);
-            alert('작업 중이던 데이터를 복원했습니다.');
-          } else {
-            setRows(draftData);
-            alert('작업 중이던 데이터를 복원했습니다.');
-          }
-          return; // 복원했으면 서버에서 다시 로드하지 않음
-        } catch (error) {
-          console.error('임시 데이터 복원 실패:', error);
+      try {
+        const draftData = JSON.parse(savedDraft);
+        
+        // 빈 행만 있는 경우는 무시 (의미있는 데이터가 있는지 확인)
+        const hasData = draftData.some((row: SalesDBRow) => 
+          row.company_name || row.contact || row.representative
+        );
+        
+        if (!hasData) {
+          // 빈 행만 있으면 자동으로 삭제하고 서버에서 데이터 로드
           localStorage.removeItem(`db_register_draft_${user.id}`);
+        } else {
+          const shouldRestore = window.confirm('저장하지 않은 작업 중인 데이터가 있습니다. 복원하시겠습니까?');
+          if (shouldRestore) {
+            try {
+              // 섭외자인 경우 본인의 데이터만 필터링
+              if (user.role === 'recruiter') {
+                const filteredData = draftData.filter((row: SalesDBRow) => 
+                  !row.proposer || row.proposer === user.name
+                );
+                setRows(filteredData);
+                alert('작업 중이던 데이터를 복원했습니다.');
+              } else {
+                setRows(draftData);
+                alert('작업 중이던 데이터를 복원했습니다.');
+              }
+              // 복원했으면 localStorage 삭제 (다음에 다시 물어보지 않음)
+              localStorage.removeItem(`db_register_draft_${user.id}`);
+              return; // 복원했으면 서버에서 다시 로드하지 않음
+            } catch (error) {
+              console.error('임시 데이터 복원 실패:', error);
+              localStorage.removeItem(`db_register_draft_${user.id}`);
+            }
+          } else {
+            localStorage.removeItem(`db_register_draft_${user.id}`);
+          }
         }
-      } else {
+      } catch (error) {
+        console.error('임시 데이터 파싱 실패:', error);
         localStorage.removeItem(`db_register_draft_${user.id}`);
       }
     }

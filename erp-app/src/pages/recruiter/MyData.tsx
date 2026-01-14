@@ -71,6 +71,10 @@ const RecruiterMyData: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(true);
 
+  // 상세보기 모달 관련 states
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MyDataItem | null>(null);
+
   useEffect(() => {
     if (currentUser && currentUser.role === 'recruiter') {
       fetchMyData(currentUser.name);
@@ -212,6 +216,11 @@ const RecruiterMyData: React.FC = () => {
     if (currentUser) {
       fetchMyData(currentUser.name);
     }
+  };
+
+  const handleShowDetail = (item: MyDataItem) => {
+    setSelectedItem(item);
+    setShowDetailModal(true);
   };
 
   const handleShowFeedback = async (id: number) => {
@@ -443,6 +452,9 @@ const RecruiterMyData: React.FC = () => {
         <p className="text-sm text-blue-600 mt-3">
           ※ 설의날짜, 미팅여부, 담당영업자 필드만 수정 가능합니다.
         </p>
+        <p className="text-sm text-purple-600 mt-1">
+          ※ <strong>업체명</strong>을 클릭하면 상세 정보를 확인할 수 있습니다.
+        </p>
       </div>
 
       {/* 실적 통계 */}
@@ -640,8 +652,13 @@ const RecruiterMyData: React.FC = () => {
                       <span className="text-sm text-gray-900">{formatDateToKorean(item.proposal_date) || '-'}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                    {item.company_name}
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    <button
+                      onClick={() => handleShowDetail(item)}
+                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition"
+                    >
+                      {item.company_name}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                     {item.representative || '-'}
@@ -828,6 +845,182 @@ const RecruiterMyData: React.FC = () => {
                   <span>피드백 추가</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 상세 정보 모달 */}
+      {showDetailModal && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-2 md:p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-600 text-white sticky top-0 z-10">
+              <h2 className="text-lg md:text-2xl font-bold">업체 상세 정보</h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="text-white hover:text-gray-200 transition"
+              >
+                <X className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 기본 정보 섹션 */}
+                <div className="md:col-span-2 bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">1</span>
+                    기본 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">업체명</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.company_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">대표자</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.representative || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">연락처</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.contact || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">업종</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.industry || '-'}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-sm font-medium text-gray-500 mb-1">주소</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.address || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 재무 정보 섹션 */}
+                <div className="md:col-span-2 bg-green-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">2</span>
+                    재무 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">매출액</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {selectedItem.sales_amount ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.sales_amount)}원` : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">실제매출</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {selectedItem.actual_sales ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.actual_sales)}원` : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">기존거래처</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.existing_client || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">해지월</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.termination_month || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 섭외/계약 정보 섹션 */}
+                <div className="md:col-span-2 bg-purple-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">3</span>
+                    섭외 및 계약 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">섭외일</p>
+                      <p className="text-lg font-semibold text-gray-900">{formatDateToKorean(selectedItem.proposal_date) || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">섭외자</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.proposer || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">담당영업자</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {salespersons.find(sp => sp.id === selectedItem.salesperson_id)?.name || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">미팅 상태</p>
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                        selectedItem.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                        selectedItem.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedItem.meeting_status || '-'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">계약날짜</p>
+                      <p className="text-lg font-semibold text-gray-900">{formatDateToKorean(selectedItem.contract_date) || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">계약기장료</p>
+                      <p className="text-lg font-semibold text-blue-600">
+                        {selectedItem.actual_sales ? `${new Intl.NumberFormat('ko-KR').format(Number(selectedItem.actual_sales))}원` : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">계약월</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.contract_month || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">매출거래처</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.client_name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">계약 완료</p>
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                        selectedItem.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
+                        selectedItem.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                        'bg-gray-50 text-gray-500'
+                      }`}>
+                        {selectedItem.contract_status || '-'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">4월1종날짜</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedItem.april_type1_date || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 기타 정보 섹션 */}
+                <div className="md:col-span-2 bg-yellow-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-yellow-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">4</span>
+                    기타 정보
+                  </h3>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-2">피드백 / 기타사항</p>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <p className="text-gray-900 whitespace-pre-wrap">
+                        {selectedItem.feedback || '작성된 피드백이 없습니다.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="px-4 md:px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition text-sm md:text-base"
+              >
+                닫기
+              </button>
             </div>
           </div>
         </div>

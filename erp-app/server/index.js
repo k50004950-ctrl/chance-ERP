@@ -77,7 +77,8 @@ function initDatabase() {
       social_security_number TEXT,
       hire_date DATE,
       address TEXT,
-      emergency_contact TEXT
+      emergency_contact TEXT,
+      notification_enabled INTEGER DEFAULT 1
     );
 
     -- Products table (제품)
@@ -170,6 +171,19 @@ function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (salesperson_id) REFERENCES users(id)
+    );
+
+    -- 알림 테이블
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('reschedule', 'as', 'notice', 'system')),
+      related_id INTEGER,
+      is_read INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
     -- 계약 관리 테이블
@@ -385,6 +399,7 @@ function initDatabase() {
   addColumnIfNotExists('users', 'hire_date', 'DATE');
   addColumnIfNotExists('users', 'address', 'TEXT');
   addColumnIfNotExists('users', 'emergency_contact', 'TEXT');
+  addColumnIfNotExists('users', 'notification_enabled', 'INTEGER DEFAULT 1');
 
   // Migrate users table to include 'happycall' role in CHECK constraint
   console.log('Checking if users table migration is needed...');
@@ -1019,7 +1034,7 @@ app.post('/api/users', (req, res) => {
       username, password, name, role, 
       department, position, commission_rate,
       bank_name, account_number, social_security_number,
-      hire_date, address, emergency_contact
+      hire_date, address, emergency_contact, notification_enabled
     } = req.body;
     
     // 사원번호 자동 생성 (최대 ID + 1로 생성)
@@ -1033,15 +1048,16 @@ app.post('/api/users', (req, res) => {
         username, password, name, role, employee_code,
         department, position, commission_rate,
         bank_name, account_number, social_security_number,
-        hire_date, address, emergency_contact
+        hire_date, address, emergency_contact, notification_enabled
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const userInfo = userStmt.run(
       username, password, name, role, auto_employee_code,
       department || '', position || '', commission_rate || 0,
       bank_name || '', account_number || '', social_security_number || '',
-      hire_date || null, address || '', emergency_contact || ''
+      hire_date || null, address || '', emergency_contact || '',
+      notification_enabled !== undefined ? (notification_enabled ? 1 : 0) : 1
     );
     
     // 직원 정보도 함께 생성 (employees 테이블과의 호환성 유지)
@@ -1129,6 +1145,10 @@ app.put('/api/users/:id', (req, res) => {
     if (updateData.emergency_contact !== undefined) {
       updateFields.push('emergency_contact = ?');
       updateValues.push(updateData.emergency_contact || '');
+    }
+    if (updateData.notification_enabled !== undefined) {
+      updateFields.push('notification_enabled = ?');
+      updateValues.push(updateData.notification_enabled ? 1 : 0);
     }
     
     if (updateFields.length === 0) {
@@ -1640,6 +1660,9 @@ app.put('/api/sales-db/:id', (req, res) => {
       return;
     }
     
+    // 기존 데이터 조회 (알림 전송을 위해)
+    const existingData = db.prepare('SELECT * FROM sales_db WHERE id = ?').get(id);
+    
     // 전체 업데이트 (DB등록에서 호출)
     const { 
       proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
@@ -1734,6 +1757,34 @@ app.put('/api/sales-db/:id', (req, res) => {
       } catch (scheduleError) {
         console.error('일정 자동 추가/업데이트 실패:', scheduleError);
         // 일정 추가 실패해도 DB 업데이트는 성공으로 처리
+      }
+    }
+    
+    // 미팅 상태가 "일정재섭외" 또는 "AS"로 변경된 경우 섭외자에게 알림 전송
+    if (existingData && meeting_status !== existingData.meeting_status) {
+      if (meeting_status === '일정재섭외' || meeting_status === 'AS') {
+        try {
+          // 섭외자 이름으로 사용자 ID 찾기
+          const recruiterUser = db.prepare('SELECT id, notification_enabled FROM users WHERE name = ? AND role = ?').get(proposer, 'recruiter');
+          
+          if (recruiterUser && recruiterUser.notification_enabled === 1) {
+            const notificationTitle = meeting_status === '일정재섭외' ? '일정 재섭외 필요' : 'AS 요청';
+            const notificationMessage = `${company_name} 고객이 ${meeting_status} 상태로 변경되었습니다. 영업자: ${existingData.salesperson_id ? db.prepare('SELECT name FROM users WHERE id = ?').get(existingData.salesperson_id)?.name || '미배정' : '미배정'}`;
+            
+            createNotification(
+              recruiterUser.id,
+              notificationTitle,
+              notificationMessage,
+              meeting_status === '일정재섭외' ? 'reschedule' : 'as',
+              id
+            );
+            
+            console.log(`알림 전송 완료: ${recruiterUser.id} -> ${notificationTitle}`);
+          }
+        } catch (notificationError) {
+          console.error('알림 전송 실패:', notificationError);
+          // 알림 전송 실패해도 DB 업데이트는 성공으로 처리
+        }
       }
     }
     
@@ -4371,6 +4422,135 @@ app.delete('/api/recordings/:id', (req, res) => {
     res.json({ success: true, message: '녹취 파일이 삭제되었습니다.' });
   } catch (error) {
     console.error('녹취 파일 삭제 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ============== 알림 API ==============
+
+// 알림 생성 (내부 사용)
+function createNotification(userId, title, message, type, relatedId = null) {
+  try {
+    const result = db.prepare(`
+      INSERT INTO notifications (user_id, title, message, type, related_id)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, title, message, type, relatedId);
+    
+    return result.lastInsertRowid;
+  } catch (error) {
+    console.error('알림 생성 오류:', error);
+    return null;
+  }
+}
+
+// 사용자의 알림 조회
+app.get('/api/notifications/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 50, unreadOnly = false } = req.query;
+    
+    let query = `
+      SELECT * FROM notifications 
+      WHERE user_id = ?
+    `;
+    
+    if (unreadOnly === 'true') {
+      query += ` AND is_read = 0`;
+    }
+    
+    query += ` ORDER BY created_at DESC LIMIT ?`;
+    
+    const notifications = db.prepare(query).all(userId, parseInt(limit));
+    
+    res.json({ success: true, data: notifications });
+  } catch (error) {
+    console.error('알림 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 알림 읽음 처리
+app.put('/api/notifications/:id/read', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ?').run(id);
+    
+    res.json({ success: true, message: '알림이 읽음 처리되었습니다.' });
+  } catch (error) {
+    console.error('알림 읽음 처리 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 모든 알림 읽음 처리
+app.put('/api/notifications/user/:userId/read-all', (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    db.prepare('UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0').run(userId);
+    
+    res.json({ success: true, message: '모든 알림이 읽음 처리되었습니다.' });
+  } catch (error) {
+    console.error('알림 일괄 읽음 처리 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 알림 삭제
+app.delete('/api/notifications/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    db.prepare('DELETE FROM notifications WHERE id = ?').run(id);
+    
+    res.json({ success: true, message: '알림이 삭제되었습니다.' });
+  } catch (error) {
+    console.error('알림 삭제 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 사용자 알림 설정 조회
+app.get('/api/users/:id/notification-settings', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = db.prepare('SELECT notification_enabled FROM users WHERE id = ?').get(id);
+    
+    if (!user) {
+      return res.json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+    }
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        notification_enabled: user.notification_enabled === 1 
+      } 
+    });
+  } catch (error) {
+    console.error('알림 설정 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 사용자 알림 설정 업데이트
+app.put('/api/users/:id/notification-settings', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notification_enabled } = req.body;
+    
+    db.prepare('UPDATE users SET notification_enabled = ? WHERE id = ?').run(
+      notification_enabled ? 1 : 0, 
+      id
+    );
+    
+    res.json({ 
+      success: true, 
+      message: '알림 설정이 업데이트되었습니다.' 
+    });
+  } catch (error) {
+    console.error('알림 설정 업데이트 오류:', error);
     res.json({ success: false, message: error.message });
   }
 });

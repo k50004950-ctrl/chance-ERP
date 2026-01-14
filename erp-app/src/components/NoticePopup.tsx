@@ -19,16 +19,36 @@ const NoticePopup: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [notificationEnabled, setNotificationEnabled] = useState(true);
 
   useEffect(() => {
-    // reviewer 역할에게는 공지사항 표시하지 않음
-    if (user && user.role !== 'reviewer') {
-      fetchUnreadNotices();
+    if (user) {
+      checkNotificationSettings();
     }
   }, [user]);
 
+  const checkNotificationSettings = async () => {
+    if (!user) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/${user.id}/notification-settings`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setNotificationEnabled(result.data.notification_enabled);
+        
+        // 알림이 켜져있고 reviewer가 아닌 경우에만 공지사항 표시
+        if (result.data.notification_enabled && user.role !== 'reviewer') {
+          fetchUnreadNotices();
+        }
+      }
+    } catch (error) {
+      console.error('알림 설정 조회 실패:', error);
+    }
+  };
+
   const fetchUnreadNotices = async () => {
-    if (!user || user.role === 'reviewer') return;
+    if (!user || user.role === 'reviewer' || !notificationEnabled) return;
     
     try {
       const response = await fetch(`${API_BASE_URL}/api/notices/unread?user_id=${user.id}`);

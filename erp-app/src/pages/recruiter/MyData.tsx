@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle, Plus, FileAudio, Upload, Download, Trash2 } from 'lucide-react';
+import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle, Plus, FileAudio, Upload, Download, Trash2, Bell, BellOff } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
@@ -35,6 +35,17 @@ interface Salesperson {
   username: string;
 }
 
+interface Notification {
+  id: number;
+  user_id: number;
+  title: string;
+  message: string;
+  type: string;
+  related_id: number | null;
+  is_read: number;
+  created_at: string;
+}
+
 const RecruiterMyData: React.FC = () => {
   const { user: currentUser } = useAuth();
   const [myData, setMyData] = useState<MyDataItem[]>([]);
@@ -55,13 +66,62 @@ const RecruiterMyData: React.FC = () => {
   const [currentRecordings, setCurrentRecordings] = useState<any[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [recordingNotes, setRecordingNotes] = useState('');
+  
+  // 알림 관련 states
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(true);
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'recruiter') {
       fetchMyData(currentUser.name);
       fetchSalespersons();
+      fetchNotifications();
     }
   }, [currentUser]);
+  
+  const fetchNotifications = async () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      const response = await fetch(`/api/notifications/${currentUser.id}?unreadOnly=true`);
+      const result = await response.json();
+      if (result.success) {
+        setNotifications(result.data);
+      }
+    } catch (error) {
+      console.error('알림 조회 실패:', error);
+    }
+  };
+  
+  const handleMarkAsRead = async (notificationId: number) => {
+    try {
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'PUT',
+      });
+      const result = await response.json();
+      if (result.success) {
+        setNotifications(notifications.filter(n => n.id !== notificationId));
+      }
+    } catch (error) {
+      console.error('알림 읽음 처리 실패:', error);
+    }
+  };
+  
+  const handleMarkAllAsRead = async () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      const response = await fetch(`/api/notifications/user/${currentUser.id}/read-all`, {
+        method: 'PUT',
+      });
+      const result = await response.json();
+      if (result.success) {
+        setNotifications([]);
+      }
+    } catch (error) {
+      console.error('알림 일괄 읽음 처리 실패:', error);
+    }
+  };
 
   const fetchSalespersons = async () => {
     try {
@@ -433,6 +493,54 @@ const RecruiterMyData: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 알림 배너 */}
+      {showNotifications && notifications.length > 0 && (
+        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center mb-2">
+                <Bell className="w-5 h-5 text-yellow-600 mr-2" />
+                <h3 className="text-lg font-bold text-yellow-800">새 알림 ({notifications.length})</h3>
+              </div>
+              <div className="space-y-2">
+                {notifications.slice(0, 3).map((notification) => (
+                  <div key={notification.id} className="bg-white p-3 rounded-md flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">{notification.title}</p>
+                      <p className="text-sm text-gray-600">{notification.message}</p>
+                      <p className="text-xs text-gray-400 mt-1">{new Date(notification.created_at).toLocaleString('ko-KR')}</p>
+                    </div>
+                    <button
+                      onClick={() => handleMarkAsRead(notification.id)}
+                      className="ml-4 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
+                    >
+                      확인
+                    </button>
+                  </div>
+                ))}
+                {notifications.length > 3 && (
+                  <p className="text-sm text-gray-600 mt-2">외 {notifications.length - 3}개 알림...</p>
+                )}
+              </div>
+              <div className="mt-3 flex items-center space-x-2">
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                >
+                  모두 읽음으로 표시
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowNotifications(false)}
+              className="ml-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 월별 필터 */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">

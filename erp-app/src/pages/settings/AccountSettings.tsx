@@ -23,6 +23,7 @@ interface Account {
   hire_date?: string;
   address?: string;
   emergency_contact?: string;
+  notification_enabled?: boolean;
 }
 
 const AccountSettings: React.FC = () => {
@@ -49,7 +50,8 @@ const AccountSettings: React.FC = () => {
     social_security_number: '',
     hire_date: '',
     address: '',
-    emergency_contact: ''
+    emergency_contact: '',
+    notification_enabled: true
   });
   
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -91,6 +93,7 @@ const AccountSettings: React.FC = () => {
           hire_date: user.hire_date || '',
           address: user.address || '',
           emergency_contact: user.emergency_contact || '',
+          notification_enabled: user.notification_enabled === 1 || user.notification_enabled === true,
         }));
         setAccounts(accountsData);
       }
@@ -280,6 +283,7 @@ const AccountSettings: React.FC = () => {
             hire_date: formData.hire_date,
             address: formData.address,
             emergency_contact: formData.emergency_contact,
+            notification_enabled: formData.notification_enabled,
           }),
         });
         
@@ -315,6 +319,7 @@ const AccountSettings: React.FC = () => {
             hire_date: formData.hire_date,
             address: formData.address,
             emergency_contact: formData.emergency_contact,
+            notification_enabled: formData.notification_enabled,
           }),
         });
         
@@ -789,6 +794,34 @@ const AccountSettings: React.FC = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="서울시 강남구 테헤란로 123"
                   />
+                </div>
+
+                {/* 공지사항 알림 설정 */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    공지사항 알림
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange('notification_enabled', !formData.notification_enabled)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        formData.notification_enabled ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.notification_enabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      {formData.notification_enabled ? '켜짐' : '꺼짐'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    알림을 끄면 공지사항 및 시스템 알림을 받지 않습니다.
+                  </p>
                 </div>
               </div>
 

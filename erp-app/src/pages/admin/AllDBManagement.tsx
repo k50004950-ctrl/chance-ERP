@@ -226,6 +226,12 @@ const AllDBManagement: React.FC = () => {
       if (result.success) {
         alert('저장되었습니다.');
         setEditingId(null);
+        
+        // 담당영업자를 배정한 경우, '미배정만 보기' 필터를 자동 해제
+        if (item.salesperson_id && showUnassignedOnly) {
+          setShowUnassignedOnly(false);
+        }
+        
         fetchAllData();
       } else {
         alert('저장 실패: ' + result.message);

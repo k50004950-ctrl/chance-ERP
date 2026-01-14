@@ -363,6 +363,9 @@ const SalespersonCommissionStatement: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 계약기장료
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">
+                매출거래처
+              </th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 수수료율 (%)
               </th>
@@ -377,7 +380,7 @@ const SalespersonCommissionStatement: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {details.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                   {selectedSalesperson ? '계약 완료된 데이터가 없습니다.' : '영업자를 선택하세요.'}
                 </td>
               </tr>
@@ -393,6 +396,11 @@ const SalespersonCommissionStatement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {detail.actual_sales ? formatCurrency(detail.actual_sales) : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm bg-purple-50">
+                      <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                        {detail.contract_client || '-'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900">
                       {editingId === detail.id ? (

@@ -206,6 +206,16 @@ const AllDBManagement: React.FC = () => {
           client_name: item.client_name,
           feedback: item.feedback,
           meeting_request_datetime: item.meeting_request_datetime,
+          company_name: item.company_name,
+          representative: item.representative,
+          address: item.address,
+          contact: item.contact,
+          industry: item.industry,
+          sales_amount: item.sales_amount,
+          existing_client: item.existing_client,
+          contract_client: item.contract_client,
+          contract_month: item.contract_month,
+          termination_month: item.termination_month,
         }),
       });
       

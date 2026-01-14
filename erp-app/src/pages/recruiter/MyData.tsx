@@ -127,6 +127,35 @@ const RecruiterMyData: React.FC = () => {
     }
   };
 
+  const handleEditFromNotification = (notificationId: number, relatedDbId: number | null) => {
+    if (!relatedDbId) {
+      alert('관련 DB 정보를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 해당 DB 항목 찾기
+    const dbItem = myData.find(item => item.id === relatedDbId);
+    
+    if (!dbItem) {
+      alert('해당 DB를 찾을 수 없습니다. 페이지를 새로고침하거나 필터를 확인해주세요.');
+      return;
+    }
+    
+    // 알림을 읽음 처리
+    handleMarkAsRead(notificationId);
+    
+    // 편집 모드로 전환
+    handleEdit(dbItem.id);
+    
+    // 해당 항목으로 스크롤
+    setTimeout(() => {
+      const element = document.querySelector(`[data-db-id="${dbItem.id}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  };
+
   const fetchSalespersons = async () => {
     try {
       const response = await fetch('/api/salespersons');
@@ -487,6 +516,14 @@ const RecruiterMyData: React.FC = () => {
                         </p>
                       </div>
                       <div className="flex items-center space-x-2 ml-3">
+                        {notification.related_id && (
+                          <button
+                            onClick={() => handleEditFromNotification(notification.id, notification.related_id)}
+                            className="text-green-600 hover:text-green-800 text-xs font-medium px-3 py-1 rounded hover:bg-green-50 border border-green-300"
+                          >
+                            수정하기
+                          </button>
+                        )}
                         <button
                           onClick={() => handleMarkAsRead(notification.id)}
                           className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
@@ -691,7 +728,7 @@ const RecruiterMyData: React.FC = () => {
               </tr>
             ) : (
               filteredData.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
+                <tr key={item.id} data-db-id={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 bg-blue-50">
                     {editingId === item.id ? (
                       <KoreanDatePicker

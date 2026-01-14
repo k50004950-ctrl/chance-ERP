@@ -761,7 +761,7 @@ const AccountSettings: React.FC = () => {
                     입사일
                   </label>
                   <KoreanDatePicker
-                    selectedDate={formData.hire_date ? new Date(formData.hire_date) : null}
+                    selected={formData.hire_date ? new Date(formData.hire_date) : null}
                     onChange={(date) => {
                       const isoDate = date ? date.toISOString().split('T')[0] : '';
                       handleInputChange('hire_date', isoDate);

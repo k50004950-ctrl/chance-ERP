@@ -268,7 +268,9 @@ const SalespersonSchedules: React.FC = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Object.entries(getGroupedSchedules()).map(([userName, userSchedules]) => (
+                    {Object.entries(getGroupedSchedules())
+                      .sort(([nameA], [nameB]) => nameA.localeCompare(nameB, 'ko-KR'))
+                      .map(([userName, userSchedules]) => (
                       <div key={userName} className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-md p-5 border border-blue-100">
                         <div className="flex items-center space-x-2 mb-4 pb-3 border-b border-blue-200">
                           <Users className="w-5 h-5 text-blue-600" />
@@ -345,7 +347,20 @@ const SalespersonSchedules: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {schedules.map((schedule) => (
+                    {schedules
+                      .sort((a, b) => {
+                        // 1차 정렬: 영업자 이름순 (한글)
+                        const nameCompare = (a.user_name || '').localeCompare(b.user_name || '', 'ko-KR');
+                        if (nameCompare !== 0) return nameCompare;
+                        
+                        // 2차 정렬: 날짜순
+                        const dateCompare = (a.schedule_date || '').localeCompare(b.schedule_date || '');
+                        if (dateCompare !== 0) return dateCompare;
+                        
+                        // 3차 정렬: 시간순
+                        return (a.schedule_time || '').localeCompare(b.schedule_time || '');
+                      })
+                      .map((schedule) => (
                       <tr key={schedule.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {schedule.user_name}

@@ -582,9 +582,13 @@ const RecruiterMyData: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">재확인요청</p>
+              <p className="text-sm text-gray-600">조치 필요</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {filteredData.filter(item => item.meeting_status === '일정재확인요청').length}
+                {filteredData.filter(item => 
+                  item.meeting_status === '일정재확인요청' || 
+                  item.meeting_status === '일정재섭외' || 
+                  item.meeting_status === 'AS'
+                ).length}
               </p>
             </div>
             <Clock className="w-8 h-8 text-yellow-500" />
@@ -777,15 +781,27 @@ const RecruiterMyData: React.FC = () => {
                         <option value="">선택</option>
                         <option value="미팅완료">미팅완료</option>
                         <option value="일정재확인요청">일정재확인요청</option>
+                        <option value="일정재섭외">일정재섭외</option>
+                        <option value="AS">AS</option>
                         <option value="미팅거절">미팅거절</option>
                       </select>
                     ) : (
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
-                        item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
-                        item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span 
+                        className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                          item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                          item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800 cursor-pointer hover:bg-yellow-200 hover:shadow-md transition-all' :
+                          item.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800 cursor-pointer hover:bg-orange-200 hover:shadow-md transition-all' :
+                          item.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800 cursor-pointer hover:bg-purple-200 hover:shadow-md transition-all' :
+                          item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}
+                        onClick={() => {
+                          if (item.meeting_status === '일정재확인요청' || item.meeting_status === '일정재섭외' || item.meeting_status === 'AS') {
+                            handleEdit(item.id);
+                          }
+                        }}
+                        title={(item.meeting_status === '일정재확인요청' || item.meeting_status === '일정재섭외' || item.meeting_status === 'AS') ? '클릭하여 수정하기' : ''}
+                      >
                         {item.meeting_status || '-'}
                       </span>
                     )}
@@ -1052,6 +1068,8 @@ const RecruiterMyData: React.FC = () => {
                       <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
                         selectedItem.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
                         selectedItem.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedItem.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800' :
+                        selectedItem.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800' :
                         selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>

@@ -778,10 +778,16 @@ const RecruiterMyData: React.FC = () => {
                               // 기존 시간 유지 (있으면)
                               let time = '00:00';
                               if (item.meeting_request_datetime) {
-                                const existingDate = new Date(item.meeting_request_datetime);
-                                const hours = String(existingDate.getHours()).padStart(2, '0');
-                                const minutes = String(existingDate.getMinutes()).padStart(2, '0');
-                                time = `${hours}:${minutes}`;
+                                try {
+                                  const existingDate = new Date(item.meeting_request_datetime);
+                                  if (!isNaN(existingDate.getTime())) {
+                                    const hours = String(existingDate.getHours()).padStart(2, '0');
+                                    const minutes = String(existingDate.getMinutes()).padStart(2, '0');
+                                    time = `${hours}:${minutes}`;
+                                  }
+                                } catch (e) {
+                                  console.error('날짜 파싱 오류:', e);
+                                }
                               }
                               
                               handleChange(item.id, 'meeting_request_datetime', `${year}-${month}-${day}T${time}`);
@@ -794,21 +800,40 @@ const RecruiterMyData: React.FC = () => {
                         />
                         <input
                           type="time"
-                          value={item.meeting_request_datetime ? new Date(item.meeting_request_datetime).toTimeString().slice(0, 5) : ''}
+                          value={(() => {
+                            if (!item.meeting_request_datetime) return '';
+                            try {
+                              const date = new Date(item.meeting_request_datetime);
+                              if (isNaN(date.getTime())) return '';
+                              const hours = String(date.getHours()).padStart(2, '0');
+                              const minutes = String(date.getMinutes()).padStart(2, '0');
+                              return `${hours}:${minutes}`;
+                            } catch (e) {
+                              console.error('시간 파싱 오류:', e);
+                              return '';
+                            }
+                          })()}
                           onChange={(e) => {
                             if (item.meeting_request_datetime) {
-                              const date = new Date(item.meeting_request_datetime);
-                              const year = date.getFullYear();
-                              const month = String(date.getMonth() + 1).padStart(2, '0');
-                              const day = String(date.getDate()).padStart(2, '0');
-                              handleChange(item.id, 'meeting_request_datetime', `${year}-${month}-${day}T${e.target.value}`);
-                            } else {
-                              const today = new Date();
-                              const year = today.getFullYear();
-                              const month = String(today.getMonth() + 1).padStart(2, '0');
-                              const day = String(today.getDate()).padStart(2, '0');
-                              handleChange(item.id, 'meeting_request_datetime', `${year}-${month}-${day}T${e.target.value}`);
+                              try {
+                                const date = new Date(item.meeting_request_datetime);
+                                if (!isNaN(date.getTime())) {
+                                  const year = date.getFullYear();
+                                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                                  const day = String(date.getDate()).padStart(2, '0');
+                                  handleChange(item.id, 'meeting_request_datetime', `${year}-${month}-${day}T${e.target.value}`);
+                                  return;
+                                }
+                              } catch (err) {
+                                console.error('날짜 처리 오류:', err);
+                              }
                             }
+                            // 날짜가 없거나 잘못된 경우 오늘 날짜로 설정
+                            const today = new Date();
+                            const year = today.getFullYear();
+                            const month = String(today.getMonth() + 1).padStart(2, '0');
+                            const day = String(today.getDate()).padStart(2, '0');
+                            handleChange(item.id, 'meeting_request_datetime', `${year}-${month}-${day}T${e.target.value}`);
                           }}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
                           placeholder="시간 선택"
@@ -817,13 +842,21 @@ const RecruiterMyData: React.FC = () => {
                     ) : (
                       <span className="text-sm text-gray-900">
                         {item.meeting_request_datetime 
-                          ? new Date(item.meeting_request_datetime).toLocaleString('ko-KR', { 
-                              year: 'numeric', 
-                              month: '2-digit', 
-                              day: '2-digit', 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })
+                          ? (() => {
+                              try {
+                                const date = new Date(item.meeting_request_datetime);
+                                if (isNaN(date.getTime())) return '-';
+                                return date.toLocaleString('ko-KR', { 
+                                  year: 'numeric', 
+                                  month: '2-digit', 
+                                  day: '2-digit', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                });
+                              } catch (e) {
+                                return '-';
+                              }
+                            })()
                           : '-'}
                       </span>
                     )}

@@ -2371,11 +2371,11 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
       return res.json({ success: false, message: '권한이 없습니다.' });
     }
     
-    // 일정재섭외로 변경 시 영업자를 초기화 (null로 설정)
+    // 일정재섭외 또는 일정재확인요청으로 변경 시 영업자를 초기화 (null로 설정)
     let finalSalespersonId = salesperson_id;
-    if (meeting_status === '일정재섭외') {
+    if (meeting_status === '일정재섭외' || meeting_status === '일정재확인요청') {
       finalSalespersonId = null;
-      console.log(`일정재섭외로 변경됨 - 영업자 초기화: DB ID ${id}`);
+      console.log(`${meeting_status}로 변경됨 - 영업자 초기화: DB ID ${id}`);
     }
     
     const stmt = db.prepare(`

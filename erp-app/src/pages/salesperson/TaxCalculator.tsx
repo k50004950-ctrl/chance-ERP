@@ -27,10 +27,11 @@ const TaxCalculator: React.FC = () => {
   const [netIncome, setNetIncome] = useState<number | null>(null);
   
   // 건강보험료 계산
-  const [monthlyIncome, setMonthlyIncome] = useState<string>('');
-  const [healthInsurance, setHealthInsurance] = useState<number | null>(null);
-  const [longTermCare, setLongTermCare] = useState<number | null>(null);
-  const [totalInsurance, setTotalInsurance] = useState<number | null>(null);
+  const [annualIncome, setAnnualIncome] = useState<string>('');
+  const [monthlyHealthInsurance, setMonthlyHealthInsurance] = useState<number | null>(null);
+  const [monthlyLongTermCare, setMonthlyLongTermCare] = useState<number | null>(null);
+  const [monthlyTotalInsurance, setMonthlyTotalInsurance] = useState<number | null>(null);
+  const [annualTotalInsurance, setAnnualTotalInsurance] = useState<number | null>(null);
 
   const formatNumber = (num: number): string => {
     return num.toLocaleString('ko-KR');
@@ -84,46 +85,53 @@ const TaxCalculator: React.FC = () => {
   };
 
   const calculateHealthInsurance = () => {
-    const monthlyIncomeAmount = parseFloat(monthlyIncome.replace(/,/g, ''));
+    const annualIncomeAmount = parseFloat(annualIncome.replace(/,/g, ''));
     
-    if (isNaN(monthlyIncomeAmount) || monthlyIncomeAmount < 0) {
-      alert('올바른 월소득을 입력해주세요.');
+    if (isNaN(annualIncomeAmount) || annualIncomeAmount < 0) {
+      alert('올바른 연소득을 입력해주세요.');
       return;
     }
+
+    // 연소득을 12로 나눠서 월소득 계산
+    const monthlyIncomeAmount = Math.floor(annualIncomeAmount / 12);
 
     // 건강보험료율: 7.09% (2024년 기준)
     const healthInsuranceRate = 7.09;
     // 장기요양보험료율: 건강보험료의 12.81% (2024년 기준)
     const longTermCareRate = 12.81;
 
-    // 건강보험료 계산
-    const health = Math.floor(monthlyIncomeAmount * (healthInsuranceRate / 100));
-    // 장기요양보험료 계산
-    const longTerm = Math.floor(health * (longTermCareRate / 100));
-    // 총 보험료
-    const total = health + longTerm;
+    // 월 건강보험료 계산
+    const monthlyHealth = Math.floor(monthlyIncomeAmount * (healthInsuranceRate / 100));
+    // 월 장기요양보험료 계산
+    const monthlyLongTerm = Math.floor(monthlyHealth * (longTermCareRate / 100));
+    // 월 총 보험료
+    const monthlyTotal = monthlyHealth + monthlyLongTerm;
+    // 연 총 보험료
+    const annualTotal = monthlyTotal * 12;
 
-    setHealthInsurance(health);
-    setLongTermCare(longTerm);
-    setTotalInsurance(total);
+    setMonthlyHealthInsurance(monthlyHealth);
+    setMonthlyLongTermCare(monthlyLongTerm);
+    setMonthlyTotalInsurance(monthlyTotal);
+    setAnnualTotalInsurance(annualTotal);
   };
 
-  const handleMonthlyIncomeChange = (value: string) => {
+  const handleAnnualIncomeChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
     
     if (numericValue) {
       const formatted = parseInt(numericValue).toLocaleString('ko-KR');
-      setMonthlyIncome(formatted);
+      setAnnualIncome(formatted);
     } else {
-      setMonthlyIncome('');
+      setAnnualIncome('');
     }
   };
 
   const resetHealthInsurance = () => {
-    setMonthlyIncome('');
-    setHealthInsurance(null);
-    setLongTermCare(null);
-    setTotalInsurance(null);
+    setAnnualIncome('');
+    setMonthlyHealthInsurance(null);
+    setMonthlyLongTermCare(null);
+    setMonthlyTotalInsurance(null);
+    setAnnualTotalInsurance(null);
   };
 
   return (
@@ -334,21 +342,21 @@ const TaxCalculator: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              월 소득금액 (원)
+              연 소득금액 (원)
             </label>
             <input
               type="text"
-              value={monthlyIncome}
-              onChange={(e) => handleMonthlyIncomeChange(e.target.value)}
+              value={annualIncome}
+              onChange={(e) => handleAnnualIncomeChange(e.target.value)}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   calculateHealthInsurance();
                 }
               }}
-              placeholder="예: 5,000,000"
+              placeholder="예: 60,000,000"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
             />
-            <p className="mt-1 text-xs text-gray-500">숫자만 입력하세요. 자동으로 천 단위 콤마가 추가됩니다.</p>
+            <p className="mt-1 text-xs text-gray-500">연간 총 소득을 입력하세요. 자동으로 월소득을 계산합니다.</p>
           </div>
 
           <div className="flex space-x-3">
@@ -369,53 +377,69 @@ const TaxCalculator: React.FC = () => {
       </div>
 
       {/* 건강보험료 계산 결과 */}
-      {healthInsurance !== null && longTermCare !== null && totalInsurance !== null && (
+      {monthlyHealthInsurance !== null && monthlyLongTermCare !== null && monthlyTotalInsurance !== null && annualTotalInsurance !== null && (
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-md p-6 border border-green-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">보험료 계산 결과</h3>
           
           <div className="space-y-4">
-            {/* 월 소득 */}
+            {/* 연소득 및 월소득 */}
             <div className="bg-white rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">월 소득금액</span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600">연 소득금액</span>
                 <span className="text-lg font-semibold text-gray-900">
-                  {monthlyIncome}원
+                  {annualIncome}원
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                <span className="text-sm text-gray-600">월 소득금액 (연소득 ÷ 12)</span>
+                <span className="text-lg font-semibold text-blue-600">
+                  {formatNumber(Math.floor(parseFloat(annualIncome.replace(/,/g, '')) / 12))}원
                 </span>
               </div>
             </div>
 
-            {/* 건강보험료 */}
+            {/* 월 건강보험료 */}
             <div className="bg-green-50 rounded-lg p-4 border border-green-200">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-green-700">건강보험료 (7.09%)</span>
+                <span className="text-sm font-medium text-green-700">월 건강보험료 (7.09%)</span>
                 <span className="text-2xl font-bold text-green-600">
-                  {formatNumber(healthInsurance)}원
+                  {formatNumber(monthlyHealthInsurance)}원
                 </span>
               </div>
               <p className="text-xs text-gray-600">
-                계산: {monthlyIncome} × 7.09% = {formatNumber(healthInsurance)}원
+                계산: {formatNumber(Math.floor(parseFloat(annualIncome.replace(/,/g, '')) / 12))} × 7.09% = {formatNumber(monthlyHealthInsurance)}원
               </p>
             </div>
 
-            {/* 장기요양보험료 */}
+            {/* 월 장기요양보험료 */}
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-700">장기요양보험료 (12.81%)</span>
+                <span className="text-sm font-medium text-blue-700">월 장기요양보험료 (12.81%)</span>
                 <span className="text-2xl font-bold text-blue-600">
-                  {formatNumber(longTermCare)}원
+                  {formatNumber(monthlyLongTermCare)}원
                 </span>
               </div>
               <p className="text-xs text-gray-600">
-                계산: {formatNumber(healthInsurance)}원 × 12.81% = {formatNumber(longTermCare)}원
+                계산: {formatNumber(monthlyHealthInsurance)}원 × 12.81% = {formatNumber(monthlyLongTermCare)}원
               </p>
             </div>
 
-            {/* 총 보험료 */}
+            {/* 월 총 보험료 */}
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border-2 border-purple-300">
               <div className="flex items-center justify-between">
                 <span className="text-base font-bold text-purple-700">월 총 보험료</span>
                 <span className="text-3xl font-bold text-purple-600">
-                  {formatNumber(totalInsurance)}원
+                  {formatNumber(monthlyTotalInsurance)}원
+                </span>
+              </div>
+            </div>
+
+            {/* 연 총 보험료 */}
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-4 border-2 border-orange-300">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-bold text-orange-700">연 총 보험료 (월 × 12)</span>
+                <span className="text-3xl font-bold text-orange-600">
+                  {formatNumber(annualTotalInsurance)}원
                 </span>
               </div>
             </div>
@@ -424,11 +448,14 @@ const TaxCalculator: React.FC = () => {
             <div className="bg-white rounded-lg p-4 border-l-4 border-green-500">
               <p className="text-xs text-gray-600 mb-2">계산 공식:</p>
               <div className="space-y-1 text-sm font-mono text-gray-900">
-                <p>① 건강보험료 = 월소득 × 7.09%</p>
-                <p className="ml-4">= {monthlyIncome} × 7.09% = {formatNumber(healthInsurance)}원</p>
-                <p className="mt-2">② 장기요양보험료 = 건강보험료 × 12.81%</p>
-                <p className="ml-4">= {formatNumber(healthInsurance)} × 12.81% = {formatNumber(longTermCare)}원</p>
-                <p className="mt-2 text-purple-600 font-bold">③ 총 보험료 = {formatNumber(healthInsurance)} + {formatNumber(longTermCare)} = {formatNumber(totalInsurance)}원</p>
+                <p>① 월 소득 = 연소득 ÷ 12</p>
+                <p className="ml-4">= {annualIncome} ÷ 12 = {formatNumber(Math.floor(parseFloat(annualIncome.replace(/,/g, '')) / 12))}원</p>
+                <p className="mt-2">② 월 건강보험료 = 월소득 × 7.09%</p>
+                <p className="ml-4">= {formatNumber(Math.floor(parseFloat(annualIncome.replace(/,/g, '')) / 12))} × 7.09% = {formatNumber(monthlyHealthInsurance)}원</p>
+                <p className="mt-2">③ 월 장기요양보험료 = 건강보험료 × 12.81%</p>
+                <p className="ml-4">= {formatNumber(monthlyHealthInsurance)} × 12.81% = {formatNumber(monthlyLongTermCare)}원</p>
+                <p className="mt-2 text-purple-600 font-bold">④ 월 총 보험료 = {formatNumber(monthlyHealthInsurance)} + {formatNumber(monthlyLongTermCare)} = {formatNumber(monthlyTotalInsurance)}원</p>
+                <p className="mt-2 text-orange-600 font-bold">⑤ 연 총 보험료 = {formatNumber(monthlyTotalInsurance)} × 12 = {formatNumber(annualTotalInsurance)}원</p>
               </div>
             </div>
           </div>

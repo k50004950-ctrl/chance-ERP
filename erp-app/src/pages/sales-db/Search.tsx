@@ -26,6 +26,7 @@ interface SalesDB {
   feedback: string;
   april_type1_date: string;
   created_at: string;
+  meeting_request_datetime?: string;
 }
 
 const SalesDBSearch: React.FC = () => {
@@ -37,25 +38,81 @@ const SalesDBSearch: React.FC = () => {
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [newFeedback, setNewFeedback] = useState('');
   const [currentFeedbackId, setCurrentFeedbackId] = useState<number | null>(null);
+  
+  // 필터 상태
+  const [filterType, setFilterType] = useState<'all' | 'date' | 'month' | 'day' | 'cross'>('all');
+  const [proposalDateFrom, setProposalDateFrom] = useState('');
+  const [proposalDateTo, setProposalDateTo] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedDay, setSelectedDay] = useState('');
+  const [meetingDateFrom, setMeetingDateFrom] = useState('');
+  const [meetingDateTo, setMeetingDateTo] = useState('');
 
   useEffect(() => {
     fetchSalesDB();
   }, []);
 
   useEffect(() => {
+    let filtered = [...salesDB];
+    
+    // 텍스트 검색 필터
     if (searchTerm) {
-      const filtered = salesDB.filter(
+      filtered = filtered.filter(
         (item) =>
           item.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.representative?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.contact?.includes(searchTerm) ||
           item.client_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredData(filtered);
-    } else {
-      setFilteredData(salesDB);
     }
-  }, [searchTerm, salesDB]);
+    
+    // 날짜 필터
+    if (filterType === 'date' && proposalDateFrom && proposalDateTo) {
+      filtered = filtered.filter(item => {
+        if (!item.proposal_date) return false;
+        const date = item.proposal_date.split('T')[0];
+        return date >= proposalDateFrom && date <= proposalDateTo;
+      });
+    }
+    
+    // 월별 필터
+    if (filterType === 'month' && selectedMonth) {
+      filtered = filtered.filter(item => {
+        if (!item.proposal_date) return false;
+        const month = item.proposal_date.substring(0, 7); // YYYY-MM
+        return month === selectedMonth;
+      });
+    }
+    
+    // 일별 필터
+    if (filterType === 'day' && selectedDay) {
+      filtered = filtered.filter(item => {
+        if (!item.proposal_date) return false;
+        const day = item.proposal_date.split('T')[0];
+        return day === selectedDay;
+      });
+    }
+    
+    // 교차 필터 (섭외일 + 미팅희망일)
+    if (filterType === 'cross') {
+      if (proposalDateFrom && proposalDateTo) {
+        filtered = filtered.filter(item => {
+          if (!item.proposal_date) return false;
+          const date = item.proposal_date.split('T')[0];
+          return date >= proposalDateFrom && date <= proposalDateTo;
+        });
+      }
+      if (meetingDateFrom && meetingDateTo) {
+        filtered = filtered.filter(item => {
+          if (!item.meeting_request_datetime) return false;
+          const date = item.meeting_request_datetime.split('T')[0];
+          return date >= meetingDateFrom && date <= meetingDateTo;
+        });
+      }
+    }
+    
+    setFilteredData(filtered);
+  }, [searchTerm, salesDB, filterType, proposalDateFrom, proposalDateTo, selectedMonth, selectedDay, meetingDateFrom, meetingDateTo]);
 
   const fetchSalesDB = async () => {
     try {
@@ -199,9 +256,165 @@ const SalesDBSearch: React.FC = () => {
           />
         </div>
 
+        {/* 고급 필터 */}
+        <div className="mt-6 border-t border-gray-200 pt-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <span className="text-sm font-medium text-gray-700">필터:</span>
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-4 py-2 rounded-lg text-sm transition ${
+                filterType === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              전체
+            </button>
+            <button
+              onClick={() => setFilterType('date')}
+              className={`px-4 py-2 rounded-lg text-sm transition ${
+                filterType === 'date' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              섭외일 기간
+            </button>
+            <button
+              onClick={() => setFilterType('month')}
+              className={`px-4 py-2 rounded-lg text-sm transition ${
+                filterType === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              월별
+            </button>
+            <button
+              onClick={() => setFilterType('day')}
+              className={`px-4 py-2 rounded-lg text-sm transition ${
+                filterType === 'day' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              일별
+            </button>
+            <button
+              onClick={() => setFilterType('cross')}
+              className={`px-4 py-2 rounded-lg text-sm transition ${
+                filterType === 'cross' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              교차검색
+            </button>
+          </div>
+
+          {/* 필터 옵션 */}
+          {filterType === 'date' && (
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">섭외일 시작</label>
+                <input
+                  type="date"
+                  value={proposalDateFrom}
+                  onChange={(e) => setProposalDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">섭외일 종료</label>
+                <input
+                  type="date"
+                  value={proposalDateTo}
+                  onChange={(e) => setProposalDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {filterType === 'month' && (
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">년월 선택</label>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+
+          {filterType === 'day' && (
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">날짜 선택</label>
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+
+          {filterType === 'cross' && (
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">섭외일 시작</label>
+                  <input
+                    type="date"
+                    value={proposalDateFrom}
+                    onChange={(e) => setProposalDateFrom(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">섭외일 종료</label>
+                  <input
+                    type="date"
+                    value={proposalDateTo}
+                    onChange={(e) => setProposalDateTo(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">미팅희망일 시작</label>
+                  <input
+                    type="date"
+                    value={meetingDateFrom}
+                    onChange={(e) => setMeetingDateFrom(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">미팅희망일 종료</label>
+                  <input
+                    type="date"
+                    value={meetingDateTo}
+                    onChange={(e) => setMeetingDateTo(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="mt-4 flex items-center justify-between">
           <div className="text-sm text-gray-600">
             총 <span className="font-semibold text-blue-600">{filteredData.length}</span>개
+            {filterType !== 'all' && (
+              <button
+                onClick={() => {
+                  setFilterType('all');
+                  setProposalDateFrom('');
+                  setProposalDateTo('');
+                  setSelectedMonth('');
+                  setSelectedDay('');
+                  setMeetingDateFrom('');
+                  setMeetingDateTo('');
+                }}
+                className="ml-4 text-blue-600 hover:text-blue-800 underline"
+              >
+                필터 초기화
+              </button>
+            )}
           </div>
         </div>
       </div>

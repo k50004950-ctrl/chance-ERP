@@ -361,7 +361,7 @@ const AccountSettings: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof Account, value: string) => {
+  const handleInputChange = (field: keyof Account, value: string | boolean | number) => {
     setFormData({ ...formData, [field]: value });
   };
 

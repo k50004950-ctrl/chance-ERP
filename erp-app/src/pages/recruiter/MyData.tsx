@@ -431,6 +431,7 @@ const RecruiterMyData: React.FC = () => {
     return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
   };
 
+  // 섭외자 데이터 저장
   const handleSave = async (item: MyDataItem) => {
     try {
       const response = await fetch(`/api/sales-db/${item.id}/recruiter-update`, {

@@ -326,7 +326,7 @@ const MobileNav: React.FC = () => {
                     DB관리
                   </div>
                   <NavLink
-                    to="/admin/all-db"
+                    to="/admin/all-db-management"
                     onClick={closeMenu}
                     className={({ isActive }) =>
                       `flex items-center space-x-3 px-4 py-3 transition-colors ${

@@ -10,6 +10,13 @@ interface Salesperson {
   name: string;
 }
 
+interface SalesClient {
+  id: number;
+  client_name: string;
+  commission_rate: number;
+  description: string;
+}
+
 interface SalesDBRow {
   id?: number;
   proposal_date: string;
@@ -63,6 +70,7 @@ const emptyRow: SalesDBRow = {
 const SalesDBRegister: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
+  const [salesClients, setSalesClients] = useState<SalesClient[]>([]);
   const [rows, setRows] = useState<SalesDBRow[]>([{ ...emptyRow }]);
   const [allRows, setAllRows] = useState<SalesDBRow[]>([]); // 전체 데이터 저장
   const [isUploading, setIsUploading] = useState(false);
@@ -95,6 +103,7 @@ const SalesDBRegister: React.FC = () => {
     setCurrentUser(user);
     
     fetchSalespersons();
+    fetchSalesClients();
     
     // 로컬 스토리지에서 임시 저장된 데이터 확인
     const savedDraft = localStorage.getItem(`db_register_draft_${user.id}`);
@@ -266,6 +275,18 @@ const SalesDBRegister: React.FC = () => {
       }
     } catch (error) {
       console.error('영업자 목록 조회 실패:', error);
+    }
+  };
+
+  const fetchSalesClients = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sales-clients`);
+      const result = await response.json();
+      if (result.success) {
+        setSalesClients(result.data);
+      }
+    } catch (error) {
+      console.error('거래처 목록 조회 실패:', error);
     }
   };
 
@@ -1151,13 +1172,18 @@ const SalesDBRegister: React.FC = () => {
                   />
                 </td>
                 <td className="border border-gray-300 px-1 py-1">
-                  <input
-                    type="text"
+                  <select
                     value={row.contract_client}
-                    onChange={(e) => handleContractClientChange(index, e.target.value)}
-                    className="w-32 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500 text-right"
-                    placeholder="0"
-                  />
+                    onChange={(e) => handleCellChange(index, 'contract_client', e.target.value)}
+                    className="w-32 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">선택</option>
+                    {salesClients.map((client) => (
+                      <option key={client.id} value={client.client_name}>
+                        {client.client_name}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="border border-gray-300 px-1 py-1">
                   <input

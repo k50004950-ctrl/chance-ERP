@@ -58,6 +58,7 @@ const AllDBManagement: React.FC = () => {
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<DBItem | null>(null);
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState<boolean>(false);
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'admin') {
@@ -114,6 +115,16 @@ const AllDBManagement: React.FC = () => {
     }
   };
 
+  const formatDateTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+  };
+
   // 필터링 로직
   useEffect(() => {
     let filtered = allData;
@@ -156,8 +167,13 @@ const AllDBManagement: React.FC = () => {
       filtered = filtered.filter((item) => item.salesperson_name === selectedSalesperson);
     }
 
+    // 담당영업자 미배정 필터
+    if (showUnassignedOnly) {
+      filtered = filtered.filter((item) => !item.salesperson_id || item.salesperson_id === null);
+    }
+
     setFilteredData(filtered);
-  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, allData]);
+  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, showUnassignedOnly, allData]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -218,6 +234,7 @@ const AllDBManagement: React.FC = () => {
     setSelectedMonth('');
     setSelectedRecruiter('');
     setSelectedSalesperson('');
+    setShowUnassignedOnly(false);
   };
 
   if (!currentUser || currentUser.role !== 'admin') {
@@ -382,6 +399,21 @@ const AllDBManagement: React.FC = () => {
             ))}
           </select>
         </div>
+
+        {/* 담당영업자 미배정 필터 */}
+        <div className="mt-3">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showUnassignedOnly}
+              onChange={(e) => setShowUnassignedOnly(e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              담당영업자 미배정만 보기
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* 테이블 */}
@@ -391,6 +423,7 @@ const AllDBManagement: React.FC = () => {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">섭외일</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-green-50">섭외자</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-yellow-50">미팅희망날짜시간</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">업체명</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">대표자</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">연락처</th>
@@ -404,7 +437,7 @@ const AllDBManagement: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
                   조건에 맞는 DB가 없습니다.
                 </td>
               </tr>
@@ -418,6 +451,15 @@ const AllDBManagement: React.FC = () => {
                     <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
                       {item.proposer || '-'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 bg-yellow-50 text-sm whitespace-nowrap">
+                    {item.meeting_request_datetime ? (
+                      <span className="text-gray-900 font-medium">
+                        {formatDateTime(item.meeting_request_datetime)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <button

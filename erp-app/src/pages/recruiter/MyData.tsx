@@ -457,6 +457,67 @@ const RecruiterMyData: React.FC = () => {
         </p>
       </div>
 
+      {/* 알림 배너 */}
+      {notifications.length > 0 && showNotifications && (
+        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500 rounded-lg shadow-md p-4 mb-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-3">
+                <Bell className="w-5 h-5 text-yellow-600" />
+                <h3 className="text-lg font-bold text-gray-800">
+                  새 알림 {notifications.length}개
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {notifications.map((notification) => (
+                  <div 
+                    key={notification.id}
+                    className="bg-white rounded-lg p-3 shadow-sm border border-yellow-200"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800 mb-1">
+                          {notification.title}
+                        </p>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {notification.message}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {formatDateTime(notification.created_at)}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2 ml-3">
+                        <button
+                          onClick={() => handleMarkAsRead(notification.id)}
+                          className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
+                        >
+                          읽음
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-end space-x-3 mt-3">
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  모두 읽음
+                </button>
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="text-sm text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1"
+                >
+                  <BellOff className="w-4 h-4" />
+                  <span>닫기</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 실적 통계 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">

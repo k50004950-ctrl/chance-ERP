@@ -2342,7 +2342,7 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
     const { contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, salesperson_id } = req.body;
     
     // 본인 데이터인지 확인
-    const record = db.prepare('SELECT salesperson_id FROM sales_db WHERE id = ?').get(id);
+    const record = db.prepare('SELECT salesperson_id, proposer, company_name, meeting_status as old_meeting_status FROM sales_db WHERE id = ?').get(id);
     if (!record || record.salesperson_id != salesperson_id) {
       return res.json({ success: false, message: '권한이 없습니다.' });
     }
@@ -2354,8 +2354,28 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
     `);
     stmt.run(contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, id);
     
+    // 알림 생성: meeting_status가 '일정재섭외' 또는 'AS'로 변경된 경우
+    if (meeting_status && (meeting_status === '일정재섭외' || meeting_status === 'AS') && meeting_status !== record.old_meeting_status) {
+      // 섭외자의 user_id 찾기
+      const recruiter = db.prepare('SELECT id, name, notification_enabled FROM users WHERE name = ? AND role = ?').get(record.proposer, 'recruiter');
+      
+      if (recruiter && recruiter.notification_enabled) {
+        // 영업자 이름 찾기
+        const salesperson = db.prepare('SELECT name FROM users WHERE id = ?').get(salesperson_id);
+        const salespersonName = salesperson ? salesperson.name : '영업자';
+        
+        const title = meeting_status === '일정재섭외' ? '일정 재섭외 요청' : 'AS 요청';
+        const message = `${salespersonName}님이 "${record.company_name}" 업체에 대해 ${meeting_status} 상태로 변경했습니다.`;
+        const type = meeting_status === '일정재섭외' ? 'reschedule' : 'as';
+        
+        createNotification(recruiter.id, title, message, type, id);
+        console.log(`알림 생성: ${recruiter.name}(${recruiter.id})에게 ${type} 알림 전송`);
+      }
+    }
+    
     res.json({ success: true });
   } catch (error) {
+    console.error('영업자 수정 오류:', error);
     res.json({ success: false, message: error.message });
   }
 });

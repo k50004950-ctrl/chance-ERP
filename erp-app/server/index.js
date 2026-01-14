@@ -803,7 +803,7 @@ app.get('/api/users', (req, res) => {
       SELECT id, username, name, role, created_at,
              employee_code, department, position, commission_rate,
              bank_name, account_number, social_security_number,
-             hire_date, address, emergency_contact
+             hire_date, address, emergency_contact, notification_enabled
       FROM users 
       ORDER BY created_at DESC
     `).all();
@@ -821,7 +821,7 @@ app.get('/api/users/:id', (req, res) => {
       SELECT id, username, name, role, created_at,
              employee_code, department, position, commission_rate,
              bank_name, account_number, social_security_number,
-             hire_date, address, emergency_contact
+             hire_date, address, emergency_contact, notification_enabled
       FROM users 
       WHERE id = ?
     `).get(id);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Save, Plus, Trash2, Download, FileAudio, X, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { formatDateToKorean } from '../../utils/dateFormat';
@@ -70,6 +70,7 @@ const SalesDBRegister: React.FC = () => {
   const [startDate, setStartDate] = useState<string>(''); // 시작일
   const [endDate, setEndDate] = useState<string>(''); // 종료일
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle'); // 자동 저장 상태
+  const tableContainerRef = useRef<HTMLDivElement>(null); // 테이블 컨테이너 ref
 
   // 천 단위 쉼표 포맷팅 함수
   const formatNumberWithCommas = (value: string): string => {
@@ -155,6 +156,49 @@ const SalesDBRegister: React.FC = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [rows, currentUser]);
+
+  // 키보드 방향키로 테이블 가로 스크롤
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // input, textarea, select에 포커스가 있으면 방향키 동작 안 함
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.tagName === 'SELECT')
+      ) {
+        return;
+      }
+
+      const container = tableContainerRef.current;
+      if (!container) return;
+
+      const scrollAmount = 100; // 한 번에 스크롤할 픽셀
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          container.scrollLeft -= scrollAmount;
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          container.scrollLeft += scrollAmount;
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          container.scrollTop -= scrollAmount;
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          container.scrollTop += scrollAmount;
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const fetchSalespersons = async () => {
     try {
@@ -854,7 +898,12 @@ const SalesDBRegister: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <div 
+        ref={tableContainerRef}
+        className="bg-white rounded-lg shadow overflow-x-auto max-h-[70vh]"
+        tabIndex={0}
+        style={{ outline: 'none' }}
+      >
         <table className="min-w-full border-collapse">
           <thead className="bg-gray-50 sticky top-0">
             <tr>

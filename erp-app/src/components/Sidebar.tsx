@@ -26,7 +26,8 @@ import {
   FileSignature,
   TrendingUp,
   Bell,
-  Phone
+  Phone,
+  Calculator
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 

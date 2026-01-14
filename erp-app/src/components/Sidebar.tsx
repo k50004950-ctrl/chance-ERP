@@ -169,13 +169,13 @@ const Sidebar: React.FC = () => {
       icon: <Settings className="w-4 h-4" />,
       children: [
         ...(user?.role === 'admin' ? [
-          { title: '계정설정', path: '/settings/accounts', icon: <Users className="w-4 h-4" /> },
+        { title: '계정설정', path: '/settings/accounts', icon: <Users className="w-4 h-4" /> },
           { title: '계정 변경 승인', path: '/admin/account-change-approval', icon: <CheckCircle className="w-4 h-4" /> },
           { title: '공지사항 관리', path: '/admin/notice-management', icon: <Bell className="w-4 h-4" /> },
         ] : []),
         { title: '내 정보 수정', path: '/settings/my-account', icon: <User className="w-4 h-4" /> },
         ...(user?.role === 'admin' ? [
-          { title: '회사 설정', path: '/settings/company', icon: <Briefcase className="w-4 h-4" /> },
+        { title: '회사 설정', path: '/settings/company', icon: <Briefcase className="w-4 h-4" /> },
         ] : []),
       ],
     },

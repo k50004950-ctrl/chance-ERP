@@ -108,7 +108,7 @@ const SalesDBSearch: React.FC = () => {
           const date = item.meeting_request_datetime.split('T')[0];
           return date >= meetingDateFrom && date <= meetingDateTo;
         });
-      }
+    }
     }
     
     setFilteredData(filtered);
@@ -530,7 +530,7 @@ const SalesDBSearch: React.FC = () => {
                         item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {item.meeting_status || '-'}
+                    {item.meeting_status || '-'}
                       </span>
                     )}
                   </td>

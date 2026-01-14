@@ -260,22 +260,22 @@ const SalespersonCommissionStatement: React.FC = () => {
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
           {/* 영업자 선택 (관리자만) */}
-          {user?.role === 'admin' && (
+      {user?.role === 'admin' && (
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">영업자:</label>
-              <select
-                value={selectedSalesperson}
-                onChange={(e) => setSelectedSalesperson(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">선택하세요</option>
-                {salespersons.map((sp) => (
-                  <option key={sp.id} value={sp.id}>
-                    {sp.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedSalesperson}
+              onChange={(e) => setSelectedSalesperson(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">선택하세요</option>
+              {salespersons.map((sp) => (
+                <option key={sp.id} value={sp.id}>
+                  {sp.name}
+                </option>
+              ))}
+            </select>
+          </div>
           )}
 
           {/* 년도 선택 */}

@@ -86,6 +86,7 @@ const SalespersonMyData: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'range'>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showCompletedOnly, setShowCompletedOnly] = useState(false);
   
   const [newData, setNewData] = useState({
     company_name: '',
@@ -212,8 +213,13 @@ const SalespersonMyData: React.FC = () => {
       });
     }
 
+    // 계약완료만 보기 필터
+    if (showCompletedOnly) {
+      filtered = filtered.filter((item) => item.contract_status === 'Y');
+    }
+
     setFilteredData(filtered);
-  }, [myData, searchTerm, dateFilter, startDate, endDate]);
+  }, [myData, searchTerm, dateFilter, startDate, endDate, showCompletedOnly]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -573,13 +579,13 @@ const SalespersonMyData: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">영업자 DB 입력</h1>
-            <p className="text-gray-600 mt-1">
-              {isAdmin ? '영업자별 담당 업체 정보를 확인하고 수정하세요' : '내가 담당하는 업체 정보를 수정하세요'}
-            </p>
-            <p className="text-sm text-blue-600 mt-2">
+        <h1 className="text-2xl font-bold text-gray-800">영업자 DB 입력</h1>
+        <p className="text-gray-600 mt-1">
+          {isAdmin ? '영업자별 담당 업체 정보를 확인하고 수정하세요' : '내가 담당하는 업체 정보를 수정하세요'}
+        </p>
+        <p className="text-sm text-blue-600 mt-2">
               ※ 계약날짜, 미팅여부, 거래처(매출거래처) 필드만 수정 가능합니다.
-            </p>
+        </p>
             <p className="text-sm text-orange-600 mt-1">
               ※ 거래처 선택 시 수수료가 자동으로 적용됩니다.
             </p>
@@ -687,6 +693,21 @@ const SalespersonMyData: React.FC = () => {
           )}
         </div>
 
+        {/* 계약완료만 보기 체크박스 */}
+        <div className="mt-4">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showCompletedOnly}
+              onChange={(e) => setShowCompletedOnly(e.target.checked)}
+              className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+            />
+            <span className="ml-2 text-sm font-medium text-gray-700">
+              계약완료만 보기 (Y)
+            </span>
+          </label>
+        </div>
+
         {/* 필터 결과 요약 */}
         <div className="mt-4 text-sm text-gray-600">
           총 <span className="font-semibold text-blue-600">{filteredData.length}</span>개의 업체
@@ -695,6 +716,7 @@ const SalespersonMyData: React.FC = () => {
           {dateFilter === 'range' && startDate && endDate && (
             <span className="ml-2">({startDate} ~ {endDate})</span>
           )}
+          {showCompletedOnly && <span className="ml-2">(계약완료만)</span>}
         </div>
       </div>
 
@@ -733,7 +755,7 @@ const SalespersonMyData: React.FC = () => {
                       onClick={() => handleShowDetail(item)}
                       className="text-blue-600 hover:text-blue-800 hover:underline font-semibold cursor-pointer text-left"
                     >
-                      {item.company_name}
+                    {item.company_name}
                     </button>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">

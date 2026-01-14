@@ -104,8 +104,18 @@ const SalesDBRegister: React.FC = () => {
       if (shouldRestore) {
         try {
           const draftData = JSON.parse(savedDraft);
-          setRows(draftData);
-          alert('작업 중이던 데이터를 복원했습니다.');
+          
+          // 섭외자인 경우 본인의 데이터만 필터링
+          if (user.role === 'recruiter') {
+            const filteredData = draftData.filter((row: SalesDBRow) => 
+              !row.proposer || row.proposer === user.name
+            );
+            setRows(filteredData);
+            alert('작업 중이던 데이터를 복원했습니다.');
+          } else {
+            setRows(draftData);
+            alert('작업 중이던 데이터를 복원했습니다.');
+          }
           return; // 복원했으면 서버에서 다시 로드하지 않음
         } catch (error) {
           console.error('임시 데이터 복원 실패:', error);

@@ -2170,6 +2170,25 @@ app.get('/api/salespersons', (req, res) => {
   }
 });
 
+// ========== 사용자 관리 API (역할별 조회) ==========
+app.get('/api/users', (req, res) => {
+  try {
+    const { role } = req.query;
+    let query = 'SELECT id, name, username, role FROM users';
+    
+    if (role) {
+      query += ` WHERE role = ?`;
+      const users = db.prepare(query + ' ORDER BY created_at DESC').all(role);
+      return res.json({ success: true, data: users });
+    }
+    
+    const users = db.prepare(query + ' ORDER BY created_at DESC').all();
+    res.json({ success: true, data: users });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
 app.post('/api/salespersons', (req, res) => {
   try {
     const { name, employee_code, phone, email, commission_rate } = req.body;

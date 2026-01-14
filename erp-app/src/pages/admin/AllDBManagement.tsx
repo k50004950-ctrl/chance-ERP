@@ -1,0 +1,639 @@
+import React, { useState, useEffect } from 'react';
+import { Edit, Save, X, Database, TrendingUp, CheckCircle, Clock, XCircle, FileAudio, Download, Search, Filter } from 'lucide-react';
+import { formatDateToKorean } from '../../utils/dateFormat';
+import KoreanDatePicker from '../../components/KoreanDatePicker';
+import { API_BASE_URL } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
+
+interface DBItem {
+  id: number;
+  proposal_date: string;
+  proposer: string;
+  salesperson_id: number;
+  salesperson_name: string;
+  meeting_status: string;
+  company_name: string;
+  representative: string;
+  address: string;
+  contact: string;
+  industry: string;
+  sales_amount: number;
+  existing_client: string;
+  contract_status: string;
+  termination_month: string;
+  actual_sales: number;
+  contract_date: string;
+  contract_client: string;
+  contract_month: string;
+  client_name: string;
+  feedback: string;
+  april_type1_date: string;
+  meeting_request_datetime: string;
+}
+
+interface Salesperson {
+  id: number;
+  name: string;
+  username: string;
+}
+
+interface Recruiter {
+  id: number;
+  name: string;
+  username: string;
+}
+
+const AllDBManagement: React.FC = () => {
+  const { user: currentUser } = useAuth();
+  const [allData, setAllData] = useState<DBItem[]>([]);
+  const [filteredData, setFilteredData] = useState<DBItem[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
+  const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [selectedRecruiter, setSelectedRecruiter] = useState<string>('');
+  const [selectedSalesperson, setSelectedSalesperson] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<DBItem | null>(null);
+
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'admin') {
+      fetchAllData();
+      fetchSalespersons();
+      fetchRecruiters();
+    }
+  }, [currentUser]);
+
+  const fetchAllData = async () => {
+    try {
+      const response = await fetch(`/api/sales-db`);
+      const result = await response.json();
+      if (result.success) {
+        setAllData(result.data);
+        setFilteredData(result.data);
+        
+        // Extract unique years
+        const years = Array.from(
+          new Set(
+            result.data
+              .map((item: DBItem) => item.proposal_date ? item.proposal_date.split('-')[0] : '')
+              .filter(Boolean)
+          )
+        ).sort((a, b) => b.localeCompare(a));
+        setAvailableYears(years as string[]);
+      }
+    } catch (error) {
+      console.error('DB 조회 실패:', error);
+    }
+  };
+
+  const fetchSalespersons = async () => {
+    try {
+      const response = await fetch('/api/salespersons');
+      const result = await response.json();
+      if (result.success) {
+        setSalespersons(result.data);
+      }
+    } catch (error) {
+      console.error('영업자 목록 조회 실패:', error);
+    }
+  };
+
+  const fetchRecruiters = async () => {
+    try {
+      const response = await fetch('/api/users?role=recruiter');
+      const result = await response.json();
+      if (result.success) {
+        setRecruiters(result.data);
+      }
+    } catch (error) {
+      console.error('섭외자 목록 조회 실패:', error);
+    }
+  };
+
+  // 필터링 로직
+  useEffect(() => {
+    let filtered = allData;
+
+    // 검색어 필터
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (item) =>
+          item.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.representative?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.contact?.includes(searchTerm) ||
+          item.proposer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.salesperson_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // 년도 필터
+    if (selectedYear) {
+      filtered = filtered.filter(
+        (item) => item.proposal_date && item.proposal_date.startsWith(selectedYear)
+      );
+    }
+
+    // 월 필터
+    if (selectedMonth) {
+      filtered = filtered.filter((item) => {
+        if (!item.proposal_date) return false;
+        const month = item.proposal_date.split('-')[1];
+        return month === selectedMonth;
+      });
+    }
+
+    // 섭외자 필터
+    if (selectedRecruiter) {
+      filtered = filtered.filter((item) => item.proposer === selectedRecruiter);
+    }
+
+    // 영업자 필터
+    if (selectedSalesperson) {
+      filtered = filtered.filter((item) => item.salesperson_name === selectedSalesperson);
+    }
+
+    setFilteredData(filtered);
+  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, allData]);
+
+  const handleEdit = (id: number) => {
+    setEditingId(id);
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    fetchAllData();
+  };
+
+  const handleChange = (id: number, field: string, value: string | number) => {
+    setAllData(allData.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleSave = async (item: DBItem) => {
+    try {
+      const response = await fetch(`/api/sales-db/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proposal_date: item.proposal_date,
+          proposer: item.proposer,
+          meeting_status: item.meeting_status,
+          salesperson_id: item.salesperson_id,
+          contract_date: item.contract_date,
+          contract_status: item.contract_status,
+          actual_sales: item.actual_sales,
+          client_name: item.client_name,
+          feedback: item.feedback,
+          meeting_request_datetime: item.meeting_request_datetime,
+        }),
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('저장되었습니다.');
+        setEditingId(null);
+        fetchAllData();
+      } else {
+        alert('저장 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('저장 실패:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleShowDetail = (item: DBItem) => {
+    setSelectedItem(item);
+    setShowDetailModal(true);
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSelectedYear('');
+    setSelectedMonth('');
+    setSelectedRecruiter('');
+    setSelectedSalesperson('');
+  };
+
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="p-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+          <p className="text-yellow-800">관리자 권한이 필요합니다.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <div className="mb-6">
+        <div className="flex items-center space-x-3">
+          <Database className="w-8 h-8 text-blue-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">전체 DB 관리</h1>
+            <p className="text-gray-600 mt-1">
+              모든 섭외자와 영업자의 DB를 통합 관리하세요
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 실적 통계 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">전체 DB</p>
+              <p className="text-2xl font-bold text-gray-800">{filteredData.length}</p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-blue-500" />
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">미팅완료</p>
+              <p className="text-2xl font-bold text-green-600">
+                {filteredData.filter(item => item.meeting_status === '미팅완료').length}
+              </p>
+            </div>
+            <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">조치 필요</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {filteredData.filter(item => 
+                  item.meeting_status === '일정재확인요청' || 
+                  item.meeting_status === '일정재섭외' || 
+                  item.meeting_status === 'AS'
+                ).length}
+              </p>
+            </div>
+            <Clock className="w-8 h-8 text-yellow-500" />
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">미팅거절</p>
+              <p className="text-2xl font-bold text-red-600">
+                {filteredData.filter(item => item.meeting_status === '미팅거절').length}
+              </p>
+            </div>
+            <XCircle className="w-8 h-8 text-red-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* 필터 섹션 */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="flex items-center mb-4">
+          <Filter className="w-5 h-5 text-gray-600 mr-2" />
+          <h2 className="text-lg font-bold text-gray-800">필터</h2>
+          <button
+            onClick={handleResetFilters}
+            className="ml-auto text-sm text-blue-600 hover:text-blue-800"
+          >
+            초기화
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* 검색 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="업체명, 대표자, 연락처 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* 년도 필터 */}
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">전체 년도</option>
+            {availableYears.map((year) => (
+              <option key={year} value={year}>
+                {year}년
+              </option>
+            ))}
+          </select>
+
+          {/* 월 필터 */}
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">전체 월</option>
+            {Array.from({ length: 12 }, (_, i) => {
+              const month = (i + 1).toString().padStart(2, '0');
+              return (
+                <option key={month} value={month}>
+                  {i + 1}월
+                </option>
+              );
+            })}
+          </select>
+
+          {/* 섭외자 필터 */}
+          <select
+            value={selectedRecruiter}
+            onChange={(e) => setSelectedRecruiter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">전체 섭외자</option>
+            {recruiters.map((recruiter) => (
+              <option key={recruiter.id} value={recruiter.name}>
+                {recruiter.name}
+              </option>
+            ))}
+          </select>
+
+          {/* 영업자 필터 */}
+          <select
+            value={selectedSalesperson}
+            onChange={(e) => setSelectedSalesperson(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">전체 영업자</option>
+            {salespersons.map((sp) => (
+              <option key={sp.id} value={sp.name}>
+                {sp.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* 테이블 */}
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">섭외일</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-green-50">섭외자</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">업체명</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">대표자</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">연락처</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">주소</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-purple-50">담당영업자</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">미팅상태</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약상태</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 whitespace-nowrap">작업</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredData.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
+                  조건에 맞는 DB가 없습니다.
+                </td>
+              </tr>
+            ) : (
+              filteredData.map((item) => (
+                <tr key={item.id} data-db-id={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 bg-blue-50 text-sm whitespace-nowrap">
+                    {formatDateToKorean(item.proposal_date) || '-'}
+                  </td>
+                  <td className="px-4 py-3 bg-green-50">
+                    <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                      {item.proposer || '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <button
+                      onClick={() => handleShowDetail(item)}
+                      className="text-blue-600 font-medium hover:underline"
+                    >
+                      {item.company_name}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                    {item.representative || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                    {item.contact || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
+                    {item.address || '-'}
+                  </td>
+                  <td className="px-4 py-3 bg-purple-50">
+                    {editingId === item.id ? (
+                      <select
+                        value={item.salesperson_id || ''}
+                        onChange={(e) => handleChange(item.id, 'salesperson_id', Number(e.target.value))}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">선택</option>
+                        {salespersons.map((sp) => (
+                          <option key={sp.id} value={sp.id}>
+                            {sp.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                        {item.salesperson_name || '-'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {editingId === item.id ? (
+                      <select
+                        value={item.meeting_status || ''}
+                        onChange={(e) => handleChange(item.id, 'meeting_status', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">선택</option>
+                        <option value="미팅완료">미팅완료</option>
+                        <option value="일정재확인요청">일정재확인요청</option>
+                        <option value="일정재섭외">일정재섭외</option>
+                        <option value="AS">AS</option>
+                        <option value="미팅거절">미팅거절</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                        item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                        item.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800' :
+                        item.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800' :
+                        item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {item.meeting_status || '-'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {editingId === item.id ? (
+                      <select
+                        value={item.contract_status || ''}
+                        onChange={(e) => handleChange(item.id, 'contract_status', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">선택</option>
+                        <option value="Y">완료</option>
+                        <option value="N">미완료</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        item.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
+                        item.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                        'bg-gray-50 text-gray-500'
+                      }`}>
+                        {item.contract_status === 'Y' ? '완료' : item.contract_status === 'N' ? '미완료' : '-'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                    {editingId === item.id ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <button
+                          onClick={() => handleSave(item)}
+                          className="text-green-600 hover:text-green-900"
+                          title="저장"
+                        >
+                          <Save className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="text-red-600 hover:text-red-900"
+                          title="취소"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleEdit(item.id)}
+                        className="text-gray-600 hover:text-gray-900"
+                        title="수정"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 상세 정보 모달 */}
+      {showDetailModal && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-2 md:p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-600 text-white sticky top-0 z-10">
+              <h2 className="text-lg md:text-2xl font-bold">업체 상세 정보</h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="text-white hover:text-gray-200 transition"
+              >
+                <X className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Basic Info */}
+                <div className="md:col-span-2 bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">1</span>
+                    기본 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">업체명</p><p className="text-lg font-semibold text-gray-900">{selectedItem.company_name}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">대표자</p><p className="text-lg font-semibold text-gray-900">{selectedItem.representative || '-'}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">연락처</p><p className="text-lg font-semibold text-gray-900">{selectedItem.contact || '-'}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">업종</p><p className="text-lg font-semibold text-gray-900">{selectedItem.industry || '-'}</p></div>
+                    <div className="md:col-span-2"><p className="text-sm font-medium text-gray-500 mb-1">주소</p><p className="text-lg font-semibold text-gray-900">{selectedItem.address || '-'}</p></div>
+                  </div>
+                </div>
+
+                {/* 섭외/영업 정보 */}
+                <div className="md:col-span-2 bg-green-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">2</span>
+                    섭외 및 영업 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">섭외일</p><p className="text-lg font-semibold text-gray-900">{formatDateToKorean(selectedItem.proposal_date) || '-'}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">섭외자</p><span className="inline-block px-3 py-1 bg-green-200 text-green-800 rounded-full text-sm font-bold">{selectedItem.proposer || '-'}</span></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">담당영업자</p><span className="inline-block px-3 py-1 bg-purple-200 text-purple-800 rounded-full text-sm font-bold">{selectedItem.salesperson_name || '-'}</span></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">미팅 상태</p><span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      selectedItem.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                      selectedItem.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                      selectedItem.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800' :
+                      selectedItem.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800' :
+                      selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>{selectedItem.meeting_status || '-'}</span></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">계약날짜</p><p className="text-lg font-semibold text-gray-900">{formatDateToKorean(selectedItem.contract_date) || '-'}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">계약 완료</p><span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${selectedItem.contract_status === 'Y' ? 'bg-green-100 text-green-800' : selectedItem.contract_status === 'N' ? 'bg-gray-100 text-gray-800' : 'bg-gray-50 text-gray-500'}`}>{selectedItem.contract_status === 'Y' ? '완료' : selectedItem.contract_status === 'N' ? '미완료' : '-'}</span></div>
+                  </div>
+                </div>
+
+                {/* Financial Info */}
+                <div className="md:col-span-2 bg-yellow-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-yellow-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">3</span>
+                    재무 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">매출액</p><p className="text-lg font-semibold text-gray-900">{selectedItem.sales_amount ? `${new Intl.NumberFormat('ko-KR').format(selectedItem.sales_amount)}원` : '-'}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">계약기장료</p><p className="text-lg font-semibold text-blue-600">{selectedItem.actual_sales ? `${new Intl.NumberFormat('ko-KR').format(Number(selectedItem.actual_sales))}원` : '-'}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">기존거래처</p><p className="text-lg font-semibold text-gray-900">{selectedItem.existing_client || '-'}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">매출거래처</p><p className="text-lg font-semibold text-gray-900">{selectedItem.client_name || '-'}</p></div>
+                  </div>
+                </div>
+
+                {/* Other Info */}
+                <div className="md:col-span-2 bg-purple-50 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">4</span>
+                    기타 정보
+                  </h3>
+                  <div><p className="text-sm font-medium text-gray-500 mb-2">피드백 / 기타사항</p><div className="bg-white rounded-lg p-4 border border-gray-200"><p className="text-gray-900 whitespace-pre-wrap">{selectedItem.feedback || '작성된 피드백이 없습니다.'}</p></div></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="px-4 md:px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition text-sm md:text-base"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AllDBManagement;

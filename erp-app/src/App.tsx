@@ -47,6 +47,7 @@ import AccountChangeApproval from './pages/admin/AccountChangeApproval';
 import SalespersonPerformance from './pages/admin/SalespersonPerformance';
 import RecruiterPerformance from './pages/admin/RecruiterPerformance';
 import NoticeManagement from './pages/admin/NoticeManagement';
+import AllDBManagement from './pages/admin/AllDBManagement';
 
 // 출퇴근
 import ClockIn from './pages/attendance/ClockIn';
@@ -97,6 +98,7 @@ function App() {
             <Route path="admin/commission-summary" element={<CommissionSummary />} />
             <Route path="admin/account-change-approval" element={<AccountChangeApproval />} />
             <Route path="admin/notice-management" element={<NoticeManagement />} />
+            <Route path="admin/all-db" element={<AllDBManagement />} />
             
             {/* DB관리 */}
             <Route path="sales-db/register" element={<SalesDBRegister />} />

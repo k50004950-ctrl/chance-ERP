@@ -326,6 +326,41 @@ const SalesDBRegister: React.FC = () => {
 
     try {
       setIsUploading(true);
+      
+      // 중복 체크
+      const duplicates: string[] = [];
+      for (const row of rows) {
+        if (!row.company_name) {
+          continue; // 업체명이 없는 행은 건너뛰기
+        }
+
+        // 중복 체크 API 호출
+        const checkResponse = await fetch(`${API_BASE_URL}/api/sales-db/check-duplicate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            company_name: row.company_name,
+            contact: row.contact,
+            exclude_id: row.id || null
+          })
+        });
+
+        const checkResult = await checkResponse.json();
+        
+        if (checkResult.success && checkResult.isDuplicate) {
+          const duplicateInfo = checkResult.duplicates[0];
+          const duplicateMessage = `업체명: ${duplicateInfo.company_name}${duplicateInfo.contact ? `, 연락처: ${duplicateInfo.contact}` : ''}`;
+          duplicates.push(duplicateMessage);
+        }
+      }
+
+      // 중복이 발견되면 경고 표시
+      if (duplicates.length > 0) {
+        setIsUploading(false);
+        alert('중복입니다!\n\n다음 항목이 이미 존재합니다:\n\n' + duplicates.join('\n'));
+        return;
+      }
+
       let successCount = 0;
       let errorCount = 0;
 

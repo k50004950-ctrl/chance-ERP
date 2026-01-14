@@ -4555,6 +4555,59 @@ app.put('/api/users/:id/notification-settings', (req, res) => {
   }
 });
 
+// 중복 체크 API (업체명 또는 연락처로 검색)
+app.post('/api/sales-db/check-duplicate', (req, res) => {
+  try {
+    const { company_name, contact, exclude_id } = req.body;
+    
+    if (!company_name && !contact) {
+      return res.json({ success: true, isDuplicate: false });
+    }
+
+    let query = 'SELECT id, company_name, contact, representative FROM sales_db WHERE ';
+    const conditions = [];
+    const params = [];
+
+    if (company_name) {
+      conditions.push('company_name = ?');
+      params.push(company_name);
+    }
+
+    if (contact) {
+      conditions.push('contact = ?');
+      params.push(contact);
+    }
+
+    query += '(' + conditions.join(' OR ') + ')';
+
+    // 수정 중인 데이터는 제외 (자기 자신은 중복이 아님)
+    if (exclude_id) {
+      query += ' AND id != ?';
+      params.push(exclude_id);
+    }
+
+    const duplicates = db.prepare(query).all(...params);
+
+    if (duplicates.length > 0) {
+      res.json({ 
+        success: true, 
+        isDuplicate: true, 
+        duplicates: duplicates.map(d => ({
+          id: d.id,
+          company_name: d.company_name,
+          contact: d.contact,
+          representative: d.representative
+        }))
+      });
+    } else {
+      res.json({ success: true, isDuplicate: false });
+    }
+  } catch (error) {
+    console.error('중복 체크 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // 중복 데이터 확인 및 삭제 API
 app.post('/api/sales-db/remove-duplicates', (req, res) => {
   try {

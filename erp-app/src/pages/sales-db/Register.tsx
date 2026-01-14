@@ -82,6 +82,7 @@ const SalesDBRegister: React.FC = () => {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle'); // 자동 저장 상태
   const tableContainerRef = useRef<HTMLDivElement>(null); // 테이블 컨테이너 ref
   const [highlightedRowId, setHighlightedRowId] = useState<number | null>(null); // 하이라이트할 행 ID
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // 초기 로드 플래그
 
   // 천 단위 쉼표 포맷팅 함수
   const formatNumberWithCommas = (value: string): string => {
@@ -158,6 +159,13 @@ const SalesDBRegister: React.FC = () => {
     } else {
       fetchExistingData();
     }
+    
+    // 초기 데이터 로드 후 3초 뒤에 자동 저장 활성화 (서버 데이터 로드 완료 후)
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // 필터 변경 시 필터링
@@ -170,6 +178,9 @@ const SalesDBRegister: React.FC = () => {
   // 작업 중인 데이터 자동 저장 (로컬 스토리지)
   useEffect(() => {
     if (!currentUser?.id) return;
+    
+    // 초기 로드 시에는 자동 저장하지 않음 (서버에서 로드한 데이터를 저장하지 않기 위해)
+    if (isInitialLoad) return;
     
     // 빈 행만 있는 경우는 저장하지 않음
     const hasData = rows.some(row => row.company_name || row.contact || row.representative);
@@ -194,7 +205,7 @@ const SalesDBRegister: React.FC = () => {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [rows, currentUser]);
+  }, [rows, currentUser, isInitialLoad]);
 
   // URL 파라미터에서 editId를 읽어서 해당 항목 하이라이트 및 스크롤
   useEffect(() => {

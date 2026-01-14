@@ -58,6 +58,7 @@ interface SalesClient {
 
 const SalespersonMyData: React.FC = () => {
   const [myData, setMyData] = useState<MyDataItem[]>([]);
+  const [filteredData, setFilteredData] = useState<MyDataItem[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [salespersonId, setSalespersonId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -79,6 +80,13 @@ const SalespersonMyData: React.FC = () => {
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [recordingNotes, setRecordingNotes] = useState('');
   const [currentFeedbackId, setCurrentFeedbackId] = useState<number | null>(null);
+  
+  // 검색 및 필터 상태
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'range'>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
   const [newData, setNewData] = useState({
     company_name: '',
     representative: '',
@@ -166,12 +174,46 @@ const SalespersonMyData: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/api/sales-db/my-data?salesperson_id=${salespersonId}`);
       const result = await response.json();
       if (result.success) {
-        setMyData(result.data);
+        // 섭외일 기준으로 정렬 (최신순)
+        const sortedData = result.data.sort((a: MyDataItem, b: MyDataItem) => {
+          const dateA = a.proposal_date || '';
+          const dateB = b.proposal_date || '';
+          return dateB.localeCompare(dateA);
+        });
+        setMyData(sortedData);
       }
     } catch (error) {
       console.error('데이터 조회 실패:', error);
     }
   };
+
+  // 검색 및 필터링 로직
+  useEffect(() => {
+    let filtered = [...myData];
+
+    // 검색어 필터
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter((item) =>
+        (item.company_name && item.company_name.toLowerCase().includes(search)) ||
+        (item.representative && item.representative.toLowerCase().includes(search)) ||
+        (item.contact && item.contact.toLowerCase().includes(search))
+      );
+    }
+
+    // 날짜 필터
+    if (dateFilter === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      filtered = filtered.filter((item) => item.proposal_date === today);
+    } else if (dateFilter === 'range' && startDate && endDate) {
+      filtered = filtered.filter((item) => {
+        if (!item.proposal_date) return false;
+        return item.proposal_date >= startDate && item.proposal_date <= endDate;
+      });
+    }
+
+    setFilteredData(filtered);
+  }, [myData, searchTerm, dateFilter, startDate, endDate]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -583,53 +625,108 @@ const SalespersonMyData: React.FC = () => {
         </div>
       )}
 
+      {/* 검색 및 필터 섹션 */}
+      <div className="mb-6 bg-white rounded-lg shadow p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 검색 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">검색</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="업체명, 대표자, 연락처 검색..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* 날짜 필터 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">날짜 필터</label>
+            <select
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value as 'all' | 'today' | 'range');
+                if (e.target.value === 'today') {
+                  setStartDate('');
+                  setEndDate('');
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">전체</option>
+              <option value="today">오늘</option>
+              <option value="range">기간 선택</option>
+            </select>
+          </div>
+
+          {/* 시작일 */}
+          {dateFilter === 'range' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">시작일</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
+
+          {/* 종료일 */}
+          {dateFilter === 'range' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">종료일</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 필터 결과 요약 */}
+        <div className="mt-4 text-sm text-gray-600">
+          총 <span className="font-semibold text-blue-600">{filteredData.length}</span>개의 업체
+          {searchTerm && <span className="ml-2">(검색: {searchTerm})</span>}
+          {dateFilter === 'today' && <span className="ml-2">(오늘)</span>}
+          {dateFilter === 'range' && startDate && endDate && (
+            <span className="ml-2">({startDate} ~ {endDate})</span>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약날짜</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-yellow-50">섭외날짜</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">업체명</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">대표자</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">연락처</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">미팅여부</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약기장료</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">거래처</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-green-50">계약완료</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약완료</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-purple-50">녹취관리</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">기타(피드백)</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 whitespace-nowrap">작업</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {myData.length === 0 ? (
+            {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
-                  담당하는 업체 데이터가 없습니다.
+                <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
+                  {searchTerm || dateFilter !== 'all' ? '검색 결과가 없습니다.' : '담당하는 업체 데이터가 없습니다.'}
                 </td>
               </tr>
             ) : (
-              myData.map((item) => (
+              filteredData.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 bg-blue-50">
-                    {editingId === item.id ? (
-                      <KoreanDatePicker
-                        selected={item.contract_date ? new Date(item.contract_date) : null}
-                        onChange={(date) => {
-                          if (date) {
-                            const year = date.getFullYear();
-                            const month = String(date.getMonth() + 1).padStart(2, '0');
-                            const day = String(date.getDate()).padStart(2, '0');
-                            handleChange(item.id, 'contract_date', `${year}-${month}-${day}`);
-                          } else {
-                            handleChange(item.id, 'contract_date', '');
-                          }
-                        }}
-                        className="px-2 py-1 border border-gray-300 rounded text-sm"
-                        placeholderText="날짜 선택"
-                      />
-                    ) : (
-                      <span className="text-sm text-gray-900">{formatDateToKorean(item.contract_date) || '-'}</span>
-                    )}
+                  <td className="px-4 py-3 bg-yellow-50 text-sm whitespace-nowrap">
+                    <span className="text-gray-900 font-medium">{formatDateToKorean(item.proposal_date) || '-'}</span>
                   </td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
                     <button

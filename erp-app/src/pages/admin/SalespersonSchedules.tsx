@@ -31,8 +31,9 @@ const SalespersonSchedules: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'schedules' | 'memos'>('schedules');
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [users, setUsers] = useState<any[]>([]);
-  const [viewMode, setViewMode] = useState<'table' | 'grouped'>('grouped'); // 한눈에 보기 모드 추가
+  const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'table'>('daily'); // 당일/월별/테이블 모드
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM 형식
 
   useEffect(() => {
     loadUsers();
@@ -114,7 +115,49 @@ const SalespersonSchedules: React.FC = () => {
     );
   };
 
-  // 영업자별로 일정 그룹화 (날짜 필터링 포함)
+  // 당일 일정 가져오기 (시간순 정렬)
+  const getDailySchedules = () => {
+    return schedules
+      .filter(s => s.schedule_date === selectedDate)
+      .sort((a, b) => {
+        // 1차: 시간순
+        const timeA = a.schedule_time || '00:00';
+        const timeB = b.schedule_time || '00:00';
+        const timeCompare = timeA.localeCompare(timeB);
+        if (timeCompare !== 0) return timeCompare;
+        
+        // 2차: 영업자 이름순
+        return (a.user_name || '').localeCompare(b.user_name || '', 'ko-KR');
+      });
+  };
+
+  // 월별 일정 가져오기 (날짜별로 그룹화)
+  const getMonthlySchedules = () => {
+    const monthSchedules = schedules.filter(s => s.schedule_date && s.schedule_date.startsWith(selectedMonth));
+    
+    // 날짜별로 그룹화
+    const grouped: Record<string, Schedule[]> = {};
+    monthSchedules.forEach(schedule => {
+      const date = schedule.schedule_date;
+      if (!grouped[date]) {
+        grouped[date] = [];
+      }
+      grouped[date].push(schedule);
+    });
+    
+    // 각 날짜의 일정을 시간순으로 정렬
+    Object.keys(grouped).forEach(date => {
+      grouped[date].sort((a, b) => {
+        const timeA = a.schedule_time || '00:00';
+        const timeB = b.schedule_time || '00:00';
+        return timeA.localeCompare(timeB);
+      });
+    });
+    
+    return grouped;
+  };
+
+  // 영업자별로 일정 그룹화 (테이블 모드용)
   const getGroupedSchedules = () => {
     // 선택된 날짜의 일정만 필터링
     const filteredByDate = schedules.filter(s => s.schedule_date === selectedDate);
@@ -170,36 +213,86 @@ const SalespersonSchedules: React.FC = () => {
           
           {activeTab === 'schedules' && (
             <>
-              <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-gray-700">날짜:</label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {/* 날짜 선택 (뷰 모드에 따라 다르게 표시) */}
+              {viewMode === 'daily' && (
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">날짜:</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200"
+                  >
+                    오늘
+                  </button>
+                </div>
+              )}
               
+              {viewMode === 'monthly' && (
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">월:</label>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => setSelectedMonth(new Date().toISOString().slice(0, 7))}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200"
+                  >
+                    이번 달
+                  </button>
+                </div>
+              )}
+              
+              {viewMode === 'table' && (
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">날짜:</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+              
+              {/* 뷰 모드 전환 버튼 */}
               <div className="flex items-center space-x-2 ml-auto">
                 <button
-                  onClick={() => setViewMode('grouped')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    viewMode === 'grouped'
+                  onClick={() => setViewMode('daily')}
+                  className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    viewMode === 'daily'
                       ? 'bg-blue-500 text-white'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  한눈에 보기
+                  당일보기
+                </button>
+                <button
+                  onClick={() => setViewMode('monthly')}
+                  className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    viewMode === 'monthly'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  월별보기
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition ${
                     viewMode === 'table'
                       ? 'bg-blue-500 text-white'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  테이블 보기
+                  테이블
                 </button>
               </div>
             </>
@@ -242,17 +335,17 @@ const SalespersonSchedules: React.FC = () => {
 
         {/* 일정 탭 내용 */}
         {activeTab === 'schedules' && (
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {schedules.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                 <p className="text-lg font-medium mb-1">등록된 일정이 없습니다</p>
               </div>
-            ) : viewMode === 'grouped' ? (
-              // 한눈에 보기 모드
+            ) : viewMode === 'daily' ? (
+              // 당일 보기 모드 (모바일 최적화)
               <div>
                 <div className="mb-4">
-                  <h3 className="text-lg font-bold text-gray-800">
+                  <h3 className="text-lg md:text-xl font-bold text-gray-800">
                     {new Date(selectedDate).toLocaleDateString('ko-KR', { 
                       year: 'numeric', 
                       month: 'long', 
@@ -260,55 +353,122 @@ const SalespersonSchedules: React.FC = () => {
                       weekday: 'long'
                     })} 일정
                   </h3>
+                  <p className="text-sm text-gray-600 mt-1">총 {getDailySchedules().length}건</p>
                 </div>
-                {Object.keys(getGroupedSchedules()).length === 0 ? (
+                {getDailySchedules().length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
                     <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                    <p className="text-lg font-medium mb-1">선택한 날짜에 일정이 없습니다</p>
+                    <p className="text-lg font-medium mb-1">오늘 일정이 없습니다</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Object.entries(getGroupedSchedules())
-                      .sort(([nameA], [nameB]) => nameA.localeCompare(nameB, 'ko-KR'))
-                      .map(([userName, userSchedules]) => (
-                      <div key={userName} className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-md p-5 border border-blue-100">
-                        <div className="flex items-center space-x-2 mb-4 pb-3 border-b border-blue-200">
-                          <Users className="w-5 h-5 text-blue-600" />
-                          <h4 className="font-bold text-lg text-gray-800">{userName}</h4>
-                          <span className="ml-auto text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
-                            {userSchedules.length}건
+                  <div className="space-y-3">
+                    {getDailySchedules().map((schedule) => (
+                      <div 
+                        key={schedule.id} 
+                        className="bg-white rounded-lg shadow-md border border-gray-200 p-4 hover:shadow-lg transition"
+                      >
+                        {/* 시간과 상태 */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xl font-bold text-blue-600">
+                              {schedule.schedule_time || '시간 미정'}
+                            </span>
+                            {getStatusBadge(schedule.status)}
+                          </div>
+                          <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                            {schedule.user_name}
                           </span>
                         </div>
-                        <div className="space-y-3">
-                          {userSchedules.map((schedule) => (
-                            <div 
-                              key={schedule.id} 
-                              className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:shadow-md transition"
-                            >
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-semibold text-blue-600 text-sm">
-                                    {schedule.schedule_time || '시간 미정'}
-                                  </span>
-                                  {getStatusBadge(schedule.status)}
+                        
+                        {/* 제목 */}
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">{schedule.title}</h4>
+                        
+                        {/* 고객 정보 */}
+                        {schedule.client_name && (
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Users className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-700">{schedule.client_name}</span>
+                          </div>
+                        )}
+                        
+                        {/* 장소 */}
+                        {schedule.location && (
+                          <div className="flex items-start space-x-2 mb-2">
+                            <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
+                            <span className="text-sm text-gray-700">{schedule.location}</span>
+                          </div>
+                        )}
+                        
+                        {/* 메모 */}
+                        {schedule.notes && (
+                          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-600 italic">{schedule.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : viewMode === 'monthly' ? (
+              // 월별 보기 모드
+              <div>
+                <div className="mb-4">
+                  <h3 className="text-lg md:text-xl font-bold text-gray-800">
+                    {new Date(selectedMonth + '-01').toLocaleDateString('ko-KR', { 
+                      year: 'numeric', 
+                      month: 'long'
+                    })} 일정
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    총 {schedules.filter(s => s.schedule_date && s.schedule_date.startsWith(selectedMonth)).length}건
+                  </p>
+                </div>
+                {Object.keys(getMonthlySchedules()).length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p className="text-lg font-medium mb-1">이번 달 일정이 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(getMonthlySchedules())
+                      .sort(([dateA], [dateB]) => dateB.localeCompare(dateA)) // 최신순
+                      .map(([date, daySchedules]) => (
+                      <div key={date} className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
+                        {/* 날짜 헤더 */}
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                          <h4 className="font-bold text-lg text-gray-800">
+                            {new Date(date).toLocaleDateString('ko-KR', { 
+                              month: 'long', 
+                              day: 'numeric',
+                              weekday: 'short'
+                            })}
+                          </h4>
+                          <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                            {daySchedules.length}건
+                          </span>
+                        </div>
+                        
+                        {/* 일정 리스트 */}
+                        <div className="space-y-2">
+                          {daySchedules.map((schedule) => (
+                            <div key={schedule.id} className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
+                              <span className="font-semibold text-blue-600 text-sm min-w-[60px]">
+                                {schedule.schedule_time || '미정'}
+                              </span>
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">{schedule.title}</p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className="text-xs text-gray-600">{schedule.user_name}</span>
+                                  {schedule.client_name && (
+                                    <>
+                                      <span className="text-xs text-gray-400">·</span>
+                                      <span className="text-xs text-gray-600">{schedule.client_name}</span>
+                                    </>
+                                  )}
                                 </div>
                               </div>
-                              <p className="font-medium text-gray-900 mb-1">{schedule.title}</p>
-                              {schedule.client_name && (
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-medium">고객:</span> {schedule.client_name}
-                                </p>
-                              )}
-                              {schedule.location && (
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-medium">장소:</span> {schedule.location}
-                                </p>
-                              )}
-                              {schedule.notes && (
-                                <p className="text-xs text-gray-500 mt-2 italic">
-                                  {schedule.notes}
-                                </p>
-                              )}
+                              {getStatusBadge(schedule.status)}
                             </div>
                           ))}
                         </div>

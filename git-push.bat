@@ -1,6 +1,6 @@
 @echo off
 cd /d "C:\chance erp\HRM"
 git add -A
-git commit -m "Feat: Add mobile-optimized daily and monthly schedule views"
+git commit -m "Fix: Improve browser compatibility (Edge, Firefox, Safari)"
 git push origin master
 pause

@@ -31,7 +31,7 @@ const SalespersonSchedules: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'schedules' | 'memos'>('schedules');
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [users, setUsers] = useState<any[]>([]);
-  const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'table'>('daily'); // 당일/월별/테이블 모드
+  const [viewMode, setViewMode] = useState<'glance' | 'daily' | 'monthly' | 'table'>('glance'); // 한눈에/당일/월별/테이블 모드
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM 형식
 
@@ -214,7 +214,7 @@ const SalespersonSchedules: React.FC = () => {
           {activeTab === 'schedules' && (
             <>
               {/* 날짜 선택 (뷰 모드에 따라 다르게 표시) */}
-              {viewMode === 'daily' && (
+              {(viewMode === 'glance' || viewMode === 'daily') && (
                 <div className="flex items-center space-x-2">
                   <label className="text-sm font-medium text-gray-700">날짜:</label>
                   <input
@@ -264,6 +264,17 @@ const SalespersonSchedules: React.FC = () => {
               
               {/* 뷰 모드 전환 버튼 */}
               <div className="flex items-center space-x-2 ml-auto">
+                <button
+                  onClick={() => setViewMode('glance')}
+                  className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    viewMode === 'glance'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <Eye className="w-4 h-4 inline mr-1" />
+                  한눈에
+                </button>
                 <button
                   onClick={() => setViewMode('daily')}
                   className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition ${
@@ -340,6 +351,84 @@ const SalespersonSchedules: React.FC = () => {
               <div className="text-center py-12 text-gray-500">
                 <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                 <p className="text-lg font-medium mb-1">등록된 일정이 없습니다</p>
+              </div>
+            ) : viewMode === 'glance' ? (
+              // 한눈에 보기 모드 (영업자별 카드 그룹화)
+              <div>
+                <div className="mb-4">
+                  <h3 className="text-lg md:text-xl font-bold text-gray-800">
+                    {new Date(selectedDate).toLocaleDateString('ko-KR', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      weekday: 'long'
+                    })} 일정 한눈에 보기
+                  </h3>
+                </div>
+                {Object.keys(getGroupedSchedules()).length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p className="text-lg font-medium mb-1">오늘 일정이 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(getGroupedSchedules())
+                      .sort(([nameA], [nameB]) => nameA.localeCompare(nameB, 'ko-KR'))
+                      .map(([userName, userSchedules]) => (
+                      <div key={userName} className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
+                        {/* 영업자 이름과 일정 개수 */}
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                          <div className="flex items-center space-x-2">
+                            <Users className="w-5 h-5 text-blue-500" />
+                            <h4 className="font-bold text-lg text-gray-800">{userName}</h4>
+                          </div>
+                          <span className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                            {userSchedules.length}건
+                          </span>
+                        </div>
+                        
+                        {/* 일정 리스트 */}
+                        <div className="space-y-3">
+                          {userSchedules.map((schedule) => (
+                            <div key={schedule.id} className="bg-gray-50 rounded-lg p-3">
+                              {/* 시간과 상태 */}
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-bold text-blue-600">
+                                  {schedule.schedule_time || '시간 미정'}
+                                </span>
+                                {getStatusBadge(schedule.status)}
+                              </div>
+                              
+                              {/* 제목 */}
+                              <h5 className="font-semibold text-gray-900 mb-1 text-sm">{schedule.title}</h5>
+                              
+                              {/* 고객명 */}
+                              {schedule.client_name && (
+                                <p className="text-xs text-gray-600 mb-1">
+                                  고객: {schedule.client_name}
+                                </p>
+                              )}
+                              
+                              {/* 장소 */}
+                              {schedule.location && (
+                                <p className="text-xs text-gray-600 truncate" title={schedule.location}>
+                                  장소: {schedule.location}
+                                </p>
+                              )}
+                              
+                              {/* 메모 */}
+                              {schedule.notes && (
+                                <p className="text-xs text-gray-500 mt-2 italic line-clamp-2" title={schedule.notes}>
+                                  {schedule.notes}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : viewMode === 'daily' ? (
               // 당일 보기 모드 (모바일 최적화)

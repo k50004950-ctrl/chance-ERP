@@ -28,7 +28,11 @@ const ScheduleManagement: React.FC = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar'); // 캘린더 뷰 기본
+  // 모바일이면 'today', 데스크톱이면 'calendar'를 기본으로
+  const [viewMode, setViewMode] = useState<'today' | 'monthly' | 'calendar' | 'list'>(
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'today' : 'calendar'
+  );
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
   const [upcomingAlerts, setUpcomingAlerts] = useState<Schedule[]>([]);
 
   const [formData, setFormData] = useState<Schedule>({
@@ -350,11 +354,31 @@ const ScheduleManagement: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-wrap">
             {/* 뷰 모드 전환 */}
             <button
+              onClick={() => setViewMode('today')}
+              className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition ${
+                viewMode === 'today'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              당일보기
+            </button>
+            <button
+              onClick={() => setViewMode('monthly')}
+              className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition ${
+                viewMode === 'monthly'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              월별보기
+            </button>
+            <button
               onClick={() => setViewMode('calendar')}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition ${
+              className={`hidden md:flex px-4 py-2 rounded-lg items-center space-x-2 transition ${
                 viewMode === 'calendar' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
@@ -363,7 +387,7 @@ const ScheduleManagement: React.FC = () => {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition ${
+              className={`px-3 md:px-4 py-2 rounded-lg flex items-center space-x-2 transition ${
                 viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
@@ -391,6 +415,212 @@ const ScheduleManagement: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 당일보기 (모바일 최적화) */}
+      {viewMode === 'today' && (
+        <div className="space-y-4">
+          {/* 날짜 선택 */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">날짜 선택</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* 당일 일정 목록 */}
+          <div className="space-y-3">
+            {filteredSchedules
+              .filter((s) => s.schedule_date === selectedDate)
+              .sort((a, b) => (a.schedule_time || '').localeCompare(b.schedule_time || ''))
+              .map((schedule) => (
+                <div
+                  key={schedule.id}
+                  className="bg-white rounded-lg shadow p-4 border-l-4"
+                  style={{
+                    borderLeftColor:
+                      schedule.status === 'completed'
+                        ? '#10b981'
+                        : schedule.status === 'cancelled'
+                        ? '#6b7280'
+                        : '#3b82f6',
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg text-gray-800 mb-1">{schedule.title}</h3>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Calendar className="w-4 h-4" />
+                        <span>{schedule.schedule_time || '시간 미정'}</span>
+                      </div>
+                    </div>
+                    {getStatusBadge(schedule.status)}
+                  </div>
+
+                  {schedule.client_name && (
+                    <div className="mb-2 text-sm text-gray-700">
+                      <span className="font-medium">고객명:</span> {schedule.client_name}
+                    </div>
+                  )}
+
+                  {schedule.location && (
+                    <div className="mb-2 text-sm text-gray-700">
+                      <span className="font-medium">장소:</span> {schedule.location}
+                    </div>
+                  )}
+
+                  {schedule.notes && (
+                    <div className="mb-3 text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                      {schedule.notes}
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-2 pt-3 border-t">
+                    <button
+                      onClick={() => handleEdit(schedule)}
+                      className="flex-1 px-3 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center justify-center space-x-1"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      <span>수정</span>
+                    </button>
+                    {schedule.status === 'scheduled' && (
+                      <button
+                        onClick={() => handleStatusChange(schedule, 'completed')}
+                        className="flex-1 px-3 py-2 text-sm bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition flex items-center justify-center space-x-1"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>완료</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(schedule.id!)}
+                      className="px-3 py-2 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+            {filteredSchedules.filter((s) => s.schedule_date === selectedDate).length === 0 && (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-600 text-lg font-medium">
+                  {new Date(selectedDate).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long',
+                  })}
+                </p>
+                <p className="text-gray-500 mt-2">등록된 일정이 없습니다</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 월별보기 (모바일 최적화) */}
+      {viewMode === 'monthly' && (
+        <div className="space-y-4">
+          {Object.entries(
+            filteredSchedules.reduce((acc, schedule) => {
+              const date = schedule.schedule_date;
+              if (!acc[date]) {
+                acc[date] = [];
+              }
+              acc[date].push(schedule);
+              return acc;
+            }, {} as Record<string, Schedule[]>)
+          )
+            .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+            .map(([date, daySchedules]) => (
+              <div key={date} className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold">
+                        {new Date(date).toLocaleDateString('ko-KR', {
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </h3>
+                      <p className="text-sm text-blue-100">
+                        {new Date(date).toLocaleDateString('ko-KR', { weekday: 'long' })}
+                      </p>
+                    </div>
+                    <div className="bg-white bg-opacity-20 rounded-full px-3 py-1 text-sm font-medium">
+                      {daySchedules.length}개
+                    </div>
+                  </div>
+                </div>
+
+                <div className="divide-y">
+                  {daySchedules
+                    .sort((a, b) => (a.schedule_time || '').localeCompare(b.schedule_time || ''))
+                    .map((schedule) => (
+                      <div key={schedule.id} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-800">{schedule.title}</h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {schedule.schedule_time || '시간 미정'}
+                              {schedule.client_name && ` · ${schedule.client_name}`}
+                            </p>
+                          </div>
+                          {getStatusBadge(schedule.status)}
+                        </div>
+
+                        {schedule.location && (
+                          <p className="text-sm text-gray-500 mb-2">📍 {schedule.location}</p>
+                        )}
+
+                        <div className="flex items-center space-x-2 mt-3">
+                          <button
+                            onClick={() => handleEdit(schedule)}
+                            className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition flex items-center space-x-1"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>수정</span>
+                          </button>
+                          {schedule.status === 'scheduled' && (
+                            <button
+                              onClick={() => handleStatusChange(schedule, 'completed')}
+                              className="px-3 py-1 text-xs bg-green-50 text-green-600 rounded hover:bg-green-100 transition flex items-center space-x-1"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>완료</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(schedule.id!)}
+                            className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 transition"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+
+          {filteredSchedules.length === 0 && (
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-600 text-lg font-medium">
+                {new Date(selectedMonth).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                })}
+              </p>
+              <p className="text-gray-500 mt-2">등록된 일정이 없습니다</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 캘린더 뷰 */}
       {viewMode === 'calendar' && (

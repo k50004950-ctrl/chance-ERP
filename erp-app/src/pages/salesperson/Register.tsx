@@ -725,6 +725,8 @@ const SalespersonMyData: React.FC = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-yellow-50">섭외날짜</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-yellow-50">섭외자</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-yellow-50">미팅희망날짜</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">업체명</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">대표자</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">연락처</th>
@@ -740,7 +742,7 @@ const SalespersonMyData: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={13} className="px-4 py-12 text-center text-gray-500">
                   {searchTerm || dateFilter !== 'all' ? '검색 결과가 없습니다.' : '담당하는 업체 데이터가 없습니다.'}
                 </td>
               </tr>
@@ -749,6 +751,30 @@ const SalespersonMyData: React.FC = () => {
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 bg-yellow-50 text-sm whitespace-nowrap">
                     <span className="text-gray-900 font-medium">{formatDateToKorean(item.proposal_date) || '-'}</span>
+                  </td>
+                  <td className="px-4 py-3 bg-yellow-50 text-sm whitespace-nowrap">
+                    <span className="text-gray-900">{item.proposer || '-'}</span>
+                  </td>
+                  <td className="px-4 py-3 bg-yellow-50 text-sm whitespace-nowrap">
+                    <span className="text-gray-900">
+                      {item.meeting_request_datetime 
+                        ? (() => {
+                            try {
+                              const date = new Date(item.meeting_request_datetime);
+                              if (isNaN(date.getTime())) return '-';
+                              return date.toLocaleString('ko-KR', { 
+                                year: 'numeric', 
+                                month: '2-digit', 
+                                day: '2-digit', 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              });
+                            } catch (e) {
+                              return '-';
+                            }
+                          })()
+                        : '-'}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
                     <button

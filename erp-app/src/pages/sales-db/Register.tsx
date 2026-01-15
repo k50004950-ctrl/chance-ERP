@@ -44,7 +44,7 @@ interface SalesDBRow {
 }
 
 const emptyRow: SalesDBRow = {
-  proposal_date: '',
+  proposal_date: new Date().toISOString().split('T')[0], // 기본값: 오늘 날짜
   proposer: '',
   meeting_request_datetime: '',
   salesperson_id: '',

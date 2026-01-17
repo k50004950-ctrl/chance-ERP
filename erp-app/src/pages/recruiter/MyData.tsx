@@ -464,6 +464,9 @@ const RecruiterMyData: React.FC = () => {
     setMyData(myData.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
+    setFilteredData(filteredData.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
   };
 
   if (!currentUser || currentUser.role !== 'recruiter') {

@@ -1060,9 +1060,36 @@ const SalesDBRegister: React.FC = () => {
                 </td>
                 <td className="border border-gray-300 px-1 py-1 bg-yellow-50">
                   <input
-                    type="datetime-local"
-                    value={row.meeting_request_datetime}
-                    onChange={(e) => handleCellChange(index, 'meeting_request_datetime', e.target.value)}
+                    type="text"
+                    value={row.meeting_request_datetime ? 
+                      (() => {
+                        try {
+                          // datetime-local 형식 (2026-01-16T14:30)을 읽기 쉬운 형식으로 변환
+                          if (row.meeting_request_datetime.includes('T')) {
+                            const [date, time] = row.meeting_request_datetime.split('T');
+                            return `${date} ${time}`;
+                          }
+                          return row.meeting_request_datetime;
+                        } catch {
+                          return row.meeting_request_datetime;
+                        }
+                      })()
+                      : ''
+                    }
+                    onChange={(e) => {
+                      let value = e.target.value.trim();
+                      // "2026-01-16 14:30" 또는 "2026-01-16T14:30" 형식을 datetime-local 형식으로 변환
+                      if (value) {
+                        // 공백을 T로 변환
+                        value = value.replace(' ', 'T');
+                        // 초가 없으면 추가 (선택사항)
+                        if (value.length === 16 && value.includes('T')) {
+                          // 이미 올바른 형식 (YYYY-MM-DDTHH:mm)
+                        }
+                      }
+                      handleCellChange(index, 'meeting_request_datetime', value);
+                    }}
+                    placeholder="2026-01-16 14:30"
                     className="w-44 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
                   />
                 </td>

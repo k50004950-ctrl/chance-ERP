@@ -58,6 +58,7 @@ const RecruiterMyData: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [availableYears, setAvailableYears] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // 'all', 'action_needed', 'rejected', 'completed'
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [newFeedback, setNewFeedback] = useState('');
@@ -200,7 +201,7 @@ const RecruiterMyData: React.FC = () => {
         if (yearList.includes(currentYear)) {
           setSelectedYear(currentYear);
           setSelectedMonth(currentMonth);
-          filterDataByMonth(result.data, currentYear, currentMonth);
+          filterDataByMonth(result.data, currentYear, currentMonth, 'all');
         } else if (yearList.length > 0) {
           setSelectedYear(yearList[0]);
           setSelectedMonth('');
@@ -211,23 +212,37 @@ const RecruiterMyData: React.FC = () => {
     }
   };
 
-  const filterDataByMonth = (data: MyDataItem[], year: string, month: string) => {
-    if (!year) {
-      setFilteredData(data);
-      return;
+  const filterDataByMonth = (data: MyDataItem[], year: string, month: string, status: string) => {
+    let filtered = data;
+    
+    // 연도 필터
+    if (year) {
+      filtered = filtered.filter(item => {
+        if (!item.proposal_date) return false;
+        const itemYear = item.proposal_date.substring(0, 4);
+        return itemYear === year;
+      });
+      
+      // 월 필터
+      if (month) {
+        filtered = filtered.filter(item => {
+          const itemMonth = item.proposal_date.substring(5, 7);
+          return itemMonth === month;
+        });
+      }
     }
     
-    let filtered = data.filter(item => {
-      if (!item.proposal_date) return false;
-      const itemYear = item.proposal_date.substring(0, 4);
-      return itemYear === year;
-    });
-    
-    if (month) {
-      filtered = filtered.filter(item => {
-        const itemMonth = item.proposal_date.substring(5, 7);
-        return itemMonth === month;
-      });
+    // 상태 필터
+    if (status === 'action_needed') {
+      filtered = filtered.filter(item => 
+        item.meeting_status === '일정재확인요청' || 
+        item.meeting_status === '일정재섭외' || 
+        item.meeting_status === 'AS'
+      );
+    } else if (status === 'rejected') {
+      filtered = filtered.filter(item => item.meeting_status === '미팅거절');
+    } else if (status === 'completed') {
+      filtered = filtered.filter(item => item.meeting_status === '미팅완료');
     }
     
     setFilteredData(filtered);
@@ -235,9 +250,9 @@ const RecruiterMyData: React.FC = () => {
 
   useEffect(() => {
     if (myData.length > 0) {
-      filterDataByMonth(myData, selectedYear, selectedMonth);
+      filterDataByMonth(myData, selectedYear, selectedMonth, statusFilter);
     }
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, statusFilter]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -570,50 +585,100 @@ const RecruiterMyData: React.FC = () => {
 
       {/* 실적 통계 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+        <div 
+          onClick={() => setStatusFilter('all')}
+          className={`bg-white rounded-lg shadow p-4 border-l-4 border-blue-500 cursor-pointer transition-all hover:shadow-lg ${
+            statusFilter === 'all' ? 'ring-2 ring-blue-500' : ''
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">전체 섭외</p>
-              <p className="text-2xl font-bold text-gray-800">{filteredData.length}</p>
+              <p className="text-2xl font-bold text-gray-800">
+                {myData.filter(item => {
+                  if (!selectedYear) return true;
+                  if (!item.proposal_date) return false;
+                  const itemYear = item.proposal_date.substring(0, 4);
+                  const yearMatch = itemYear === selectedYear;
+                  if (!selectedMonth) return yearMatch;
+                  const itemMonth = item.proposal_date.substring(5, 7);
+                  return yearMatch && itemMonth === selectedMonth;
+                }).length}
+              </p>
             </div>
             <TrendingUp className="w-8 h-8 text-blue-500" />
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+        <div 
+          onClick={() => setStatusFilter('completed')}
+          className={`bg-white rounded-lg shadow p-4 border-l-4 border-green-500 cursor-pointer transition-all hover:shadow-lg ${
+            statusFilter === 'completed' ? 'ring-2 ring-green-500' : ''
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">미팅완료 (실적)</p>
               <p className="text-2xl font-bold text-green-600">
-                {filteredData.filter(item => item.meeting_status === '미팅완료').length}
+                {myData.filter(item => {
+                  if (!selectedYear) return item.meeting_status === '미팅완료';
+                  if (!item.proposal_date) return false;
+                  const itemYear = item.proposal_date.substring(0, 4);
+                  const yearMatch = itemYear === selectedYear;
+                  const monthMatch = !selectedMonth || item.proposal_date.substring(5, 7) === selectedMonth;
+                  return yearMatch && monthMatch && item.meeting_status === '미팅완료';
+                }).length}
               </p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
+        <div 
+          onClick={() => setStatusFilter('action_needed')}
+          className={`bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500 cursor-pointer transition-all hover:shadow-lg ${
+            statusFilter === 'action_needed' ? 'ring-2 ring-yellow-500' : ''
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">조치 필요</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {filteredData.filter(item => 
-                  item.meeting_status === '일정재확인요청' || 
-                  item.meeting_status === '일정재섭외' || 
-                  item.meeting_status === 'AS'
-                ).length}
+                {myData.filter(item => {
+                  const isActionNeeded = item.meeting_status === '일정재확인요청' || 
+                    item.meeting_status === '일정재섭외' || 
+                    item.meeting_status === 'AS';
+                  if (!selectedYear) return isActionNeeded;
+                  if (!item.proposal_date) return false;
+                  const itemYear = item.proposal_date.substring(0, 4);
+                  const yearMatch = itemYear === selectedYear;
+                  const monthMatch = !selectedMonth || item.proposal_date.substring(5, 7) === selectedMonth;
+                  return yearMatch && monthMatch && isActionNeeded;
+                }).length}
               </p>
             </div>
             <Clock className="w-8 h-8 text-yellow-500" />
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+        <div 
+          onClick={() => setStatusFilter('rejected')}
+          className={`bg-white rounded-lg shadow p-4 border-l-4 border-red-500 cursor-pointer transition-all hover:shadow-lg ${
+            statusFilter === 'rejected' ? 'ring-2 ring-red-500' : ''
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">미팅거절</p>
               <p className="text-2xl font-bold text-red-600">
-                {filteredData.filter(item => item.meeting_status === '미팅거절').length}
+                {myData.filter(item => {
+                  if (!selectedYear) return item.meeting_status === '미팅거절';
+                  if (!item.proposal_date) return false;
+                  const itemYear = item.proposal_date.substring(0, 4);
+                  const yearMatch = itemYear === selectedYear;
+                  const monthMatch = !selectedMonth || item.proposal_date.substring(5, 7) === selectedMonth;
+                  return yearMatch && monthMatch && item.meeting_status === '미팅거절';
+                }).length}
               </p>
             </div>
             <XCircle className="w-8 h-8 text-red-500" />
@@ -709,6 +774,28 @@ const RecruiterMyData: React.FC = () => {
                   );
                 })}
               </select>
+            </div>
+          )}
+          
+          {statusFilter !== 'all' && (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-semibold text-gray-700">필터:</span>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                statusFilter === 'completed' ? 'bg-green-100 text-green-800' :
+                statusFilter === 'action_needed' ? 'bg-yellow-100 text-yellow-800' :
+                statusFilter === 'rejected' ? 'bg-red-100 text-red-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {statusFilter === 'completed' ? '미팅완료' :
+                 statusFilter === 'action_needed' ? '조치 필요' :
+                 statusFilter === 'rejected' ? '미팅거절' : '전체'}
+              </span>
+              <button
+                onClick={() => setStatusFilter('all')}
+                className="text-xs text-gray-600 hover:text-gray-800 underline"
+              >
+                필터 해제
+              </button>
             </div>
           )}
           

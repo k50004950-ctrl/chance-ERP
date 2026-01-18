@@ -2376,10 +2376,10 @@ app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
 app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
   try {
     const { id } = req.params;
-    const { contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, salesperson_id } = req.body;
+    let { contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, salesperson_id } = req.body;
     
     // 본인 데이터인지 확인 (salesperson_id가 null인 경우도 허용)
-    const record = db.prepare('SELECT salesperson_id, proposer, company_name, meeting_status as old_meeting_status FROM sales_db WHERE id = ?').get(id);
+    const record = db.prepare('SELECT salesperson_id, proposer, company_name, meeting_status as old_meeting_status, contract_date as old_contract_date FROM sales_db WHERE id = ?').get(id);
     if (!record) {
       return res.json({ success: false, message: '데이터를 찾을 수 없습니다.' });
     }
@@ -2387,6 +2387,12 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
     // 권한 체크: salesperson_id가 null이 아닌 경우에만 비교
     if (record.salesperson_id !== null && record.salesperson_id != salesperson_id) {
       return res.json({ success: false, message: '권한이 없습니다.' });
+    }
+    
+    // 계약완료를 'Y'로 변경했는데 계약날짜가 없으면 자동으로 오늘 날짜 설정
+    if (contract_status === 'Y' && !contract_date) {
+      contract_date = new Date().toISOString().split('T')[0];
+      console.log(`계약완료 'Y' 설정 - 자동으로 오늘 날짜를 계약날짜로 설정: ${contract_date}, DB ID: ${id}`);
     }
     
     // 일정재섭외 또는 일정재확인요청으로 변경 시 영업자를 초기화 (null로 설정)

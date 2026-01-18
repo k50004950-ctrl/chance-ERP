@@ -167,7 +167,7 @@ function initDatabase() {
       client_name TEXT,
       feedback TEXT,
       april_type1_date TEXT,
-      commission_rate REAL DEFAULT 500,
+      commission_rate REAL DEFAULT 30,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (salesperson_id) REFERENCES users(id)
@@ -536,7 +536,7 @@ function initDatabase() {
 
   // 기존 sales_db 테이블에 commission_rate 필드 추가 (없으면)
   try {
-    db.exec('ALTER TABLE sales_db ADD COLUMN commission_rate REAL DEFAULT 500');
+    db.exec('ALTER TABLE sales_db ADD COLUMN commission_rate REAL DEFAULT 30');
     console.log('commission_rate 필드가 sales_db 테이블에 추가되었습니다.');
   } catch (e) {
     // 이미 컬럼이 존재하면 에러 발생, 무시
@@ -616,6 +616,22 @@ function initDatabase() {
     db.exec('ALTER TABLE commission_statements ADD COLUMN confirmed_at DATETIME');
   } catch (e) {
     // 이미 컬럼이 존재하면 무시
+  }
+
+  // 잘못된 수수료율 값 수정 (500% 이상인 경우 30%로 변경)
+  try {
+    const wrongRates = db.prepare('SELECT id, client_name, commission_rate FROM sales_clients WHERE commission_rate >= 100').all();
+    if (wrongRates.length > 0) {
+      console.log(`⚠️  ${wrongRates.length}개의 잘못된 수수료율을 발견했습니다. 수정 중...`);
+      const updateStmt = db.prepare('UPDATE sales_clients SET commission_rate = 30 WHERE id = ?');
+      wrongRates.forEach(row => {
+        console.log(`  - ${row.client_name}: ${row.commission_rate}% → 30%`);
+        updateStmt.run(row.id);
+      });
+      console.log('✅ 수수료율 수정 완료');
+    }
+  } catch (e) {
+    console.error('수수료율 수정 중 오류:', e.message);
   }
 
   console.log('Database initialized at:', dbPath);
@@ -1683,7 +1699,7 @@ app.put('/api/sales-db/:id', (req, res) => {
     stmt.run(
       proposal_date, proposer, meeting_request_datetime, salesperson_id, meeting_status, company_name, representative,
       address, contact, industry, sales_amount, existing_client, contract_status,
-      termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date, commission_rate || 500, id
+      termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date, commission_rate || 30, id
     );
     
     // 담당영업자가 변경된 경우, 이전 담당자의 일정 삭제
@@ -2282,9 +2298,9 @@ app.get('/api/salesperson/:id/commission-details', (req, res) => {
           s.contract_date,
           s.client_name,
           COALESCE(s.actual_sales, 0) as actual_sales,
-          COALESCE(c.commission_rate, 500) as commission_rate,
+          COALESCE(c.commission_rate, 30) as commission_rate,
           COALESCE(s.actual_sales, 0) as commission_base,
-          CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER) as commission_amount,
+          CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 30) / 100) AS INTEGER) as commission_amount,
           s.contract_status
         FROM sales_db s
         LEFT JOIN sales_clients c ON s.client_name = c.client_name
@@ -2749,7 +2765,7 @@ app.get('/api/commission-statements/summary', (req, res) => {
           s.id, s.company_name, s.salesperson_id, s.contract_date, 
           s.actual_sales, s.contract_status, s.client_name,
           c.commission_rate,
-          CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER) as calculated_commission
+          CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 30) / 100) AS INTEGER) as calculated_commission
         FROM sales_db s
         LEFT JOIN sales_clients c ON s.client_name = c.client_name
         WHERE s.salesperson_id = ? 
@@ -2763,7 +2779,7 @@ app.get('/api/commission-statements/summary', (req, res) => {
       contractDetails.forEach((detail, idx) => {
         console.log(`  계약 ${idx + 1}: ${detail.company_name}`);
         console.log(`    - actual_sales: ${detail.actual_sales}`);
-        console.log(`    - commission_rate: ${detail.commission_rate || 500}`);
+        console.log(`    - commission_rate: ${detail.commission_rate || 30}`);
         console.log(`    - calculated: ${detail.calculated_commission}원`);
         console.log(`    - contract_date: ${detail.contract_date}`);
       });
@@ -2772,7 +2788,7 @@ app.get('/api/commission-statements/summary', (req, res) => {
       const contractCommission = db.prepare(`
         SELECT 
           COALESCE(SUM(
-            CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 500) / 100) AS INTEGER)
+            CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 30) / 100) AS INTEGER)
           ), 0) as total
         FROM sales_db s
         LEFT JOIN sales_clients c ON s.client_name = c.client_name
@@ -2873,7 +2889,7 @@ app.get('/api/debug/salesperson-contracts', (req, res) => {
         contracts_y: contractY.map(c => ({
           ...c,
           calculated_commission: Math.floor(
-            (c.actual_sales || 0) * (c.commission_rate || 500) / 100
+            (c.actual_sales || 0) * (c.commission_rate || 30) / 100
           )
         })),
         contracts_n: contractN.map(c => ({

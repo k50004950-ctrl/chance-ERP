@@ -985,6 +985,7 @@ const RecruiterMyData: React.FC = () => {
                         <option value="일정재확인요청">일정재확인요청</option>
                         <option value="일정재섭외">일정재섭외</option>
                         <option value="AS">AS</option>
+                        <option value="영업자관리">영업자관리</option>
                         <option value="미팅거절">미팅거절</option>
                       </select>
                     ) : (
@@ -994,6 +995,7 @@ const RecruiterMyData: React.FC = () => {
                           item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800 cursor-pointer hover:bg-yellow-200 hover:shadow-md transition-all' :
                           item.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800 cursor-pointer hover:bg-orange-200 hover:shadow-md transition-all' :
                           item.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800 cursor-pointer hover:bg-purple-200 hover:shadow-md transition-all' :
+                          item.meeting_status === '영업자관리' ? 'bg-blue-100 text-blue-800' :
                           item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'
                         }`}
@@ -1272,6 +1274,7 @@ const RecruiterMyData: React.FC = () => {
                         selectedItem.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
                         selectedItem.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800' :
                         selectedItem.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800' :
+                        selectedItem.meeting_status === '영업자관리' ? 'bg-blue-100 text-blue-800' :
                         selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>

@@ -800,12 +800,14 @@ const SalespersonMyData: React.FC = () => {
                         <option value="">선택</option>
                         <option value="미팅완료">미팅완료</option>
                         <option value="일정재확인요청">일정재확인요청</option>
+                        <option value="영업자관리">영업자관리</option>
                         <option value="미팅거절">미팅거절</option>
                       </select>
                     ) : (
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
                         item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                        item.meeting_status === '영업자관리' ? 'bg-blue-100 text-blue-800' :
                         item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
@@ -1467,13 +1469,17 @@ const SalespersonMyData: React.FC = () => {
                           <option value="">선택하세요</option>
                           <option value="미정">미정</option>
                           <option value="미팅완료">미팅완료</option>
+                          <option value="일정재확인요청">일정재확인요청</option>
+                          <option value="영업자관리">영업자관리</option>
                           <option value="미팅거절">미팅거절</option>
                         </select>
                       ) : (
                         <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
                           selectedItem.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                          selectedItem.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                          selectedItem.meeting_status === '영업자관리' ? 'bg-blue-100 text-blue-800' :
                           selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
+                          'bg-gray-100 text-gray-800'
                         }`}>
                           {selectedItem.meeting_status || '미정'}
                         </span>

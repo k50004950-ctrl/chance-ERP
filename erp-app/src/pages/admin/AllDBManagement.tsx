@@ -548,11 +548,10 @@ const AllDBManagement: React.FC = () => {
                   <td className="px-4 py-3 bg-yellow-50 text-sm whitespace-nowrap">
                     {editingId === item.id ? (
                       <input
-                        type="text"
+                        type="datetime-local"
                         value={item.meeting_request_datetime || ''}
                         onChange={(e) => handleChange(item.id, 'meeting_request_datetime', e.target.value)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-yellow-500"
-                        placeholder="예: 01월 20일 오전 10:00"
                       />
                     ) : item.meeting_request_datetime ? (
                       <span className="text-gray-900 font-medium">

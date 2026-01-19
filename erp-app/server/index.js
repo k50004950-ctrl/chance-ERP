@@ -2309,7 +2309,7 @@ app.get('/api/salesperson/:id/commission-details', (req, res) => {
         LEFT JOIN sales_clients c ON s.client_name = c.client_name
         WHERE s.salesperson_id = ? 
           AND s.contract_status = 'Y'
-          AND substr(s.contract_date, 1, 7) = ?
+          AND substr(CASE WHEN s.contract_date IS NULL OR s.contract_date = '' THEN s.proposal_date ELSE s.contract_date END, 1, 7) = ?
         ORDER BY s.contract_date DESC, s.created_at DESC
       `).all(id, yearMonth);
       
@@ -2773,7 +2773,7 @@ app.get('/api/commission-statements/summary', (req, res) => {
         LEFT JOIN sales_clients c ON s.client_name = c.client_name
         WHERE s.salesperson_id = ? 
           AND s.contract_status = 'Y'
-          AND substr(s.contract_date, 1, 7) = ?
+          AND substr(CASE WHEN s.contract_date IS NULL OR s.contract_date = '' THEN s.proposal_date ELSE s.contract_date END, 1, 7) = ?
       `).all(sp.id, yearMonth);
       
       console.log(`\n[수수료 계산] ${sp.name} (ID: ${sp.id})`);
@@ -2797,7 +2797,7 @@ app.get('/api/commission-statements/summary', (req, res) => {
         LEFT JOIN sales_clients c ON s.client_name = c.client_name
         WHERE s.salesperson_id = ? 
           AND s.contract_status = 'Y'
-          AND substr(s.contract_date, 1, 7) = ?
+          AND substr(CASE WHEN s.contract_date IS NULL OR s.contract_date = '' THEN s.proposal_date ELSE s.contract_date END, 1, 7) = ?
       `).get(sp.id, yearMonth);
       
       console.log(`  총 계약 수수료: ${contractCommission?.total || 0}원`);
@@ -2874,7 +2874,7 @@ app.get('/api/debug/salesperson-contracts', (req, res) => {
     `;
     
     const contracts = yearMonth 
-      ? db.prepare(contractQuery + ` AND substr(s.contract_date, 1, 7) = ?`).all(salesperson.id, yearMonth)
+      ? db.prepare(contractQuery + ` AND substr(CASE WHEN s.contract_date IS NULL OR s.contract_date = '' THEN s.proposal_date ELSE s.contract_date END, 1, 7) = ?`).all(salesperson.id, yearMonth)
       : db.prepare(contractQuery).all(salesperson.id);
     
     // 계약 상태별 분류
@@ -3337,7 +3337,7 @@ app.get('/api/admin/monthly-performance', (req, res) => {
         sd.contact,
         sd.industry,
         sd.client_name,
-        CAST(sd.contract_client AS INTEGER) as contract_fee,
+        sd.contract_client,
         sd.contract_month,
         sd.actual_sales,
         sc.commission_rate

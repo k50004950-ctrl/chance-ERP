@@ -7,6 +7,7 @@ interface CommissionSummary {
   salesperson_id: number;
   salesperson_name: string;
   username: string;
+  total_sales: number;
   total_commission: number;
   withholding_tax: number;
   net_pay: number;
@@ -45,6 +46,7 @@ const CommissionSummary: React.FC = () => {
     navigate(`/salesperson/commission-statement?id=${salespersonId}&year=${selectedYear}&month=${selectedMonth}`);
   };
 
+  const totalAllSales = summaries.reduce((sum, item) => sum + item.total_sales, 0);
   const totalAllCommission = summaries.reduce((sum, item) => sum + item.total_commission, 0);
   const totalAllTax = summaries.reduce((sum, item) => sum + item.withholding_tax, 0);
   const totalAllNetPay = summaries.reduce((sum, item) => sum + item.net_pay, 0);
@@ -114,6 +116,9 @@ const CommissionSummary: React.FC = () => {
                 영업자
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                총 기장료
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 총 수수료
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -130,7 +135,7 @@ const CommissionSummary: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {summaries.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                   <p className="text-lg font-medium">등록된 영업자가 없습니다</p>
                 </td>
@@ -160,6 +165,9 @@ const CommissionSummary: React.FC = () => {
                         </div>
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-purple-600">
+                      {formatCurrency(summary.total_sales)}원
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
                       {formatCurrency(summary.total_commission)}원
                     </td>
@@ -187,6 +195,9 @@ const CommissionSummary: React.FC = () => {
                 <tr className="bg-blue-50 font-bold">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     총 합계
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-purple-600">
+                    {formatCurrency(totalAllSales)}원
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-blue-600">
                     {formatCurrency(totalAllCommission)}원

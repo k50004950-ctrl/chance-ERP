@@ -194,6 +194,11 @@ const SalespersonCommissionStatement: React.FC = () => {
     }
   };
 
+  // 계약기장료 합계
+  const contractSales = details.reduce((sum, item) => {
+    return sum + (item.actual_sales || 0);
+  }, 0);
+
   // 계약 수수료 합계
   const contractCommission = details.reduce((sum, item) => {
     return sum + (item.contract_status === '해임' ? -item.commission_amount : item.commission_amount);
@@ -354,6 +359,9 @@ const SalespersonCommissionStatement: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                번호
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 계약날짜
               </th>
@@ -380,7 +388,7 @@ const SalespersonCommissionStatement: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {details.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                   {selectedSalesperson ? '계약 완료된 데이터가 없습니다.' : '영업자를 선택하세요.'}
                 </td>
               </tr>
@@ -388,6 +396,9 @@ const SalespersonCommissionStatement: React.FC = () => {
               <>
                 {details.map((detail, index) => (
                   <tr key={index} className={detail.contract_status === '해임' ? 'bg-red-50' : ''}>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-600 font-medium">
+                      {index + 1}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDateToKorean(detail.contract_date) || '-'}
                     </td>
@@ -447,13 +458,23 @@ const SalespersonCommissionStatement: React.FC = () => {
                     </td>
                   </tr>
                 ))}
+                <tr className="bg-purple-50 font-bold">
+                  <td colSpan={3} className="px-6 py-4 text-right text-sm text-gray-900">
+                    계약기장료 총합계
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-purple-600">
+                    {formatCurrency(contractSales)}원
+                  </td>
+                  <td colSpan={4}></td>
+                </tr>
                 <tr className="bg-gray-100 font-bold">
-                  <td colSpan={5} className="px-6 py-4 text-right text-sm text-gray-900">
+                  <td colSpan={6} className="px-6 py-4 text-right text-sm text-gray-900">
                     계약 수수료 합계
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-600">
                     {formatCurrency(contractCommission)}
                   </td>
+                  <td></td>
                 </tr>
               </>
             )}

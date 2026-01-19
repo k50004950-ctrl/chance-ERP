@@ -2787,12 +2787,13 @@ app.get('/api/commission-statements/summary', (req, res) => {
         console.log(`    - contract_date: ${detail.contract_date}`);
       });
       
-      // 계약 수수료 계산
-      const contractCommission = db.prepare(`
+      // 계약 수수료 및 총 기장료 계산
+      const contractStats = db.prepare(`
         SELECT 
           COALESCE(SUM(
             CAST((COALESCE(s.actual_sales, 0) * COALESCE(c.commission_rate, 30) / 100) AS INTEGER)
-          ), 0) as total
+          ), 0) as total_commission,
+          COALESCE(SUM(s.actual_sales), 0) as total_sales
         FROM sales_db s
         LEFT JOIN sales_clients c ON s.client_name = c.client_name
         WHERE s.salesperson_id = ? 
@@ -2800,7 +2801,8 @@ app.get('/api/commission-statements/summary', (req, res) => {
           AND substr(CASE WHEN s.contract_date IS NULL OR s.contract_date = '' THEN s.proposal_date ELSE s.contract_date END, 1, 7) = ?
       `).get(sp.id, yearMonth);
       
-      console.log(`  총 계약 수수료: ${contractCommission?.total || 0}원`);
+      console.log(`  총 계약 수수료: ${contractStats?.total_commission || 0}원`);
+      console.log(`  총 기장료: ${contractStats?.total_sales || 0}원`);
       
       // 기타 수수료 계산
       const miscCommission = db.prepare(`
@@ -2811,7 +2813,8 @@ app.get('/api/commission-statements/summary', (req, res) => {
       
       console.log(`  기타 수수료: ${miscCommission?.total || 0}원`);
       
-      const totalCommission = (contractCommission?.total || 0) + (miscCommission?.total || 0);
+      const totalCommission = (contractStats?.total_commission || 0) + (miscCommission?.total || 0);
+      const totalSales = contractStats?.total_sales || 0;
       const withholdingTax = Math.round(totalCommission * 0.033);
       const netPay = totalCommission - withholdingTax;
       
@@ -2827,6 +2830,7 @@ app.get('/api/commission-statements/summary', (req, res) => {
         salesperson_id: sp.id,
         salesperson_name: sp.name,
         username: sp.username,
+        total_sales: totalSales,
         total_commission: totalCommission,
         withholding_tax: withholdingTax,
         net_pay: netPay,

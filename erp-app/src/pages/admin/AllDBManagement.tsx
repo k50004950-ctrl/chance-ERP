@@ -4,6 +4,7 @@ import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import * as XLSX from 'xlsx';
 
 interface DBItem {
   id: number;
@@ -318,6 +319,49 @@ const AllDBManagement: React.FC = () => {
     }
   };
 
+  const handleExcelDownload = () => {
+    try {
+      // 엑셀로 내보낼 데이터 준비
+      const excelData = filteredData.map((item, index) => ({
+        '번호': index + 1,
+        '섭외일': formatDateToKorean(item.proposal_date) || '-',
+        '섭외자': item.proposer || '-',
+        '미팅희망날짜': item.meeting_request_datetime ? formatDateTime(item.meeting_request_datetime) : '-',
+        '업체명': item.company_name || '-',
+        '대표자': item.representative || '-',
+        '연락처': item.contact || '-',
+        '주소': item.address || '-',
+        '담당영업자': item.salesperson_name || '-',
+        '미팅상태': item.meeting_status || '-',
+        '계약상태': item.contract_status === 'Y' ? '완료' : 
+                     item.contract_status === 'N' ? '미완료' : 
+                     item.contract_status || '-',
+        '계약날짜': formatDateToKorean(item.contract_date) || '-',
+        '계약기장료': item.actual_sales ? `${new Intl.NumberFormat('ko-KR').format(Number(item.actual_sales))}` : '-',
+        '거래처': item.client_name || '-',
+        '피드백': item.feedback || '-',
+      }));
+
+      // 워크시트 생성
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      
+      // 워크북 생성
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'DB 목록');
+      
+      // 파일명 생성 (현재 필터 조건 반영)
+      const fileName = `DB목록_${selectedYear || '전체'}년_${selectedMonth || '전체'}월_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      // 파일 다운로드
+      XLSX.writeFile(workbook, fileName);
+      
+      alert(`${filteredData.length}건의 데이터가 다운로드되었습니다.`);
+    } catch (error) {
+      console.error('엑셀 다운로드 실패:', error);
+      alert('엑셀 다운로드 중 오류가 발생했습니다.');
+    }
+  };
+
   if (!currentUser || currentUser.role !== 'admin') {
     return (
       <div className="p-6">
@@ -510,14 +554,25 @@ const AllDBManagement: React.FC = () => {
             </span>
           </label>
           
-          <button
-            onClick={handleFixScheduleTimes}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition flex items-center space-x-2"
-            title="00:00으로 잘못 저장된 일정 시간을 일괄 수정합니다"
-          >
-            <Clock className="w-4 h-4" />
-            <span className="text-sm font-medium">일정 시간 일괄 수정</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleFixScheduleTimes}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition flex items-center space-x-2"
+              title="00:00으로 잘못 저장된 일정 시간을 일괄 수정합니다"
+            >
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-medium">일정 시간 일괄 수정</span>
+            </button>
+            
+            <button
+              onClick={handleExcelDownload}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center space-x-2"
+              title="현재 필터링된 DB 목록을 엑셀로 다운로드합니다"
+            >
+              <Download className="w-4 h-4" />
+              <span className="text-sm font-medium">엑셀 다운로드</span>
+            </button>
+          </div>
         </div>
       </div>
 

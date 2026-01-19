@@ -756,25 +756,34 @@ const SalespersonMyData: React.FC = () => {
                     <span className="text-gray-900">{item.proposer || '-'}</span>
                   </td>
                   <td className="px-4 py-3 bg-yellow-50 text-sm whitespace-nowrap">
-                    <span className="text-gray-900">
-                      {item.meeting_request_datetime 
-                        ? (() => {
-                            try {
-                              const date = new Date(item.meeting_request_datetime);
-                              if (isNaN(date.getTime())) return '-';
-                              return date.toLocaleString('ko-KR', { 
-                                year: 'numeric', 
-                                month: '2-digit', 
-                                day: '2-digit', 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              });
-                            } catch (e) {
-                              return '-';
-                            }
-                          })()
-                        : '-'}
-                    </span>
+                    {editingId === item.id && item.meeting_status === '영업자관리' ? (
+                      <input
+                        type="datetime-local"
+                        value={item.meeting_request_datetime || ''}
+                        onChange={(e) => handleChange(item.id, 'meeting_request_datetime', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-yellow-500"
+                      />
+                    ) : (
+                      <span className="text-gray-900">
+                        {item.meeting_request_datetime 
+                          ? (() => {
+                              try {
+                                const date = new Date(item.meeting_request_datetime);
+                                if (isNaN(date.getTime())) return '-';
+                                return date.toLocaleString('ko-KR', { 
+                                  year: 'numeric', 
+                                  month: '2-digit', 
+                                  day: '2-digit', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                });
+                              } catch (e) {
+                                return '-';
+                              }
+                            })()
+                          : '-'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
                     <button

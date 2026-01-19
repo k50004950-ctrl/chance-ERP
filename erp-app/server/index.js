@@ -2555,10 +2555,10 @@ app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
 app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
   try {
     const { id } = req.params;
-    let { contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, salesperson_id } = req.body;
+    let { contract_date, meeting_status, meeting_request_datetime, contract_client, client_name, contract_status, feedback, actual_sales, salesperson_id } = req.body;
     
     // 본인 데이터인지 확인 (salesperson_id가 null인 경우도 허용)
-    const record = db.prepare('SELECT salesperson_id, proposer, company_name, meeting_status as old_meeting_status, contract_date as old_contract_date FROM sales_db WHERE id = ?').get(id);
+    const record = db.prepare('SELECT salesperson_id, proposer, company_name, representative, contact, address, meeting_status as old_meeting_status, contract_date as old_contract_date FROM sales_db WHERE id = ?').get(id);
     if (!record) {
       return res.json({ success: false, message: '데이터를 찾을 수 없습니다.' });
     }
@@ -2583,10 +2583,111 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
     
     const stmt = db.prepare(`
       UPDATE sales_db 
-      SET contract_date = ?, meeting_status = ?, contract_client = ?, client_name = ?, contract_status = ?, feedback = ?, actual_sales = ?, salesperson_id = ?, updated_at = CURRENT_TIMESTAMP
+      SET contract_date = ?, meeting_status = ?, meeting_request_datetime = ?, contract_client = ?, client_name = ?, contract_status = ?, feedback = ?, actual_sales = ?, salesperson_id = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    stmt.run(contract_date, meeting_status, contract_client, client_name, contract_status, feedback, actual_sales, finalSalespersonId, id);
+    stmt.run(contract_date, meeting_status, meeting_request_datetime, contract_client, client_name, contract_status, feedback, actual_sales, finalSalespersonId, id);
+    
+    // 미팅희망날짜시간이 변경되고 영업자가 배정되어 있으면 일정 업데이트 또는 생성
+    if (meeting_request_datetime && finalSalespersonId) {
+      try {
+        console.log('일정 자동 업데이트/생성 시작:', meeting_request_datetime, finalSalespersonId, record.company_name);
+        
+        // datetime-local 형식을 파싱
+        let scheduleDate, scheduleTime;
+        
+        if (meeting_request_datetime.includes('T')) {
+          const parts = meeting_request_datetime.split('T');
+          scheduleDate = parts[0];
+          scheduleTime = parts[1] || '09:00';
+        } else if (meeting_request_datetime.includes(' ')) {
+          const dateStr = meeting_request_datetime.trim();
+          
+          if (dateStr.includes('월') && dateStr.includes('일')) {
+            const yearMatch = dateStr.match(/(\d{4})년/);
+            const year = yearMatch ? yearMatch[1] : new Date().getFullYear();
+            
+            const monthMatch = dateStr.match(/(\d{1,2})월/);
+            const month = monthMatch ? monthMatch[1].padStart(2, '0') : '01';
+            
+            const dayMatch = dateStr.match(/(\d{1,2})일/);
+            const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01';
+            
+            scheduleDate = `${year}-${month}-${day}`;
+            
+            const timeMatch = dateStr.match(/(\d{1,2}):(\d{2})/);
+            if (timeMatch) {
+              let hour = parseInt(timeMatch[1]);
+              const minute = timeMatch[2];
+              
+              if (dateStr.includes('오후') && hour !== 12) {
+                hour += 12;
+              }
+              if (dateStr.includes('오전') && hour === 12) {
+                hour = 0;
+              }
+              
+              scheduleTime = `${hour.toString().padStart(2, '0')}:${minute}`;
+            } else {
+              scheduleTime = '09:00';
+            }
+          } else {
+            const parts = dateStr.split(' ');
+            scheduleDate = parts[0];
+            scheduleTime = parts[1] || '09:00';
+          }
+        } else {
+          scheduleDate = meeting_request_datetime;
+          scheduleTime = '09:00';
+        }
+        
+        console.log('파싱된 일정:', scheduleDate, scheduleTime);
+        
+        // 현재 담당자의 해당 DB와 연결된 일정이 있는지 확인
+        const existingSchedule = db.prepare(`
+          SELECT id FROM schedules 
+          WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
+          ORDER BY created_at DESC LIMIT 1
+        `).get(finalSalespersonId, record.company_name);
+        
+        if (existingSchedule) {
+          // 기존 일정 업데이트
+          console.log('기존 일정 업데이트:', existingSchedule.id);
+          db.prepare(`
+            UPDATE schedules 
+            SET schedule_date = ?, schedule_time = ?, title = ?, location = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).run(
+            scheduleDate,
+            scheduleTime,
+            `고객 미팅: ${record.company_name}`,
+            record.address || '',
+            `섭외자: ${record.proposer}\n연락처: ${record.contact}\n대표자: ${record.representative}`,
+            existingSchedule.id
+          );
+        } else {
+          // 새 일정 생성
+          console.log('새 일정 생성');
+          db.prepare(`
+            INSERT INTO schedules (
+              user_id, title, schedule_date, schedule_time, client_name, location, notes, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            finalSalespersonId,
+            `고객 미팅: ${record.company_name}`,
+            scheduleDate,
+            scheduleTime,
+            record.company_name,
+            record.address || '',
+            `섭외자: ${record.proposer}\n연락처: ${record.contact}\n대표자: ${record.representative}`,
+            'scheduled'
+          );
+        }
+      } catch (scheduleError) {
+        console.error('일정 자동 추가/업데이트 실패:', scheduleError);
+        // 일정 추가 실패해도 DB 업데이트는 성공으로 처리
+      }
+    }
     
     // 알림 생성: meeting_status가 '일정재섭외' 또는 'AS'로 변경된 경우
     if (meeting_status && (meeting_status === '일정재섭외' || meeting_status === 'AS') && meeting_status !== record.old_meeting_status) {

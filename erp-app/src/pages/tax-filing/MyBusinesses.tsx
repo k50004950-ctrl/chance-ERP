@@ -8,7 +8,7 @@ interface TaxFilingBusiness {
   id: number;
   salesperson_id: number;
   business_name: string;
-  business_type: '간이' | '일반' | '법인';
+  business_type: '간이' | '일반' | '법인' | '프리랜서';
   representative: string;
   contact: string;
   hometax_id: string;
@@ -45,7 +45,7 @@ const MyBusinesses: React.FC = () => {
   
   const [formData, setFormData] = useState({
     business_name: '',
-    business_type: '일반' as '간이' | '일반' | '법인',
+    business_type: '일반' as '간이' | '일반' | '법인' | '프리랜서',
     representative: '',
     contact: '',
     hometax_id: '',
@@ -420,12 +420,13 @@ const MyBusinesses: React.FC = () => {
               <select
                 required
                 value={formData.business_type}
-                onChange={(e) => setFormData({ ...formData, business_type: e.target.value as '간이' | '일반' | '법인' })}
+                onChange={(e) => setFormData({ ...formData, business_type: e.target.value as '간이' | '일반' | '법인' | '프리랜서' })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="간이">간이</option>
                 <option value="일반">일반</option>
                 <option value="법인">법인</option>
+                <option value="프리랜서">프리랜서</option>
               </select>
             </div>
 
@@ -580,6 +581,7 @@ const MyBusinesses: React.FC = () => {
                           <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                             business.business_type === '간이' ? 'bg-green-100 text-green-800' :
                             business.business_type === '일반' ? 'bg-blue-100 text-blue-800' :
+                            business.business_type === '프리랜서' ? 'bg-orange-100 text-orange-800' :
                             'bg-purple-100 text-purple-800'
                           }`}>
                             {business.business_type}
@@ -649,6 +651,7 @@ const MyBusinesses: React.FC = () => {
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         business.business_type === '간이' ? 'bg-green-100 text-green-800' :
                         business.business_type === '일반' ? 'bg-blue-100 text-blue-800' :
+                        business.business_type === '프리랜서' ? 'bg-orange-100 text-orange-800' :
                         'bg-purple-100 text-purple-800'
                       }`}>
                         {business.business_type}
@@ -815,6 +818,7 @@ const MyBusinesses: React.FC = () => {
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         selectedBusiness.business_type === '간이' ? 'bg-green-100 text-green-800' :
                         selectedBusiness.business_type === '일반' ? 'bg-blue-100 text-blue-800' :
+                        selectedBusiness.business_type === '프리랜서' ? 'bg-orange-100 text-orange-800' :
                         'bg-purple-100 text-purple-800'
                       }`}>
                         {selectedBusiness.business_type}

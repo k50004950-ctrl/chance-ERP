@@ -367,6 +367,7 @@ function initDatabase() {
       writer_name TEXT NOT NULL,
       company_name TEXT NOT NULL,
       representative TEXT NOT NULL,
+      contact TEXT,
       special_relation TEXT,
       first_startup TEXT CHECK(first_startup IN ('O', 'X')),
       correction_in_progress TEXT CHECK(correction_in_progress IN ('Y', 'N')),
@@ -419,6 +420,9 @@ function initDatabase() {
   addColumnIfNotExists('users', 'address', 'TEXT');
   addColumnIfNotExists('users', 'emergency_contact', 'TEXT');
   addColumnIfNotExists('users', 'notification_enabled', 'INTEGER DEFAULT 1');
+  
+  // Add contact column to correction_requests table
+  addColumnIfNotExists('correction_requests', 'contact', 'TEXT');
 
   // Migrate users table to include 'happycall' role in CHECK constraint
   console.log('Checking if users table migration is needed...');
@@ -4573,6 +4577,7 @@ app.post('/api/correction-requests', (req, res) => {
       writer_name,
       company_name,
       representative,
+      contact,
       special_relation,
       first_startup,
       correction_in_progress,
@@ -4581,14 +4586,14 @@ app.post('/api/correction-requests', (req, res) => {
     
     const stmt = db.prepare(`
       INSERT INTO correction_requests (
-        writer_id, writer_name, company_name, representative,
+        writer_id, writer_name, company_name, representative, contact,
         special_relation, first_startup, correction_in_progress,
         additional_workplace, review_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '대기')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '대기')
     `);
     
     const result = stmt.run(
-      writer_id, writer_name, company_name, representative,
+      writer_id, writer_name, company_name, representative, contact,
       special_relation, first_startup, correction_in_progress, additional_workplace
     );
     

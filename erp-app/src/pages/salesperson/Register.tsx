@@ -263,9 +263,11 @@ const SalespersonMyData: React.FC = () => {
   };
 
   const handleChange = (id: number, field: string, value: string) => {
-    setMyData(myData.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    const updateItem = (item: MyDataItem) => 
+      item.id === id ? { ...item, [field]: value } : item;
+    
+    setMyData(myData.map(updateItem));
+    setFilteredData(filteredData.map(updateItem));
   };
 
   // 녹취 파일 관리 함수들

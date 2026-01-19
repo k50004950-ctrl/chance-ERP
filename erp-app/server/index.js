@@ -305,6 +305,25 @@ function initDatabase() {
       UNIQUE(notice_id, user_id)
     );
 
+    -- 신고대리 사업장 테이블
+    CREATE TABLE IF NOT EXISTS tax_filing_businesses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      salesperson_id INTEGER NOT NULL,
+      business_name TEXT NOT NULL,
+      business_type TEXT NOT NULL CHECK(business_type IN ('간이', '일반', '법인')),
+      representative TEXT NOT NULL,
+      contact TEXT NOT NULL,
+      hometax_id TEXT,
+      hometax_password TEXT,
+      business_number TEXT,
+      address TEXT,
+      additional_info TEXT,
+      feedback TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (salesperson_id) REFERENCES users(id)
+    );
+
     -- 해피콜 테이블
     CREATE TABLE IF NOT EXISTS happycalls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4720,6 +4739,154 @@ app.post('/api/sales-db/remove-duplicates', (req, res) => {
     });
   } catch (error) {
     console.error('중복 데이터 삭제 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== 신고대리 API ====================
+
+// 신고대리 사업장 등록
+app.post('/api/tax-filing-businesses', (req, res) => {
+  try {
+    const { salesperson_id, business_name, business_type, representative, contact, hometax_id, hometax_password, business_number, address, additional_info } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO tax_filing_businesses (salesperson_id, business_name, business_type, representative, contact, hometax_id, hometax_password, business_number, address, additional_info)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(salesperson_id, business_name, business_type, representative, contact, hometax_id || '', hometax_password || '', business_number || '', address || '', additional_info || '');
+    
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    console.error('신고대리 사업장 등록 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 신고대리 사업장 목록 조회
+app.get('/api/tax-filing-businesses', (req, res) => {
+  try {
+    const { salesperson_id, role } = req.query;
+    
+    let query = `
+      SELECT t.*, u.name as salesperson_name 
+      FROM tax_filing_businesses t
+      LEFT JOIN users u ON t.salesperson_id = u.id
+    `;
+    let params = [];
+    
+    // 영업자는 본인 것만, 관리자는 전체 조회
+    if (role !== 'admin' && salesperson_id) {
+      query += ` WHERE t.salesperson_id = ?`;
+      params.push(salesperson_id);
+    }
+    
+    query += ` ORDER BY t.created_at DESC`;
+    
+    const businesses = db.prepare(query).all(...params);
+    res.json({ success: true, data: businesses });
+  } catch (error) {
+    console.error('신고대리 사업장 목록 조회 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 신고대리 사업장 상세 조회
+app.get('/api/tax-filing-businesses/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const business = db.prepare(`
+      SELECT t.*, u.name as salesperson_name 
+      FROM tax_filing_businesses t
+      LEFT JOIN users u ON t.salesperson_id = u.id
+      WHERE t.id = ?
+    `).get(id);
+    
+    if (!business) {
+      return res.status(404).json({ success: false, message: '사업장을 찾을 수 없습니다.' });
+    }
+    
+    res.json({ success: true, data: business });
+  } catch (error) {
+    console.error('신고대리 사업장 상세 조회 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 신고대리 사업장 수정
+app.put('/api/tax-filing-businesses/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { business_name, business_type, representative, contact, hometax_id, hometax_password, business_number, address, additional_info } = req.body;
+    
+    const stmt = db.prepare(`
+      UPDATE tax_filing_businesses 
+      SET business_name = ?, business_type = ?, representative = ?, contact = ?, hometax_id = ?, hometax_password = ?, business_number = ?, address = ?, additional_info = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    stmt.run(business_name, business_type, representative, contact, hometax_id || '', hometax_password || '', business_number || '', address || '', additional_info || '', id);
+    
+    res.json({ success: true, message: '수정되었습니다.' });
+  } catch (error) {
+    console.error('신고대리 사업장 수정 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 신고대리 사업장 삭제
+app.delete('/api/tax-filing-businesses/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    db.prepare('DELETE FROM tax_filing_businesses WHERE id = ?').run(id);
+    
+    res.json({ success: true, message: '삭제되었습니다.' });
+  } catch (error) {
+    console.error('신고대리 사업장 삭제 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 신고대리 피드백 추가
+app.put('/api/tax-filing-businesses/:id/feedback', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { author, content } = req.body;
+    
+    // 기존 피드백 가져오기
+    const current = db.prepare('SELECT feedback FROM tax_filing_businesses WHERE id = ?').get(id);
+    
+    if (!current) {
+      return res.status(404).json({ success: false, message: '사업장을 찾을 수 없습니다.' });
+    }
+    
+    // 피드백 히스토리 형식
+    let feedbackHistory = [];
+    if (current.feedback) {
+      try {
+        feedbackHistory = JSON.parse(current.feedback);
+      } catch (e) {
+        feedbackHistory = [{ author: '시스템', content: current.feedback, timestamp: new Date().toISOString() }];
+      }
+    }
+    
+    // 새 피드백 추가
+    feedbackHistory.push({
+      author,
+      content,
+      timestamp: new Date().toISOString()
+    });
+    
+    // 업데이트
+    db.prepare('UPDATE tax_filing_businesses SET feedback = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run(JSON.stringify(feedbackHistory), id);
+    
+    res.json({ success: true, data: feedbackHistory });
+  } catch (error) {
+    console.error('피드백 추가 오류:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

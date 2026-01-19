@@ -34,6 +34,10 @@ import CommissionContract from './pages/salesperson/CommissionContract';
 // 섭외자 관리
 import RecruiterMyData from './pages/recruiter/MyData';
 
+// 신고대리
+import MyBusinesses from './pages/tax-filing/MyBusinesses';
+import TaxFilingManagement from './pages/admin/TaxFilingManagement';
+
 // 계약 관리
 import SalesCommission from './pages/contract/SalesCommission';
 import RecruitmentCommission from './pages/contract/RecruitmentCommission';
@@ -101,6 +105,7 @@ function App() {
             <Route path="admin/account-change-approval" element={<AccountChangeApproval />} />
             <Route path="admin/notice-management" element={<NoticeManagement />} />
             <Route path="admin/all-db-management" element={<AllDBManagement />} />
+            <Route path="admin/tax-filing-management" element={<TaxFilingManagement />} />
             
             {/* DB관리 */}
             <Route path="sales-db/register" element={<SalesDBRegister />} />
@@ -114,6 +119,7 @@ function App() {
             <Route path="salesperson/monthly-ranking" element={<MonthlyRanking />} />
             <Route path="salesperson/tax-calculator" element={<TaxCalculator />} />
             <Route path="salesperson/commission-contract" element={<CommissionContract />} />
+            <Route path="salesperson/my-businesses" element={<MyBusinesses />} />
             
             {/* 섭외자 관리 */}
             <Route path="recruiter/my-data" element={<RecruiterMyData />} />

@@ -27,7 +27,8 @@ import {
   TrendingUp,
   Bell,
   Phone,
-  Calculator
+  Calculator,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -155,6 +156,7 @@ const Sidebar: React.FC = () => {
         { title: '영업자 DB 입력', path: '/salesperson/register', icon: <UserPlus className="w-4 h-4" /> },
         { title: '영업자 일정/메모 관리', path: '/admin/salesperson-schedules', icon: <Calendar className="w-4 h-4" /> },
         { title: '매출거래처 관리', path: '/admin/sales-clients', icon: <Database className="w-4 h-4" /> },
+        { title: '신고대리 전체 관리', path: '/admin/tax-filing-management', icon: <Building2 className="w-4 h-4" /> },
       ],
     },
     {
@@ -195,6 +197,7 @@ const Sidebar: React.FC = () => {
         { title: '메모관리', path: '/salesperson/memos', icon: <FileText className="w-4 h-4" /> },
         { title: '종합소득세 계산기', path: '/salesperson/tax-calculator', icon: <Calculator className="w-4 h-4" /> },
         { title: '위촉계약서 발급', path: '/salesperson/commission-contract', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '신고대리', path: '/salesperson/my-businesses', icon: <Building2 className="w-4 h-4" /> },
       ],
     },
     {

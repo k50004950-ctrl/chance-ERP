@@ -34,13 +34,15 @@ import { useAuth } from '../context/AuthContext';
 
 interface SubMenuItem {
   title: string;
-  path: string;
+  path?: string;
+  externalLink?: string;
   icon?: React.ReactNode;
 }
 
 interface ChildMenuItem {
   title: string;
   path?: string;
+  externalLink?: string;
   icon?: React.ReactNode;
   children?: SubMenuItem[];
 }
@@ -132,7 +134,7 @@ const Sidebar: React.FC = () => {
       title: '경정청구',
       icon: <FileSignature className="w-4 h-4" />,
       children: [
-        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -203,7 +205,7 @@ const Sidebar: React.FC = () => {
       title: '경정청구',
       icon: <FileSignature className="w-4 h-4" />,
       children: [
-        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -230,7 +232,7 @@ const Sidebar: React.FC = () => {
       title: '경정청구',
       icon: <FileSignature className="w-4 h-4" />,
       children: [
-        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -256,7 +258,7 @@ const Sidebar: React.FC = () => {
       title: '경정청구',
       icon: <FileSignature className="w-4 h-4" />,
       children: [
-        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -283,7 +285,7 @@ const Sidebar: React.FC = () => {
       title: '경정청구',
       icon: <FileSignature className="w-4 h-4" />,
       children: [
-        { title: '경정청구 검토', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -488,7 +490,18 @@ const Sidebar: React.FC = () => {
               <div className="bg-gray-50 border-l-2 border-gray-200 ml-4">
                 {item.children.map((child, childIndex) => (
                   <div key={`${child.title}-${childIndex}`}>
-                    {child.path ? (
+                    {child.externalLink ? (
+                      // 2레벨 메뉴 (외부 링크가 있는 경우)
+                      <a
+                        href={child.externalLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center space-x-2 px-4 py-2 text-xs hover:bg-gray-100 transition-colors text-gray-600"
+                      >
+                        {child.icon && <span>{child.icon}</span>}
+                        <span>{child.title}</span>
+                      </a>
+                    ) : child.path ? (
                       // 2레벨 메뉴 (path가 있는 경우)
                       <NavLink
                         to={child.path}
@@ -525,18 +538,31 @@ const Sidebar: React.FC = () => {
                         {expandedSubMenus.includes(child.title) && child.children && (
                           <div className="bg-white border-l-2 border-gray-300 ml-4">
                             {child.children.map((subChild, subIndex) => (
-                              <NavLink
-                                key={`${subChild.path}-${subIndex}`}
-                                to={subChild.path}
-                                className={({ isActive }) =>
-                                  `flex items-center space-x-2 px-4 py-1.5 text-xs hover:bg-gray-50 transition-colors ${
-                                    isActive ? 'text-blue-600 bg-blue-50 border-l-2 border-blue-600' : 'text-gray-500'
-                                  }`
-                                }
-                              >
-                                {subChild.icon && <span className="text-[10px]">{subChild.icon}</span>}
-                                <span>{subChild.title}</span>
-                              </NavLink>
+                              subChild.externalLink ? (
+                                <a
+                                  key={`${subChild.title}-${subIndex}`}
+                                  href={subChild.externalLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center space-x-2 px-4 py-1.5 text-xs hover:bg-gray-50 transition-colors text-gray-500"
+                                >
+                                  {subChild.icon && <span className="text-[10px]">{subChild.icon}</span>}
+                                  <span>{subChild.title}</span>
+                                </a>
+                              ) : subChild.path ? (
+                                <NavLink
+                                  key={`${subChild.path}-${subIndex}`}
+                                  to={subChild.path}
+                                  className={({ isActive }) =>
+                                    `flex items-center space-x-2 px-4 py-1.5 text-xs hover:bg-gray-50 transition-colors ${
+                                      isActive ? 'text-blue-600 bg-blue-50 border-l-2 border-blue-600' : 'text-gray-500'
+                                    }`
+                                  }
+                                >
+                                  {subChild.icon && <span className="text-[10px]">{subChild.icon}</span>}
+                                  <span>{subChild.title}</span>
+                                </NavLink>
+                              ) : null
                             ))}
                           </div>
                         )}

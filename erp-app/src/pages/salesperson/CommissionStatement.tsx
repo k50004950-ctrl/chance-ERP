@@ -399,7 +399,7 @@ const SalespersonCommissionStatement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm bg-purple-50">
                       <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                        {detail.contract_client || '-'}
+                        {detail.client_name || detail.contract_client || '-'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900">

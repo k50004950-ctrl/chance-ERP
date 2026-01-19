@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Edit, Save, X, Trash2, MessageSquare, Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, Plus, Edit, Save, X, Trash2, MessageSquare, Search, Eye, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../lib/api';
+import * as XLSX from 'xlsx';
 
 interface TaxFilingBusiness {
   id: number;
@@ -249,6 +250,64 @@ const MyBusinesses: React.FC = () => {
     });
   };
 
+  const handleExcelDownload = () => {
+    try {
+      // 엑셀로 내보낼 데이터 준비
+      const excelData = filteredBusinesses.map((business, index) => ({
+        '번호': index + 1,
+        '업체명': business.business_name,
+        '형태': business.business_type,
+        '대표자': business.representative,
+        '연락처': business.contact,
+        '사업자번호': business.business_number || '-',
+        '홈택스 ID': business.hometax_id || '-',
+        '주소': business.address || '-',
+        '추가정보': business.additional_info || '-',
+        '등록일': new Date(business.created_at).toLocaleDateString('ko-KR'),
+        '피드백 개수': (() => {
+          try {
+            const history = business.feedback ? JSON.parse(business.feedback) : [];
+            return Array.isArray(history) ? history.length : 0;
+          } catch {
+            return business.feedback ? 1 : 0;
+          }
+        })()
+      }));
+
+      // 워크시트 생성
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      
+      // 컬럼 너비 설정
+      const colWidths = [
+        { wch: 5 },  // 번호
+        { wch: 25 }, // 업체명
+        { wch: 8 },  // 형태
+        { wch: 10 }, // 대표자
+        { wch: 15 }, // 연락처
+        { wch: 15 }, // 사업자번호
+        { wch: 15 }, // 홈택스 ID
+        { wch: 30 }, // 주소
+        { wch: 30 }, // 추가정보
+        { wch: 12 }, // 등록일
+        { wch: 10 }  // 피드백 개수
+      ];
+      ws['!cols'] = colWidths;
+
+      // 워크북 생성
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '신고대리 사업장');
+
+      // 파일 다운로드
+      const fileName = `신고대리_사업장_${user?.name}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      alert(`${filteredBusinesses.length}개의 사업장 정보가 다운로드되었습니다.`);
+    } catch (error) {
+      console.error('엑셀 다운로드 오류:', error);
+      alert('엑셀 다운로드 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -297,6 +356,14 @@ const MyBusinesses: React.FC = () => {
                 카드
               </button>
             </div>
+            <button
+              onClick={handleExcelDownload}
+              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition flex items-center space-x-2"
+              disabled={filteredBusinesses.length === 0}
+            >
+              <Download className="w-4 h-4" />
+              <span>엑셀 다운로드</span>
+            </button>
             <button
               onClick={() => {
                 resetForm();

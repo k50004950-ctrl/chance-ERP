@@ -196,7 +196,6 @@ const Sidebar: React.FC = () => {
         { title: '일정관리', path: '/salesperson/schedules', icon: <Calendar className="w-4 h-4" /> },
         { title: '메모관리', path: '/salesperson/memos', icon: <FileText className="w-4 h-4" /> },
         { title: '종합소득세 계산기', path: '/salesperson/tax-calculator', icon: <Calculator className="w-4 h-4" /> },
-        { title: '위촉계약서 발급', path: '/salesperson/commission-contract', icon: <FileSignature className="w-4 h-4" /> },
         { title: '신고대리', path: '/salesperson/my-businesses', icon: <Building2 className="w-4 h-4" /> },
       ],
     },

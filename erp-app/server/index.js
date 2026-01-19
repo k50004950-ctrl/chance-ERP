@@ -1834,8 +1834,30 @@ app.put('/api/sales-db/:id', (req, res) => {
 app.delete('/api/sales-db/:id', (req, res) => {
   try {
     const { id } = req.params;
+    
+    // DB 정보 조회 (일정 삭제를 위해)
+    const dbItem = db.prepare('SELECT company_name, salesperson_id FROM sales_db WHERE id = ?').get(id);
+    
+    if (dbItem) {
+      // 관련 일정 삭제
+      if (dbItem.salesperson_id && dbItem.company_name) {
+        try {
+          const deleteScheduleStmt = db.prepare(`
+            DELETE FROM schedules 
+            WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
+          `);
+          deleteScheduleStmt.run(dbItem.salesperson_id, dbItem.company_name);
+          console.log(`일정 삭제 완료: ${dbItem.company_name}`);
+        } catch (scheduleError) {
+          console.error('일정 삭제 실패:', scheduleError);
+        }
+      }
+    }
+    
+    // DB 삭제
     const stmt = db.prepare('DELETE FROM sales_db WHERE id = ?');
     stmt.run(id);
+    
     res.json({ success: true });
   } catch (error) {
     res.json({ success: false, message: error.message });

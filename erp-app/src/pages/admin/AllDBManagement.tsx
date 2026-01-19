@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, Database, TrendingUp, CheckCircle, Clock, XCircle, FileAudio, Download, Search, Filter } from 'lucide-react';
+import { Edit, Save, X, Database, TrendingUp, CheckCircle, Clock, XCircle, FileAudio, Download, Search, Filter, Trash2 } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
@@ -259,6 +259,31 @@ const AllDBManagement: React.FC = () => {
   const handleShowDetail = (item: DBItem) => {
     setSelectedItem(item);
     setShowDetailModal(true);
+  };
+
+  const handleDelete = async (item: DBItem) => {
+    if (!window.confirm(`정말 "${item.company_name}" DB를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 관련된 모든 일정도 함께 삭제됩니다.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/sales-db/${item.id}`, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('삭제되었습니다.');
+        // 목록에서 제거
+        setAllData(allData.filter(d => d.id !== item.id));
+        setFilteredData(filteredData.filter(d => d.id !== item.id));
+      } else {
+        alert('삭제 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('삭제 실패:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
   };
 
   const handleResetFilters = () => {
@@ -689,13 +714,22 @@ const AllDBManagement: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => handleEdit(item.id)}
-                        className="text-gray-600 hover:text-gray-900"
-                        title="수정"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(item.id)}
+                          className="text-gray-600 hover:text-gray-900"
+                          title="수정"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="text-red-600 hover:text-red-900"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>

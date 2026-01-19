@@ -135,6 +135,7 @@ const Sidebar: React.FC = () => {
       icon: <FileSignature className="w-4 h-4" />,
       children: [
         { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 관리', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -206,6 +207,7 @@ const Sidebar: React.FC = () => {
       icon: <FileSignature className="w-4 h-4" />,
       children: [
         { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 관리', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -233,6 +235,7 @@ const Sidebar: React.FC = () => {
       icon: <FileSignature className="w-4 h-4" />,
       children: [
         { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 관리', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -259,6 +262,7 @@ const Sidebar: React.FC = () => {
       icon: <FileSignature className="w-4 h-4" />,
       children: [
         { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 관리', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {
@@ -286,6 +290,7 @@ const Sidebar: React.FC = () => {
       icon: <FileSignature className="w-4 h-4" />,
       children: [
         { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '경정청구 관리', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
       ],
     },
     {

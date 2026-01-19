@@ -18,7 +18,7 @@ interface PerformanceData {
   contact: string;
   industry: string;
   client_name: string;
-  contract_client: number;
+  contract_fee: number; // 계약 기장료
   contract_month: string;
   actual_sales: number;
   commission_rate: number;
@@ -131,7 +131,7 @@ const MonthlyPerformance: React.FC = () => {
     
     const totalContractAmount = performanceData
       .filter(d => d.contract_status === 'Y')
-      .reduce((sum, d) => sum + (Number(d.actual_sales) || 0), 0);
+      .reduce((sum, d) => sum + (Number(d.contract_fee) || 0), 0);
     
     setStats(prev => ({
       ...prev,
@@ -185,7 +185,7 @@ const MonthlyPerformance: React.FC = () => {
         row.meeting_status || '',
         row.contract_status || '',
         row.client_name || '',
-        row.contract_client || 0,
+        row.contract_fee || 0,
         row.contract_month || '',
         row.actual_sales || 0,
         row.commission_rate || 0
@@ -424,7 +424,7 @@ const MonthlyPerformance: React.FC = () => {
                         {row.client_name || '-'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {row.actual_sales ? `${row.actual_sales.toLocaleString()}원` : '-'}
+                        {row.contract_fee ? `${row.contract_fee.toLocaleString()}원` : '-'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                         {row.commission_rate ? `${row.commission_rate}%` : '-'}

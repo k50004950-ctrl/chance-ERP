@@ -3337,7 +3337,7 @@ app.get('/api/admin/monthly-performance', (req, res) => {
         sd.contact,
         sd.industry,
         sd.client_name,
-        sd.contract_client,
+        CAST(sd.contract_client AS INTEGER) as contract_fee,
         sd.contract_month,
         sd.actual_sales,
         sc.commission_rate

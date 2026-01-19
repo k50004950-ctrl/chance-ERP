@@ -618,22 +618,6 @@ function initDatabase() {
     // 이미 컬럼이 존재하면 무시
   }
 
-  // 잘못된 수수료율 값 수정 (500% 이상인 경우 30%로 변경)
-  try {
-    const wrongRates = db.prepare('SELECT id, client_name, commission_rate FROM sales_clients WHERE commission_rate >= 100').all();
-    if (wrongRates.length > 0) {
-      console.log(`⚠️  ${wrongRates.length}개의 잘못된 수수료율을 발견했습니다. 수정 중...`);
-      const updateStmt = db.prepare('UPDATE sales_clients SET commission_rate = 30 WHERE id = ?');
-      wrongRates.forEach(row => {
-        console.log(`  - ${row.client_name}: ${row.commission_rate}% → 30%`);
-        updateStmt.run(row.id);
-      });
-      console.log('✅ 수수료율 수정 완료');
-    }
-  } catch (e) {
-    console.error('수수료율 수정 중 오류:', e.message);
-  }
-
   console.log('Database initialized at:', dbPath);
 }
 

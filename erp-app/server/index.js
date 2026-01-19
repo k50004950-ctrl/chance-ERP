@@ -1904,6 +1904,104 @@ app.delete('/api/sales-db/:id', (req, res) => {
   }
 });
 
+// 기존 일정 시간 일괄 업데이트 (관리자 전용)
+app.post('/api/schedules/fix-times', (req, res) => {
+  try {
+    console.log('일정 시간 일괄 업데이트 시작...');
+    
+    // 모든 DB 항목 조회
+    const allDBs = db.prepare('SELECT id, company_name, meeting_request_datetime, salesperson_id FROM sales_db WHERE meeting_request_datetime IS NOT NULL AND salesperson_id IS NOT NULL').all();
+    
+    let updatedCount = 0;
+    let errorCount = 0;
+    
+    for (const dbItem of allDBs) {
+      try {
+        const { meeting_request_datetime, salesperson_id, company_name } = dbItem;
+        
+        // datetime 파싱 로직 (PUT 엔드포인트와 동일)
+        let scheduleDate, scheduleTime;
+        
+        if (meeting_request_datetime.includes('T')) {
+          const parts = meeting_request_datetime.split('T');
+          scheduleDate = parts[0];
+          scheduleTime = parts[1] || '09:00';
+        } else if (meeting_request_datetime.includes(' ')) {
+          const dateStr = meeting_request_datetime.trim();
+          
+          if (dateStr.includes('월') && dateStr.includes('일')) {
+            const yearMatch = dateStr.match(/(\d{4})년/);
+            const year = yearMatch ? yearMatch[1] : new Date().getFullYear();
+            
+            const monthMatch = dateStr.match(/(\d{1,2})월/);
+            const month = monthMatch ? monthMatch[1].padStart(2, '0') : '01';
+            
+            const dayMatch = dateStr.match(/(\d{1,2})일/);
+            const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01';
+            
+            scheduleDate = `${year}-${month}-${day}`;
+            
+            const timeMatch = dateStr.match(/(\d{1,2}):(\d{2})/);
+            if (timeMatch) {
+              let hour = parseInt(timeMatch[1]);
+              const minute = timeMatch[2];
+              
+              if (dateStr.includes('오후') && hour !== 12) {
+                hour += 12;
+              }
+              if (dateStr.includes('오전') && hour === 12) {
+                hour = 0;
+              }
+              
+              scheduleTime = `${hour.toString().padStart(2, '0')}:${minute}`;
+            } else {
+              scheduleTime = '09:00';
+            }
+          } else {
+            const parts = dateStr.split(' ');
+            scheduleDate = parts[0];
+            scheduleTime = parts[1] || '09:00';
+          }
+        } else {
+          scheduleDate = meeting_request_datetime;
+          scheduleTime = '09:00';
+        }
+        
+        // 해당 일정 찾아서 업데이트
+        const schedule = db.prepare(`
+          SELECT id FROM schedules 
+          WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
+          ORDER BY created_at DESC LIMIT 1
+        `).get(salesperson_id, company_name);
+        
+        if (schedule) {
+          db.prepare(`
+            UPDATE schedules 
+            SET schedule_date = ?, schedule_time = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).run(scheduleDate, scheduleTime, schedule.id);
+          
+          console.log(`업데이트: ${company_name} -> ${scheduleDate} ${scheduleTime}`);
+          updatedCount++;
+        }
+      } catch (itemError) {
+        console.error(`업데이트 실패 (${dbItem.company_name}):`, itemError);
+        errorCount++;
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `일정 시간 업데이트 완료: ${updatedCount}개 성공, ${errorCount}개 실패`,
+      updated: updatedCount,
+      errors: errorCount
+    });
+  } catch (error) {
+    console.error('일괄 업데이트 실패:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // CSV 업로드
 app.post('/api/sales-db/upload-csv', upload.single('file'), (req, res) => {
   if (!req.file) {

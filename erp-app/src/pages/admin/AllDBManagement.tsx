@@ -296,6 +296,28 @@ const AllDBManagement: React.FC = () => {
     setShowUnassignedOnly(false);
   };
 
+  const handleFixScheduleTimes = async () => {
+    if (!window.confirm('모든 일정의 시간을 DB의 미팅희망날짜 기준으로 일괄 업데이트하시겠습니까?\n\n잘못 저장된 00:00 시간들이 올바른 시간으로 수정됩니다.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/schedules/fix-times', {
+        method: 'POST',
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert(`일정 시간 업데이트 완료!\n\n성공: ${result.updated}개\n실패: ${result.errors}개`);
+      } else {
+        alert('업데이트 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('일정 시간 업데이트 실패:', error);
+      alert('업데이트 중 오류가 발생했습니다.');
+    }
+  };
+
   if (!currentUser || currentUser.role !== 'admin') {
     return (
       <div className="p-6">
@@ -475,7 +497,7 @@ const AllDBManagement: React.FC = () => {
         </div>
 
         {/* 담당영업자 미배정 필터 */}
-        <div className="mt-3">
+        <div className="mt-3 flex items-center justify-between">
           <label className="flex items-center space-x-2 cursor-pointer">
             <input
               type="checkbox"
@@ -487,6 +509,15 @@ const AllDBManagement: React.FC = () => {
               담당영업자 미배정만 보기
             </span>
           </label>
+          
+          <button
+            onClick={handleFixScheduleTimes}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition flex items-center space-x-2"
+            title="00:00으로 잘못 저장된 일정 시간을 일괄 수정합니다"
+          >
+            <Clock className="w-4 h-4" />
+            <span className="text-sm font-medium">일정 시간 일괄 수정</span>
+          </button>
         </div>
       </div>
 

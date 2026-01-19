@@ -337,7 +337,7 @@ const MonthlyPerformance: React.FC = () => {
           ) : data.length === 0 ? (
             <div className="p-8 text-center text-gray-500">조회된 데이터가 없습니다.</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 450px)', overflowY: 'auto' }}>
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>

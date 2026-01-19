@@ -466,7 +466,7 @@ const AllDBManagement: React.FC = () => {
       </div>
 
       {/* 테이블 */}
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <div className="bg-white rounded-lg shadow overflow-x-auto" style={{ maxHeight: 'calc(100vh - 400px)', overflowY: 'auto' }}>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -494,15 +494,42 @@ const AllDBManagement: React.FC = () => {
               filteredData.map((item) => (
                 <tr key={item.id} data-db-id={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 bg-blue-50 text-sm whitespace-nowrap">
-                    {formatDateToKorean(item.proposal_date) || '-'}
+                    {editingId === item.id ? (
+                      <input
+                        type="date"
+                        value={item.proposal_date || ''}
+                        onChange={(e) => handleChange(item.id, 'proposal_date', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      formatDateToKorean(item.proposal_date) || '-'
+                    )}
                   </td>
                   <td className="px-4 py-3 bg-green-50">
-                    <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
-                      {item.proposer || '-'}
-                    </span>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={item.proposer || ''}
+                        onChange={(e) => handleChange(item.id, 'proposer', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500"
+                        placeholder="섭외자"
+                      />
+                    ) : (
+                      <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                        {item.proposer || '-'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 bg-yellow-50 text-sm whitespace-nowrap">
-                    {item.meeting_request_datetime ? (
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={item.meeting_request_datetime || ''}
+                        onChange={(e) => handleChange(item.id, 'meeting_request_datetime', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-yellow-500"
+                        placeholder="예: 01월 20일 오전 10:00"
+                      />
+                    ) : item.meeting_request_datetime ? (
                       <span className="text-gray-900 font-medium">
                         {formatDateTime(item.meeting_request_datetime)}
                       </span>
@@ -511,21 +538,63 @@ const AllDBManagement: React.FC = () => {
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <button
-                      onClick={() => handleShowDetail(item)}
-                      className="text-blue-600 font-medium hover:underline"
-                    >
-                      {item.company_name}
-                    </button>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={item.company_name || ''}
+                        onChange={(e) => handleChange(item.id, 'company_name', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                        placeholder="업체명"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => handleShowDetail(item)}
+                        className="text-blue-600 font-medium hover:underline"
+                      >
+                        {item.company_name}
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                    {item.representative || '-'}
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={item.representative || ''}
+                        onChange={(e) => handleChange(item.id, 'representative', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                        placeholder="대표자"
+                      />
+                    ) : (
+                      item.representative || '-'
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                    {item.contact || '-'}
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={item.contact || ''}
+                        onChange={(e) => handleChange(item.id, 'contact', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                        placeholder="연락처"
+                      />
+                    ) : (
+                      item.contact || '-'
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
-                    {item.address || '-'}
+                  <td className="px-4 py-3 text-sm text-gray-500 max-w-xs">
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={item.address || ''}
+                        onChange={(e) => handleChange(item.id, 'address', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                        placeholder="주소"
+                      />
+                    ) : (
+                      <div className="truncate" title={item.address}>
+                        {item.address || '-'}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 bg-purple-50">
                     {editingId === item.id ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, MessageSquare, X, Plus, Eye, Download } from 'lucide-react';
+import { Building2, Search, MessageSquare, X, Plus, Eye, Download, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../lib/api';
 import * as XLSX from 'xlsx';
@@ -9,7 +9,7 @@ interface TaxFilingBusiness {
   salesperson_id: number;
   salesperson_name: string;
   business_name: string;
-  business_type: '간이' | '일반' | '법인';
+  business_type: '간이' | '일반' | '법인' | '프리랜서';
   representative: string;
   contact: string;
   hometax_id: string;
@@ -97,6 +97,30 @@ const TaxFilingManagement: React.FC = () => {
   const handleShowDetail = (business: TaxFilingBusiness) => {
     setSelectedBusiness(business);
     setShowDetailModal(true);
+  };
+
+  const handleDelete = async (business: TaxFilingBusiness) => {
+    if (!window.confirm(`정말 "${business.business_name}" 사업장을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tax-filing-businesses/${business.id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('삭제되었습니다.');
+        fetchBusinesses(); // 목록 새로고침
+      } else {
+        alert('삭제 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('삭제 오류:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
   };
 
   const handleAddFeedback = async () => {
@@ -352,13 +376,22 @@ const TaxFilingManagement: React.FC = () => {
                       </button>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleShowDetail(business)}
-                        className="text-blue-600 hover:text-blue-800 transition"
-                        title="상세 보기"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center space-x-2">
+                        <button
+                          onClick={() => handleShowDetail(business)}
+                          className="text-blue-600 hover:text-blue-800 transition"
+                          title="상세 보기"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(business)}
+                          className="text-red-600 hover:text-red-800 transition"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

@@ -3736,7 +3736,8 @@ app.get('/api/rankings/monthly', (req, res) => {
     `).all();
     
     const rankings = salespersons.map(person => {
-      // 당월 실적 계산
+      // 당월 실적 계산 (수수료 명세서와 동일한 기준 사용)
+      const yearMonth = `${currentYear}-${currentMonth}`;
       const stats = db.prepare(`
         SELECT 
           COUNT(*) as total_db,
@@ -3744,13 +3745,22 @@ app.get('/api/rankings/monthly', (req, res) => {
           SUM(CASE WHEN contract_status = 'Y' THEN COALESCE(actual_sales, 0) ELSE 0 END) as total_contract_fee
         FROM sales_db
         WHERE salesperson_id = ?
-          AND strftime('%Y', proposal_date) = ?
-          AND strftime('%m', proposal_date) = ?
-      `).get(person.id, String(currentYear), currentMonth);
+          AND strftime('%Y-%m', proposal_date) = ?
+      `).get(person.id, yearMonth);
+      
+      // 계약 완료 건의 총 기장료 (contract_date 또는 proposal_date 기준)
+      const contractStats = db.prepare(`
+        SELECT 
+          SUM(COALESCE(actual_sales, 0)) as total
+        FROM sales_db
+        WHERE salesperson_id = ?
+          AND contract_status = 'Y'
+          AND substr(CASE WHEN contract_date IS NULL OR contract_date = '' THEN proposal_date ELSE contract_date END, 1, 7) = ?
+      `).get(person.id, yearMonth);
       
       const totalDB = stats.total_db || 0;
       const contractCount = stats.contract_count || 0;
-      const totalContractFee = stats.total_contract_fee || 0;
+      const totalContractFee = contractStats?.total || 0; // 수수료 명세서와 동일한 계산
       const contractRate = totalDB > 0 ? (contractCount / totalDB * 100) : 0;
       
       return {

@@ -54,6 +54,7 @@ const AllDBManagement: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedRecruiter, setSelectedRecruiter] = useState<string>('');
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>('');
+  const [selectedContractStatus, setSelectedContractStatus] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -167,6 +168,11 @@ const AllDBManagement: React.FC = () => {
       filtered = filtered.filter((item) => item.salesperson_name === selectedSalesperson);
     }
 
+    // 계약 상태 필터
+    if (selectedContractStatus) {
+      filtered = filtered.filter((item) => item.contract_status === selectedContractStatus);
+    }
+
     // 담당영업자 미배정 필터
     if (showUnassignedOnly) {
       filtered = filtered.filter((item) => !item.salesperson_id || item.salesperson_id === null);
@@ -181,7 +187,7 @@ const AllDBManagement: React.FC = () => {
     }
 
     setFilteredData(filtered);
-  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, showUnassignedOnly, allData, editingId]);
+  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, selectedContractStatus, showUnassignedOnly, allData, editingId]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -261,6 +267,7 @@ const AllDBManagement: React.FC = () => {
     setSelectedMonth('');
     setSelectedRecruiter('');
     setSelectedSalesperson('');
+    setSelectedContractStatus('');
     setShowUnassignedOnly(false);
   };
 
@@ -427,6 +434,21 @@ const AllDBManagement: React.FC = () => {
           </select>
         </div>
 
+        {/* 계약 상태 필터 추가 */}
+        <div className="mt-4">
+          <select
+            value={selectedContractStatus}
+            onChange={(e) => setSelectedContractStatus(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">전체 상태</option>
+            <option value="Y">완료</option>
+            <option value="N">미완료</option>
+            <option value="계약예정">계약예정</option>
+            <option value="계약불가">계약불가</option>
+          </select>
+        </div>
+
         {/* 담당영업자 미배정 필터 */}
         <div className="mt-3">
           <label className="flex items-center space-x-2 cursor-pointer">
@@ -562,14 +584,20 @@ const AllDBManagement: React.FC = () => {
                         <option value="">선택</option>
                         <option value="Y">완료</option>
                         <option value="N">미완료</option>
+                        <option value="계약예정">계약예정</option>
+                        <option value="계약불가">계약불가</option>
                       </select>
                     ) : (
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         item.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
                         item.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                        item.contract_status === '계약예정' ? 'bg-blue-100 text-blue-800' :
+                        item.contract_status === '계약불가' ? 'bg-red-100 text-red-800' :
                         'bg-gray-50 text-gray-500'
                       }`}>
-                        {item.contract_status === 'Y' ? '완료' : item.contract_status === 'N' ? '미완료' : '-'}
+                        {item.contract_status === 'Y' ? '완료' : 
+                         item.contract_status === 'N' ? '미완료' : 
+                         item.contract_status || '-'}
                       </span>
                     )}
                   </td>
@@ -660,7 +688,17 @@ const AllDBManagement: React.FC = () => {
                       'bg-gray-100 text-gray-800'
                     }`}>{selectedItem.meeting_status || '-'}</span></div>
                     <div><p className="text-sm font-medium text-gray-500 mb-1">계약날짜</p><p className="text-lg font-semibold text-gray-900">{formatDateToKorean(selectedItem.contract_date) || '-'}</p></div>
-                    <div><p className="text-sm font-medium text-gray-500 mb-1">계약 완료</p><span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${selectedItem.contract_status === 'Y' ? 'bg-green-100 text-green-800' : selectedItem.contract_status === 'N' ? 'bg-gray-100 text-gray-800' : 'bg-gray-50 text-gray-500'}`}>{selectedItem.contract_status === 'Y' ? '완료' : selectedItem.contract_status === 'N' ? '미완료' : '-'}</span></div>
+                    <div><p className="text-sm font-medium text-gray-500 mb-1">계약 완료</p><span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      selectedItem.contract_status === 'Y' ? 'bg-green-100 text-green-800' : 
+                      selectedItem.contract_status === 'N' ? 'bg-gray-100 text-gray-800' : 
+                      selectedItem.contract_status === '계약예정' ? 'bg-blue-100 text-blue-800' :
+                      selectedItem.contract_status === '계약불가' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-50 text-gray-500'
+                    }`}>{
+                      selectedItem.contract_status === 'Y' ? '완료' : 
+                      selectedItem.contract_status === 'N' ? '미완료' : 
+                      selectedItem.contract_status || '-'
+                    }</span></div>
                   </div>
                 </div>
 

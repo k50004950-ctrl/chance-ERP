@@ -1709,21 +1709,27 @@ app.put('/api/sales-db/:id', (req, res) => {
       termination_month, actual_sales, contract_date, contract_client, contract_month, client_name, feedback, april_type1_date, commission_rate || 30, id
     );
     
-    // 담당영업자가 변경된 경우, 이전 담당자의 일정 삭제
-    if (existingData && existingData.salesperson_id && existingData.salesperson_id !== salesperson_id) {
-      try {
-        console.log('담당영업자 변경 감지:', existingData.salesperson_id, '->', salesperson_id);
-        console.log('이전 담당자의 일정 삭제:', existingData.salesperson_id, company_name);
-        
-        // 이전 담당자의 해당 DB 관련 일정 삭제
-        const deletePrevScheduleStmt = db.prepare(`
-          DELETE FROM schedules 
-          WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
-        `);
-        const deleteResult = deletePrevScheduleStmt.run(existingData.salesperson_id, company_name);
-        console.log('삭제된 일정 개수:', deleteResult.changes);
-      } catch (deleteError) {
-        console.error('이전 담당자 일정 삭제 실패:', deleteError);
+    // 담당영업자가 변경된 경우 또는 제거된 경우, 이전 담당자의 일정 삭제
+    if (existingData && existingData.salesperson_id) {
+      const oldSalespersonId = existingData.salesperson_id;
+      const newSalespersonId = salesperson_id || null;
+      
+      // 영업자가 변경되었거나 제거된 경우 (다시 선택으로 변경된 경우 포함)
+      if (oldSalespersonId !== newSalespersonId) {
+        try {
+          console.log('담당영업자 변경/제거 감지:', oldSalespersonId, '->', newSalespersonId || '제거됨');
+          console.log('이전 담당자의 일정 삭제:', oldSalespersonId, company_name);
+          
+          // 이전 담당자의 해당 DB 관련 일정 삭제
+          const deletePrevScheduleStmt = db.prepare(`
+            DELETE FROM schedules 
+            WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
+          `);
+          const deleteResult = deletePrevScheduleStmt.run(oldSalespersonId, company_name);
+          console.log('삭제된 일정 개수:', deleteResult.changes);
+        } catch (deleteError) {
+          console.error('이전 담당자 일정 삭제 실패:', deleteError);
+        }
       }
     }
     

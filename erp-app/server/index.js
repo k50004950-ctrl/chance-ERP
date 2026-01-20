@@ -2047,8 +2047,15 @@ app.post('/api/sales-db/upload-csv', upload.single('file'), (req, res) => {
             proposerValue = uploaderName;
           }
           
+          // 섭외날짜 파싱 디버깅
+          const proposalDate = row.proposal_date || row['섭외날짜'] || row['제안일자'] || null;
+          if (index < 3) {
+            console.log(`Row ${index + 1} - proposal_date:`, row.proposal_date, ', 섭외날짜:', row['섭외날짜'], ', Final:', proposalDate);
+            console.log('Row keys:', Object.keys(row));
+          }
+          
           stmt.run(
-            row.proposal_date || row['섭외날짜'] || row['제안일자'] || null,
+            proposalDate,
             proposerValue,
             row.meeting_request_datetime || row['미팅희망날짜시간'] || null,
             row.salesperson_id || row['영업자ID'] || row['영업자'] || null,
@@ -2130,8 +2137,15 @@ app.post('/api/sales-db/upload-csv-stream', upload.single('file'), async (req, r
                 proposerValue = uploaderName;
               }
               
+              // 섭외날짜 파싱 디버깅
+              const proposalDate = row.proposal_date || row['섭외날짜'] || row['제안일자'] || null;
+              if (processedCount < 3) {
+                console.log(`Stream Row ${processedCount + 1} - proposal_date:`, row.proposal_date, ', 섭외날짜:', row['섭외날짜'], ', Final:', proposalDate);
+                console.log('Row keys:', Object.keys(row).slice(0, 10));
+              }
+              
               stmt.run(
-                row.proposal_date || row['섭외날짜'] || row['제안일자'] || null,
+                proposalDate,
                 proposerValue,
                 row.meeting_request_datetime || row['미팅희망날짜시간'] || null,
                 row.salesperson_id || row['영업자ID'] || row['영업자'] || null,

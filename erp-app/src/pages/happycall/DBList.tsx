@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Search as SearchIcon, X } from 'lucide-react';
+import { Phone, Search as SearchIcon, X, MessageSquare } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../lib/api';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
@@ -29,6 +29,7 @@ const HappyCallDBList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<SalesDB[]>([]);
   const [showHappyCallModal, setShowHappyCallModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [selectedDB, setSelectedDB] = useState<SalesDB | null>(null);
   const [loading, setLoading] = useState(true);
   const [happyCallData, setHappyCallData] = useState({
@@ -91,6 +92,21 @@ const HappyCallDBList: React.FC = () => {
       notes: ''
     });
     setShowHappyCallModal(true);
+  };
+
+  const handleOpenFeedback = (item: SalesDB) => {
+    setSelectedDB(item);
+    setShowFeedbackModal(true);
+  };
+
+  const parseFeedback = (feedbackString: string) => {
+    try {
+      if (!feedbackString) return [];
+      const parsed = JSON.parse(feedbackString);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return feedbackString ? [feedbackString] : [];
+    }
   };
 
   const handleSubmitHappyCall = async () => {
@@ -173,12 +189,13 @@ const HappyCallDBList: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">미팅상태</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약상태</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">거래처</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">피드백</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
                     <div className="flex items-center justify-center space-x-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                       <span>데이터를 불러오는 중...</span>
@@ -187,7 +204,7 @@ const HappyCallDBList: React.FC = () => {
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
                     <div>
                       <p className="text-lg font-medium mb-2">조회된 데이터가 없습니다.</p>
                       <p className="text-sm">영업자가 등록한 DB가 없거나 검색 조건에 맞는 데이터가 없습니다.</p>
@@ -242,6 +259,27 @@ const HappyCallDBList: React.FC = () => {
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {item.client_name || '-'}
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      {item.feedback ? (
+                        <button
+                          onClick={() => handleOpenFeedback(item)}
+                          className="inline-flex items-center px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition"
+                          title="피드백 보기"
+                        >
+                          <MessageSquare className="w-3 h-3 mr-1" />
+                          {(() => {
+                            try {
+                              const feedback = JSON.parse(item.feedback);
+                              return Array.isArray(feedback) ? feedback.length : 1;
+                            } catch {
+                              return 1;
+                            }
+                          })()}개
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-xs">없음</span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -249,6 +287,69 @@ const HappyCallDBList: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* 피드백 보기 모달 */}
+      {showFeedbackModal && selectedDB && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">피드백 내역</h2>
+                <p className="text-sm text-gray-500 mt-1">{selectedDB.company_name}</p>
+              </div>
+              <button
+                onClick={() => setShowFeedbackModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {parseFeedback(selectedDB.feedback).length > 0 ? (
+                <div className="space-y-4">
+                  {parseFeedback(selectedDB.feedback).map((feedback: any, index: number) => (
+                    <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-600 text-xs font-bold">
+                            {index + 1}
+                          </span>
+                          <span className="font-medium text-gray-700">
+                            {typeof feedback === 'string' ? '피드백' : feedback.author || '작성자 미상'}
+                          </span>
+                        </div>
+                        {typeof feedback === 'object' && feedback.timestamp && (
+                          <span className="text-xs text-gray-500">
+                            {new Date(feedback.timestamp).toLocaleString('ko-KR')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600 whitespace-pre-wrap">
+                        {typeof feedback === 'string' ? feedback : feedback.content || feedback.text || JSON.stringify(feedback)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p className="text-lg font-medium">피드백이 없습니다.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 px-6 py-4 flex justify-end border-t border-gray-200">
+              <button
+                onClick={() => setShowFeedbackModal(false)}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 해피콜 입력 모달 */}
       {showHappyCallModal && selectedDB && (

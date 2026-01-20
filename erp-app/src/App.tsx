@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './components/NotificationProvider';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -72,11 +73,12 @@ import CorrectionDetail from './pages/correction/CorrectionDetail';
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          {/* 프로필 완성 페이지 (Layout 없이) */}
-          <Route path="/settings/complete-profile" element={<CompleteProfile />} />
+      <NotificationProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            {/* 프로필 완성 페이지 (Layout 없이) */}
+            <Route path="/settings/complete-profile" element={<CompleteProfile />} />
           
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
@@ -143,6 +145,7 @@ function App() {
           </Route>
         </Routes>
       </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

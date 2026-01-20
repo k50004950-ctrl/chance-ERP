@@ -392,6 +392,19 @@ function initDatabase() {
       FOREIGN KEY (correction_id) REFERENCES correction_requests(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    -- Notifications table (알림)
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      link TEXT,
+      is_read INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `);
 
   // Add new columns to users table if they don't exist (for existing databases)
@@ -1852,18 +1865,19 @@ app.put('/api/sales-db/:id', (req, res) => {
       if (meeting_status === '일정재섭외' || meeting_status === 'AS') {
         try {
           // 섭외자 이름으로 사용자 ID 찾기
-          const recruiterUser = db.prepare('SELECT id, notification_enabled FROM users WHERE name = ? AND role = ?').get(proposer, 'recruiter');
+          const recruiterUser = db.prepare('SELECT id FROM users WHERE name = ? AND role = ?').get(proposer, 'recruiter');
           
-          if (recruiterUser && recruiterUser.notification_enabled === 1) {
-            const notificationTitle = meeting_status === '일정재섭외' ? '일정 재섭외 필요' : 'AS 요청';
-            const notificationMessage = `${company_name} 고객이 ${meeting_status} 상태로 변경되었습니다. 영업자: ${existingData.salesperson_id ? db.prepare('SELECT name FROM users WHERE id = ?').get(existingData.salesperson_id)?.name || '미배정' : '미배정'}`;
+          if (recruiterUser) {
+            const notificationType = meeting_status === '일정재섭외' ? 'meeting_reschedule' : 'as_request';
+            const notificationTitle = meeting_status === '일정재섭외' ? '🔄 일정 재섭외 필요' : '🔧 AS 요청';
+            const notificationMessage = `${company_name} - ${meeting_status} 상태로 변경되었습니다.`;
             
             createNotification(
               recruiterUser.id,
+              notificationType,
               notificationTitle,
               notificationMessage,
-              meeting_status === '일정재섭외' ? 'reschedule' : 'as',
-              id
+              '/recruiter/my-data'
             );
             
             console.log(`알림 전송 완료: ${recruiterUser.id} -> ${notificationTitle}`);
@@ -4230,6 +4244,29 @@ app.post('/api/notices', (req, res) => {
     `);
     const result = stmt.run(title, content, author_id, is_important ? 1 : 0);
     
+    // 모든 사용자에게 웹 알림 생성
+    try {
+      const allUsers = db.prepare('SELECT id FROM users').all();
+      const noticePreview = content.length > 50 ? content.substring(0, 50) + '...' : content;
+      
+      allUsers.forEach(user => {
+        // 작성자 본인에게는 알림 안 보냄
+        if (user.id !== author_id) {
+          createNotification(
+            user.id,
+            'notice',
+            `📢 ${title}`,
+            noticePreview,
+            '/dashboard'
+          );
+        }
+      });
+      
+      console.log(`공지사항 알림 전송 완료: ${allUsers.length - 1}명`);
+    } catch (notificationError) {
+      console.error('공지사항 알림 전송 실패:', notificationError);
+    }
+    
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (error) {
     console.error('공지사항 생성 오류:', error);
@@ -4378,6 +4415,28 @@ app.post('/api/happycalls', (req, res) => {
           VALUES (?, ?, ?, 1, 1)
         `);
         noticeStmt.run(noticeTitle, noticeContent, happycall_staff_id);
+        
+        // 관리자들에게 웹 알림 생성
+        admins.forEach(admin => {
+          createNotification(
+            admin.id,
+            'happycall_low',
+            `⚠️ ${client_name} 고객 불만`,
+            `해피콜 점수 '하' - 확인이 필요합니다.`,
+            '/happycall/list'
+          );
+        });
+      }
+      
+      // 담당 영업자에게도 알림 생성
+      if (salesperson_id) {
+        createNotification(
+          salesperson_id,
+          'happycall_low',
+          `⚠️ ${client_name} 고객 불만 접수`,
+          `해피콜 점수가 '하'입니다. 고객 응대가 필요합니다.`,
+          '/happycall/list'
+        );
       }
       
       // 영업자에게도 알림 (영업자 ID가 있는 경우)
@@ -4684,10 +4743,11 @@ app.put('/api/correction-requests/:id', (req, res) => {
     
     stmt.run(review_status, refund_amount || 0, document_delivered || 'N', id);
     
-    // 환급가능이고 금액이 있으면 공지 생성
+    // 환급가능이고 금액이 있으면 공지 생성 및 영업자에게 알림
     if (review_status === '환급가능' && refund_amount > 0) {
       const request = db.prepare('SELECT * FROM correction_requests WHERE id = ?').get(id);
       if (request) {
+        // 공지사항 생성
         db.prepare(`
           INSERT INTO notices (title, content, author_id, is_important)
           VALUES (?, ?, ?, ?)
@@ -4697,6 +4757,17 @@ app.put('/api/correction-requests/:id', (req, res) => {
           1, // 시스템 관리자
           1  // 중요 공지
         );
+        
+        // 담당 영업자에게 웹 알림 생성
+        if (request.writer_id) {
+          createNotification(
+            request.writer_id,
+            'correction_review',
+            `💰 ${request.company_name} 환급 가능`,
+            `환급 가능 금액: ${refund_amount.toLocaleString()}원`,
+            '/correction/list'
+          );
+        }
       }
     }
     
@@ -5246,6 +5317,120 @@ app.put('/api/tax-filing-businesses/:id/feedback', (req, res) => {
     res.json({ success: true, data: feedbackHistory });
   } catch (error) {
     console.error('피드백 추가 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== 알림 API ====================
+
+// 알림 생성 헬퍼 함수
+function createNotification(userId, type, title, message, link = null) {
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO notifications (user_id, type, title, message, link)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run(userId, type, title, message, link);
+    console.log(`알림 생성: ${title} for user ${userId}`);
+  } catch (error) {
+    console.error('알림 생성 오류:', error);
+  }
+}
+
+// 사용자 알림 목록 조회
+app.get('/api/notifications', (req, res) => {
+  try {
+    const { user_id } = req.query;
+    
+    if (!user_id) {
+      return res.status(400).json({ success: false, message: 'user_id가 필요합니다.' });
+    }
+    
+    const notifications = db.prepare(`
+      SELECT * FROM notifications 
+      WHERE user_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT 50
+    `).all(user_id);
+    
+    res.json({ success: true, data: notifications });
+  } catch (error) {
+    console.error('알림 조회 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 읽지 않은 알림 개수 조회
+app.get('/api/notifications/unread-count', (req, res) => {
+  try {
+    const { user_id } = req.query;
+    
+    if (!user_id) {
+      return res.status(400).json({ success: false, message: 'user_id가 필요합니다.' });
+    }
+    
+    const result = db.prepare(`
+      SELECT COUNT(*) as count FROM notifications 
+      WHERE user_id = ? AND is_read = 0
+    `).get(user_id);
+    
+    res.json({ success: true, count: result.count });
+  } catch (error) {
+    console.error('읽지 않은 알림 개수 조회 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 알림 읽음 처리
+app.put('/api/notifications/:id/read', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    db.prepare(`
+      UPDATE notifications 
+      SET is_read = 1 
+      WHERE id = ?
+    `).run(id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('알림 읽음 처리 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 모든 알림 읽음 처리
+app.put('/api/notifications/read-all', (req, res) => {
+  try {
+    const { user_id } = req.body;
+    
+    if (!user_id) {
+      return res.status(400).json({ success: false, message: 'user_id가 필요합니다.' });
+    }
+    
+    db.prepare(`
+      UPDATE notifications 
+      SET is_read = 1 
+      WHERE user_id = ? AND is_read = 0
+    `).run(user_id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('모든 알림 읽음 처리 오류:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 알림 삭제
+app.delete('/api/notifications/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    db.prepare('DELETE FROM notifications WHERE id = ?').run(id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('알림 삭제 오류:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

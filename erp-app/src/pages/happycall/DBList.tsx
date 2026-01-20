@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Search as SearchIcon, X, MessageSquare } from 'lucide-react';
+import { Phone, Search as SearchIcon, X, MessageSquare, Download, CheckCircle, Edit2, Save } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
+import * as XLSX from 'xlsx';
 
 interface SalesDB {
   id: number;
@@ -22,9 +24,12 @@ interface SalesDB {
   contract_date: string;
   client_name: string;
   feedback: string;
+  happycall_completed: number;
+  happycall_memo: string;
 }
 
 const HappyCallDBList: React.FC = () => {
+  const { user } = useAuth();
   const [salesDB, setSalesDB] = useState<SalesDB[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<SalesDB[]>([]);
@@ -34,12 +39,17 @@ const HappyCallDBList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [completionFilter, setCompletionFilter] = useState<string>('all');
+  const [editingMemo, setEditingMemo] = useState<number | null>(null);
+  const [memoContent, setMemoContent] = useState<string>('');
   const [happyCallData, setHappyCallData] = useState({
     call_date: new Date().toISOString().split('T')[0],
     call_content: '',
     score: '중',
     notes: ''
   });
+  
+  const isHappyCallStaff = user?.role === 'happycall' || user?.role === 'admin';
 
   useEffect(() => {
     fetchSalesDB();
@@ -78,8 +88,20 @@ const HappyCallDBList: React.FC = () => {
       });
     }
 
+    // 완료 상태 필터
+    if (completionFilter !== 'all') {
+      filtered = filtered.filter((item) => {
+        if (completionFilter === 'completed') {
+          return item.happycall_completed === 1;
+        } else if (completionFilter === 'incomplete') {
+          return item.happycall_completed === 0 || !item.happycall_completed;
+        }
+        return true;
+      });
+    }
+
     setFilteredData(filtered);
-  }, [searchTerm, startDate, endDate, salesDB]);
+  }, [searchTerm, startDate, endDate, completionFilter, salesDB]);
 
   const fetchSalesDB = async () => {
     setLoading(true);
@@ -165,6 +187,7 @@ const HappyCallDBList: React.FC = () => {
         alert('해피콜이 등록되었습니다!');
         setShowHappyCallModal(false);
         setSelectedDB(null);
+        fetchSalesDB(); // 목록 새로고침
       } else {
         alert('해피콜 등록 실패: ' + result.message);
       }
@@ -174,13 +197,121 @@ const HappyCallDBList: React.FC = () => {
     }
   };
 
+  // 엑셀 다운로드
+  const handleExcelDownload = () => {
+    const excelData = filteredData.map((item, index) => ({
+      '번호': index + 1,
+      '섭외일': formatDateToKorean(item.proposal_date) || '-',
+      '업체명': item.company_name || '-',
+      '대표자': item.representative || '-',
+      '연락처': item.contact || '-',
+      '주소': item.address || '-',
+      '영업자': item.salesperson_name || '-',
+      '미팅상태': item.meeting_status || '-',
+      '계약상태': item.contract_status === 'Y' ? '계약완료' : '미계약',
+      '거래처': item.client_name || '-',
+      '해피콜완료': item.happycall_completed === 1 ? '완료' : '미완료',
+      '담당자메모': item.happycall_memo || '-'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '영업DB');
+    
+    const fileName = `영업DB_해피콜용_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
+  // 완료 상태 토글
+  const handleToggleCompletion = async (item: SalesDB) => {
+    if (!isHappyCallStaff) {
+      alert('해피콜 담당자만 완료 상태를 변경할 수 있습니다.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...item,
+          happycall_completed: item.happycall_completed === 1 ? 0 : 1
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        fetchSalesDB();
+      } else {
+        alert('완료 상태 변경 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('완료 상태 변경 오류:', error);
+      alert('완료 상태 변경 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 메모 수정 시작
+  const handleStartEditMemo = (item: SalesDB) => {
+    setEditingMemo(item.id);
+    setMemoContent(item.happycall_memo || '');
+  };
+
+  // 메모 저장
+  const handleSaveMemo = async (item: SalesDB) => {
+    if (!isHappyCallStaff) {
+      alert('해피콜 담당자만 메모를 작성할 수 있습니다.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...item,
+          happycall_memo: memoContent
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setEditingMemo(null);
+        setMemoContent('');
+        fetchSalesDB();
+      } else {
+        alert('메모 저장 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('메모 저장 오류:', error);
+      alert('메모 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 메모 수정 취소
+  const handleCancelEditMemo = () => {
+    setEditingMemo(null);
+    setMemoContent('');
+  };
+
   return (
     <div className="p-4 md:p-6">
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800">영업 DB 조회 (해피콜용)</h1>
-        <p className="text-sm md:text-base text-gray-600 mt-1">
-          모든 영업 DB를 조회하고 해피콜을 입력할 수 있습니다.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800">영업 DB 조회 (해피콜용)</h1>
+            <p className="text-sm md:text-base text-gray-600 mt-1">
+              모든 영업 DB를 조회하고 해피콜을 입력할 수 있습니다.
+            </p>
+          </div>
+          <button
+            onClick={handleExcelDownload}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center space-x-2 transition"
+          >
+            <Download className="w-5 h-5" />
+            <span className="hidden sm:inline">엑셀 다운로드</span>
+          </button>
+        </div>
       </div>
 
       {/* 검색 및 필터 */}
@@ -226,6 +357,20 @@ const HappyCallDBList: React.FC = () => {
               날짜 초기화
             </button>
           )}
+        </div>
+
+        {/* 완료 상태 필터 */}
+        <div className="flex items-center space-x-2">
+          <CheckCircle className="w-5 h-5 text-gray-400" />
+          <select
+            value={completionFilter}
+            onChange={(e) => setCompletionFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">해피콜 상태: 전체</option>
+            <option value="completed">완료</option>
+            <option value="incomplete">미완료</option>
+          </select>
           <div className="ml-auto text-sm text-gray-600">
             총 <span className="font-bold text-blue-600">{filteredData.length}</span>건
           </div>
@@ -239,6 +384,7 @@ const HappyCallDBList: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">해피콜</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-green-50">완료상태</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">섭외일</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">업체명</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">대표자</th>
@@ -248,12 +394,15 @@ const HappyCallDBList: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약상태</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">거래처</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">피드백</th>
+                {isHappyCallStaff && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">담당자메모</th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={isHappyCallStaff ? 12 : 11} className="px-4 py-12 text-center text-gray-500">
                     <div className="flex items-center justify-center space-x-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                       <span>데이터를 불러오는 중...</span>
@@ -262,7 +411,7 @@ const HappyCallDBList: React.FC = () => {
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={isHappyCallStaff ? 12 : 11} className="px-4 py-12 text-center text-gray-500">
                     <div>
                       <p className="text-lg font-medium mb-2">조회된 데이터가 없습니다.</p>
                       <p className="text-sm">영업자가 등록한 DB가 없거나 검색 조건에 맞는 데이터가 없습니다.</p>
@@ -271,7 +420,14 @@ const HappyCallDBList: React.FC = () => {
                 </tr>
               ) : (
                 filteredData.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr 
+                    key={item.id} 
+                    className={`${
+                      item.happycall_completed === 1 
+                        ? 'bg-green-50 hover:bg-green-100 border-l-4 border-green-500' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => handleOpenHappyCall(item)}
@@ -281,6 +437,28 @@ const HappyCallDBList: React.FC = () => {
                         <Phone className="w-4 h-4 mr-1" />
                         입력
                       </button>
+                    </td>
+                    <td className="px-4 py-3 bg-green-50 text-center">
+                      {isHappyCallStaff ? (
+                        <button
+                          onClick={() => handleToggleCompletion(item)}
+                          className={`px-3 py-1 text-xs font-medium rounded transition ${
+                            item.happycall_completed === 1
+                              ? 'bg-green-600 text-white hover:bg-green-700'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          {item.happycall_completed === 1 ? '✓ 완료' : '미완료'}
+                        </button>
+                      ) : (
+                        <span className={`px-3 py-1 text-xs font-medium rounded ${
+                          item.happycall_completed === 1
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {item.happycall_completed === 1 ? '✓ 완료' : '미완료'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                       {formatDateToKorean(item.proposal_date) || '-'}
@@ -338,6 +516,47 @@ const HappyCallDBList: React.FC = () => {
                         <span className="text-gray-400 text-xs">없음</span>
                       )}
                     </td>
+                    {isHappyCallStaff && (
+                      <td className="px-4 py-3 bg-blue-50">
+                        {editingMemo === item.id ? (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={memoContent}
+                              onChange={(e) => setMemoContent(e.target.value)}
+                              className="flex-1 px-2 py-1 border border-blue-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                              placeholder="메모 입력..."
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSaveMemo(item)}
+                              className="p-1 text-green-600 hover:text-green-800"
+                              title="저장"
+                            >
+                              <Save className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleCancelEditMemo}
+                              className="p-1 text-red-600 hover:text-red-800"
+                              title="취소"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between space-x-2">
+                            <span className="text-sm text-gray-700">{item.happycall_memo || '-'}</span>
+                            <button
+                              onClick={() => handleStartEditMemo(item)}
+                              className="p-1 text-blue-600 hover:text-blue-800"
+                              title="메모 수정"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

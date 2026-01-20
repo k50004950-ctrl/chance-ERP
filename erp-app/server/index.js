@@ -442,6 +442,10 @@ function initDatabase() {
   // Add happycall columns if not exist
   addColumnIfNotExists('happycalls', 'is_completed', 'INTEGER DEFAULT 0');
   addColumnIfNotExists('happycalls', 'staff_memo', 'TEXT');
+  
+  // Add happycall tracking columns to sales_db
+  addColumnIfNotExists('sales_db', 'happycall_completed', 'INTEGER DEFAULT 0');
+  addColumnIfNotExists('sales_db', 'happycall_memo', 'TEXT');
 
   // Migrate users table to include 'happycall' role in CHECK constraint
   console.log('Checking if users table migration is needed...');

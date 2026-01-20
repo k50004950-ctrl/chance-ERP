@@ -941,7 +941,43 @@ const AllDBManagement: React.FC = () => {
                     <span className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">4</span>
                     기타 정보
                   </h3>
-                  <div><p className="text-sm font-medium text-gray-500 mb-2">피드백 / 기타사항</p><div className="bg-white rounded-lg p-4 border border-gray-200"><p className="text-gray-900 whitespace-pre-wrap">{selectedItem.feedback || '작성된 피드백이 없습니다.'}</p></div></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-2">피드백 / 기타사항</p>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      {(() => {
+                        if (!selectedItem.feedback) {
+                          return <p className="text-gray-500">작성된 피드백이 없습니다.</p>;
+                        }
+                        
+                        try {
+                          const feedbacks = JSON.parse(selectedItem.feedback);
+                          if (Array.isArray(feedbacks) && feedbacks.length > 0) {
+                            return (
+                              <div className="space-y-3">
+                                {feedbacks.map((fb: any, index: number) => (
+                                  <div key={index} className="border-b border-gray-200 pb-3 last:border-0 last:pb-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-sm font-semibold text-gray-800">{fb.author || '작성자 미상'}</span>
+                                      {fb.timestamp && (
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(fb.timestamp).toLocaleString('ko-KR')}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-gray-900 whitespace-pre-wrap">{fb.content || fb.text || '-'}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                        } catch {
+                          // JSON 파싱 실패 시 원본 텍스트 표시
+                        }
+                        
+                        return <p className="text-gray-900 whitespace-pre-wrap">{selectedItem.feedback}</p>;
+                      })()}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

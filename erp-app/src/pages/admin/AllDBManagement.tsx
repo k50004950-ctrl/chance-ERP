@@ -117,14 +117,29 @@ const AllDBManagement: React.FC = () => {
     }
   };
 
-  const formatDateTime = (isoString: string) => {
-    const date = new Date(isoString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+  const formatDateTime = (dateString: string) => {
+    if (!dateString) return '-';
+    
+    try {
+      // ISO 형식 또는 datetime-local 형식 (2026-01-20T15:00)
+      if (dateString.includes('T') || dateString.includes('-')) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString; // Invalid date면 원본 반환
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+      }
+      
+      // 이미 한글 형식인 경우 (01월 20일 오전 10:00 등) - 그대로 반환
+      return dateString;
+    } catch (error) {
+      console.error('날짜 형식 변환 실패:', error);
+      return dateString; // 에러 발생 시 원본 반환
+    }
   };
 
   // 필터링 로직

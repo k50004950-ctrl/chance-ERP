@@ -113,8 +113,10 @@ const CorrectionDetail: React.FC = () => {
 
       const result = await response.json();
       if (result.success) {
+        alert('피드백이 추가되었습니다.');
         setNewFeedback('');
-        fetchDetail();
+        // 피드백 추가 후 최신 데이터 다시 조회
+        await fetchDetail();
       } else {
         alert('피드백 추가 실패: ' + result.message);
       }

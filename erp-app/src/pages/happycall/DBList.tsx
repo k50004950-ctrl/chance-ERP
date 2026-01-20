@@ -32,6 +32,8 @@ const HappyCallDBList: React.FC = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [selectedDB, setSelectedDB] = useState<SalesDB | null>(null);
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [happyCallData, setHappyCallData] = useState({
     call_date: new Date().toISOString().split('T')[0],
     call_content: '',
@@ -44,19 +46,40 @@ const HappyCallDBList: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    let filtered = salesDB;
+
+    // 검색어 필터
     if (searchTerm) {
-      const filtered = salesDB.filter(
+      filtered = filtered.filter(
         (item) =>
           item.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.representative?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.contact?.includes(searchTerm) ||
           item.salesperson_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredData(filtered);
-    } else {
-      setFilteredData(salesDB);
     }
-  }, [searchTerm, salesDB]);
+
+    // 날짜 필터
+    if (startDate || endDate) {
+      filtered = filtered.filter((item) => {
+        const itemDate = item.proposal_date;
+        if (!itemDate) return false;
+
+        const dateStr = itemDate.split('T')[0]; // YYYY-MM-DD 형식으로 변환
+        
+        if (startDate && endDate) {
+          return dateStr >= startDate && dateStr <= endDate;
+        } else if (startDate) {
+          return dateStr >= startDate;
+        } else if (endDate) {
+          return dateStr <= endDate;
+        }
+        return true;
+      });
+    }
+
+    setFilteredData(filtered);
+  }, [searchTerm, startDate, endDate, salesDB]);
 
   const fetchSalesDB = async () => {
     setLoading(true);
@@ -160,8 +183,9 @@ const HappyCallDBList: React.FC = () => {
         </p>
       </div>
 
-      {/* 검색 */}
-      <div className="mb-6 bg-white rounded-lg shadow p-4">
+      {/* 검색 및 필터 */}
+      <div className="mb-6 bg-white rounded-lg shadow p-4 space-y-4">
+        {/* 검색 */}
         <div className="flex items-center space-x-2">
           <SearchIcon className="w-5 h-5 text-gray-400" />
           <input
@@ -171,6 +195,40 @@ const HappyCallDBList: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
+        </div>
+
+        {/* 날짜 필터 */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-700">섭외일 기간:</span>
+          <div className="flex items-center space-x-2">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <span className="text-gray-500">~</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <button
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+              }}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+            >
+              날짜 초기화
+            </button>
+          )}
+          <div className="ml-auto text-sm text-gray-600">
+            총 <span className="font-bold text-blue-600">{filteredData.length}</span>건
+          </div>
         </div>
       </div>
 

@@ -606,13 +606,14 @@ const AllDBManagement: React.FC = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-purple-50">담당영업자</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">미팅상태</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약상태</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-orange-50">계약날짜</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 whitespace-nowrap">작업</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={12} className="px-4 py-12 text-center text-gray-500">
                   조건에 맞는 DB가 없습니다.
                 </td>
               </tr>
@@ -795,6 +796,18 @@ const AllDBManagement: React.FC = () => {
                          item.contract_status === 'N' ? '미완료' : 
                          item.contract_status || '-'}
                       </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 bg-orange-50 text-sm whitespace-nowrap">
+                    {editingId === item.id ? (
+                      <input
+                        type="date"
+                        value={item.contract_date || ''}
+                        onChange={(e) => handleChange(item.id, 'contract_date', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-orange-500"
+                      />
+                    ) : (
+                      <span className="text-gray-900">{formatDateToKorean(item.contract_date) || '-'}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-center whitespace-nowrap">

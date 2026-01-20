@@ -752,6 +752,7 @@ const SalespersonMyData: React.FC = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약기장료</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">거래처</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">계약완료</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-orange-50">계약날짜</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-purple-50">녹취관리</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap bg-blue-50">기타(피드백)</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 whitespace-nowrap">작업</th>
@@ -760,7 +761,7 @@ const SalespersonMyData: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={14} className="px-4 py-12 text-center text-gray-500">
                   {searchTerm || dateFilter !== 'all' ? '검색 결과가 없습니다.' : '담당하는 업체 데이터가 없습니다.'}
                 </td>
               </tr>
@@ -915,6 +916,18 @@ const SalespersonMyData: React.FC = () => {
                       }`}>
                         {item.contract_status || '-'}
                       </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 bg-orange-50 text-sm whitespace-nowrap">
+                    {editingId === item.id ? (
+                      <input
+                        type="date"
+                        value={item.contract_date || ''}
+                        onChange={(e) => handleChange(item.id, 'contract_date', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-orange-500"
+                      />
+                    ) : (
+                      <span className="text-gray-900">{formatDateToKorean(item.contract_date) || '-'}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 bg-purple-50">

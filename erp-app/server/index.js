@@ -337,6 +337,8 @@ function initDatabase() {
       call_content TEXT NOT NULL,
       score TEXT NOT NULL CHECK(score IN ('상', '중', '하')),
       notes TEXT,
+      is_completed INTEGER DEFAULT 0,
+      staff_memo TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (happycall_staff_id) REFERENCES users(id),
@@ -436,6 +438,10 @@ function initDatabase() {
   
   // Add contact column to correction_requests table
   addColumnIfNotExists('correction_requests', 'contact', 'TEXT');
+  
+  // Add happycall columns if not exist
+  addColumnIfNotExists('happycalls', 'is_completed', 'INTEGER DEFAULT 0');
+  addColumnIfNotExists('happycalls', 'staff_memo', 'TEXT');
 
   // Migrate users table to include 'happycall' role in CHECK constraint
   console.log('Checking if users table migration is needed...');
@@ -4476,7 +4482,9 @@ app.put('/api/happycalls/:id', (req, res) => {
       call_date,
       call_content,
       score,
-      notes
+      notes,
+      is_completed,
+      staff_memo
     } = req.body;
     
     const stmt = db.prepare(`
@@ -4489,6 +4497,8 @@ app.put('/api/happycalls/:id', (req, res) => {
         call_content = ?,
         score = ?,
         notes = ?,
+        is_completed = ?,
+        staff_memo = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
@@ -4502,6 +4512,8 @@ app.put('/api/happycalls/:id', (req, res) => {
       call_content,
       score,
       notes,
+      is_completed !== undefined ? is_completed : 0,
+      staff_memo || null,
       id
     );
     

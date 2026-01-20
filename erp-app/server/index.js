@@ -2026,9 +2026,28 @@ app.post('/api/sales-db/upload-csv', upload.single('file'), (req, res) => {
   const uploaderName = req.body.uploader_name;
   const uploaderId = req.body.uploader_id;
   
-  fs.createReadStream(req.file.path)
-    .pipe(csv())
-    .on('data', (data) => results.push(data))
+  // CSV 헤더와 값 정규화 함수
+  const normalizeRow = (row) => {
+    const normalized = {};
+    Object.keys(row).forEach(key => {
+      // 헤더에서 BOM, 공백, 특수문자 제거
+      const cleanKey = key.replace(/^\uFEFF/, '').trim();
+      // 값도 trim 처리
+      normalized[cleanKey] = typeof row[key] === 'string' ? row[key].trim() : row[key];
+    });
+    return normalized;
+  };
+
+  fs.createReadStream(req.file.path, { encoding: 'utf8' })
+    .pipe(csv({ 
+      skipEmptyLines: true,
+      trim: true,
+      bom: true // BOM 자동 제거
+    }))
+    .on('data', (data) => {
+      const normalized = normalizeRow(data);
+      results.push(normalized);
+    })
     .on('end', () => {
       const stmt = db.prepare(`
         INSERT INTO sales_db (
@@ -2050,8 +2069,11 @@ app.post('/api/sales-db/upload-csv', upload.single('file'), (req, res) => {
           // 섭외날짜 파싱 디버깅
           const proposalDate = row.proposal_date || row['섭외날짜'] || row['제안일자'] || null;
           if (index < 3) {
-            console.log(`Row ${index + 1} - proposal_date:`, row.proposal_date, ', 섭외날짜:', row['섭외날짜'], ', Final:', proposalDate);
-            console.log('Row keys:', Object.keys(row));
+            console.log(`Row ${index + 1} - CSV 원본 키:`, Object.keys(row));
+            console.log('  proposal_date:', row.proposal_date);
+            console.log('  섭외날짜:', row['섭외날짜']);
+            console.log('  최종 값:', proposalDate);
+            console.log('  첫번째 키:', Object.keys(row)[0], '(길이:', Object.keys(row)[0]?.length, ')');
           }
           
           stmt.run(
@@ -2140,8 +2162,11 @@ app.post('/api/sales-db/upload-csv-stream', upload.single('file'), async (req, r
               // 섭외날짜 파싱 디버깅
               const proposalDate = row.proposal_date || row['섭외날짜'] || row['제안일자'] || null;
               if (processedCount < 3) {
-                console.log(`Stream Row ${processedCount + 1} - proposal_date:`, row.proposal_date, ', 섭외날짜:', row['섭외날짜'], ', Final:', proposalDate);
-                console.log('Row keys:', Object.keys(row).slice(0, 10));
+                console.log(`Stream Row ${processedCount + 1} - CSV 원본 키:`, Object.keys(row).slice(0, 5));
+                console.log('  proposal_date:', row.proposal_date);
+                console.log('  섭외날짜:', row['섭외날짜']);
+                console.log('  최종 값:', proposalDate);
+                console.log('  첫번째 키:', Object.keys(row)[0], '(길이:', Object.keys(row)[0]?.length, ')');
               }
               
               stmt.run(
@@ -2181,10 +2206,27 @@ app.post('/api/sales-db/upload-csv-stream', upload.single('file'), async (req, r
     });
   };
 
-  const stream = fs.createReadStream(req.file.path)
-    .pipe(csv())
+  // CSV 헤더와 값 정규화 함수
+  const normalizeRow = (row) => {
+    const normalized = {};
+    Object.keys(row).forEach(key => {
+      // 헤더에서 BOM, 공백, 특수문자 제거
+      const cleanKey = key.replace(/^\uFEFF/, '').trim();
+      // 값도 trim 처리
+      normalized[cleanKey] = typeof row[key] === 'string' ? row[key].trim() : row[key];
+    });
+    return normalized;
+  };
+
+  const stream = fs.createReadStream(req.file.path, { encoding: 'utf8' })
+    .pipe(csv({ 
+      skipEmptyLines: true,
+      trim: true,
+      bom: true // BOM 자동 제거
+    }))
     .on('data', async (row) => {
-      batch.push(row);
+      const normalized = normalizeRow(row);
+      batch.push(normalized);
       
       if (batch.length >= BATCH_SIZE && !isPaused) {
         isPaused = true;

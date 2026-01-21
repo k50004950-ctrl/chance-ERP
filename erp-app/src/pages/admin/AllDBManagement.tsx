@@ -62,6 +62,8 @@ const AllDBManagement: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<DBItem | null>(null);
   const [showUnassignedOnly, setShowUnassignedOnly] = useState<boolean>(false);
+  const [meetingDateStart, setMeetingDateStart] = useState<string>('');
+  const [meetingDateEnd, setMeetingDateEnd] = useState<string>('');
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'admin') {
@@ -195,6 +197,31 @@ const AllDBManagement: React.FC = () => {
       filtered = filtered.filter((item) => !item.salesperson_id || item.salesperson_id === null);
     }
 
+    // 미팅희망날짜 필터
+    if (meetingDateStart || meetingDateEnd) {
+      filtered = filtered.filter((item) => {
+        if (!item.meeting_request_datetime) return false;
+        
+        // 날짜 부분만 추출 (YYYY-MM-DD)
+        let meetingDate = '';
+        if (item.meeting_request_datetime.includes('T')) {
+          meetingDate = item.meeting_request_datetime.split('T')[0];
+        } else if (item.meeting_request_datetime.includes(' ')) {
+          meetingDate = item.meeting_request_datetime.split(' ')[0];
+        } else {
+          // "2026-01-22오후4시" 형식
+          const dateMatch = item.meeting_request_datetime.match(/^(\d{4}-\d{2}-\d{2})/);
+          meetingDate = dateMatch ? dateMatch[1] : item.meeting_request_datetime;
+        }
+        
+        // 범위 체크
+        if (meetingDateStart && meetingDate < meetingDateStart) return false;
+        if (meetingDateEnd && meetingDate > meetingDateEnd) return false;
+        
+        return true;
+      });
+    }
+
     // 편집 중인 항목은 필터 조건과 관계없이 항상 표시
     if (editingId) {
       const editingItem = allData.find((item) => item.id === editingId);
@@ -204,7 +231,7 @@ const AllDBManagement: React.FC = () => {
     }
 
     setFilteredData(filtered);
-  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, selectedContractStatus, showUnassignedOnly, allData, editingId]);
+  }, [searchTerm, selectedYear, selectedMonth, selectedRecruiter, selectedSalesperson, selectedContractStatus, showUnassignedOnly, meetingDateStart, meetingDateEnd, allData, editingId]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -429,6 +456,8 @@ const AllDBManagement: React.FC = () => {
     setSelectedSalesperson('');
     setSelectedContractStatus('');
     setShowUnassignedOnly(false);
+    setMeetingDateStart('');
+    setMeetingDateEnd('');
   };
 
   const handleFixScheduleTimes = async () => {
@@ -586,7 +615,7 @@ const AllDBManagement: React.FC = () => {
           </button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
           {/* 검색 */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -657,6 +686,35 @@ const AllDBManagement: React.FC = () => {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* 미팅희망날짜 필터 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">미팅희망날짜:</label>
+            <input
+              type="date"
+              value={meetingDateStart}
+              onChange={(e) => setMeetingDateStart(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 text-sm"
+              placeholder="시작일"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">~</span>
+            <input
+              type="date"
+              value={meetingDateEnd}
+              onChange={(e) => setMeetingDateEnd(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 text-sm"
+              placeholder="종료일"
+            />
+          </div>
+          <div className="text-sm text-gray-500">
+            {meetingDateStart || meetingDateEnd ? 
+              `필터링 중: ${filteredData.length}개` : 
+              '날짜 범위를 선택하세요'}
+          </div>
         </div>
 
         {/* 계약 상태 필터 추가 */}

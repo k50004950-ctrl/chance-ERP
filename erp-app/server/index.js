@@ -5547,6 +5547,123 @@ app.delete('/api/notifications/:id', (req, res) => {
   }
 });
 
+// 누락된 일정 자동 생성 API
+app.post('/api/fix-missing-schedules', (req, res) => {
+  try {
+    // 미팅희망날짜와 담당영업자가 있는데 일정이 없는 DB 찾기
+    const dbsWithDateTime = db.prepare(`
+      SELECT sd.*, u.name as salesperson_name
+      FROM sales_db sd
+      LEFT JOIN users u ON sd.salesperson_id = u.id
+      WHERE sd.meeting_request_datetime IS NOT NULL 
+      AND sd.salesperson_id IS NOT NULL
+    `).all();
+    
+    let created = 0;
+    let updated = 0;
+    let errors = [];
+    
+    for (const item of dbsWithDateTime) {
+      try {
+        // 일정이 이미 있는지 확인
+        const existingSchedule = db.prepare(`
+          SELECT id FROM schedules 
+          WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
+        `).get(item.salesperson_id, item.company_name);
+        
+        if (existingSchedule) {
+          console.log('일정 이미 존재:', item.company_name);
+          continue;
+        }
+        
+        // 날짜 파싱
+        let scheduleDate, scheduleTime;
+        const dateStr = item.meeting_request_datetime.trim();
+        
+        if (dateStr.includes('T')) {
+          const parts = dateStr.split('T');
+          scheduleDate = parts[0];
+          scheduleTime = parts[1] || '09:00';
+        } else if (dateStr.includes(' ')) {
+          if (dateStr.includes('월') && dateStr.includes('일')) {
+            const yearMatch = dateStr.match(/(\d{4})년/);
+            const year = yearMatch ? yearMatch[1] : new Date().getFullYear();
+            const monthMatch = dateStr.match(/(\d{1,2})월/);
+            const month = monthMatch ? monthMatch[1].padStart(2, '0') : '01';
+            const dayMatch = dateStr.match(/(\d{1,2})일/);
+            const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01';
+            scheduleDate = `${year}-${month}-${day}`;
+            
+            const timeMatch = dateStr.match(/(\d{1,2}):(\d{2})/);
+            if (timeMatch) {
+              let hour = parseInt(timeMatch[1]);
+              const minute = timeMatch[2];
+              if (dateStr.includes('오후') && hour !== 12) hour += 12;
+              if (dateStr.includes('오전') && hour === 12) hour = 0;
+              scheduleTime = `${hour.toString().padStart(2, '0')}:${minute}`;
+            } else {
+              scheduleTime = '09:00';
+            }
+          } else {
+            const parts = dateStr.split(' ');
+            scheduleDate = parts[0];
+            scheduleTime = parts[1] || '09:00';
+          }
+        } else {
+          const koreanTimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})(오전|오후)(\d{1,2})(~\d{1,2})?시?/);
+          if (koreanTimeMatch) {
+            scheduleDate = koreanTimeMatch[1];
+            const period = koreanTimeMatch[2];
+            let hour = parseInt(koreanTimeMatch[3]);
+            if (period === '오후' && hour !== 12) hour += 12;
+            if (period === '오전' && hour === 12) hour = 0;
+            scheduleTime = `${hour.toString().padStart(2, '0')}:00`;
+          } else {
+            scheduleDate = dateStr;
+            scheduleTime = '09:00';
+          }
+        }
+        
+        console.log('일정 생성:', item.company_name, scheduleDate, scheduleTime);
+        
+        // 일정 생성
+        const scheduleStmt = db.prepare(`
+          INSERT INTO schedules (
+            user_id, title, schedule_date, schedule_time, client_name, location, notes, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        scheduleStmt.run(
+          item.salesperson_id,
+          `고객 미팅: ${item.company_name}`,
+          scheduleDate,
+          scheduleTime,
+          item.company_name,
+          item.address || '',
+          `섭외자: ${item.proposer}\n연락처: ${item.contact}\n대표자: ${item.representative}`,
+          'scheduled'
+        );
+        
+        created++;
+      } catch (err) {
+        errors.push({ company: item.company_name, error: err.message });
+        console.error('일정 생성 실패:', item.company_name, err);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      created,
+      updated,
+      total: dbsWithDateTime.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('일정 일괄 생성 실패:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // 피드백 복구 API (긴급 복구용)
 app.post('/api/restore-feedback/:id', (req, res) => {
   try {

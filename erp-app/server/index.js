@@ -5463,6 +5463,53 @@ app.delete('/api/notifications/:id', (req, res) => {
   }
 });
 
+// 피드백 복구 API (긴급 복구용)
+app.post('/api/restore-feedback/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { restoredFeedbacks } = req.body;
+    
+    // 현재 데이터 조회
+    const item = db.prepare('SELECT * FROM sales_db WHERE id = ?').get(id);
+    if (!item) {
+      return res.json({ success: false, message: 'DB를 찾을 수 없습니다.' });
+    }
+    
+    // 현재 피드백 파싱
+    let currentFeedbacks = [];
+    if (item.feedback) {
+      try {
+        const parsed = JSON.parse(item.feedback);
+        if (Array.isArray(parsed)) {
+          currentFeedbacks = parsed;
+        }
+      } catch (e) {
+        // 파싱 실패 시 무시
+      }
+    }
+    
+    // 복구할 피드백과 현재 피드백 합치기
+    const allFeedbacks = [...restoredFeedbacks, ...currentFeedbacks];
+    
+    // 업데이트
+    const stmt = db.prepare(`
+      UPDATE sales_db 
+      SET feedback = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(JSON.stringify(allFeedbacks), id);
+    
+    res.json({ 
+      success: true, 
+      message: '피드백 복구 완료',
+      totalFeedbacks: allFeedbacks.length
+    });
+  } catch (error) {
+    console.error('피드백 복구 실패:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // Catch-all route for React Router (SPA)
 // This must be AFTER all API routes
 app.get('*', (req, res) => {

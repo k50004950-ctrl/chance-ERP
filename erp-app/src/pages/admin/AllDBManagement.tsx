@@ -315,14 +315,26 @@ const AllDBManagement: React.FC = () => {
       let feedbacks = [];
       if (selectedItem.feedback) {
         try {
-          feedbacks = JSON.parse(selectedItem.feedback);
-          if (!Array.isArray(feedbacks)) {
-            feedbacks = [];
+          const parsed = JSON.parse(selectedItem.feedback);
+          if (Array.isArray(parsed)) {
+            feedbacks = parsed;
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            // 단일 객체인 경우 배열로 변환
+            feedbacks = [parsed];
           }
         } catch {
-          feedbacks = [];
+          // JSON 파싱 실패 시 일반 텍스트로 간주
+          if (selectedItem.feedback.trim()) {
+            feedbacks = [{
+              author: '이전 작성자',
+              content: selectedItem.feedback,
+              timestamp: new Date().toISOString()
+            }];
+          }
         }
       }
+
+      console.log('기존 피드백:', feedbacks);
 
       // 새 피드백 추가
       feedbacks.push({
@@ -330,6 +342,8 @@ const AllDBManagement: React.FC = () => {
         content: newFeedback,
         timestamp: new Date().toISOString()
       });
+
+      console.log('업데이트될 피드백:', feedbacks);
 
       // 서버에 업데이트
       const response = await fetch(`/api/sales-db/${selectedItem.id}`, {
@@ -342,17 +356,19 @@ const AllDBManagement: React.FC = () => {
 
       const result = await response.json();
       if (result.success) {
-        // 로컬 상태 업데이트
-        const updatedItem = { ...selectedItem, feedback: JSON.stringify(feedbacks) };
-        setSelectedItem(updatedItem);
+        // 전체 데이터 다시 가져오기
+        await fetchAllData();
         
-        // 전체 데이터 업데이트
-        setAllData(allData.map(item => 
-          item.id === selectedItem.id ? updatedItem : item
-        ));
-        setFilteredData(filteredData.map(item => 
-          item.id === selectedItem.id ? updatedItem : item
-        ));
+        // 서버에서 가져온 최신 데이터로 모달 업데이트
+        // allData는 비동기로 업데이트되므로, 직접 조회
+        const refreshResponse = await fetch(`/api/sales-db`);
+        const refreshResult = await refreshResponse.json();
+        if (refreshResult.success) {
+          const updatedItem = refreshResult.data.find((item: DBItem) => item.id === selectedItem.id);
+          if (updatedItem) {
+            setSelectedItem(updatedItem);
+          }
+        }
 
         setNewFeedback('');
         alert('피드백이 등록되었습니다.');

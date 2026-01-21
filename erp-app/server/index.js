@@ -1645,16 +1645,78 @@ app.post('/api/sales-db', (req, res) => {
           // ISO 형식 (datetime-local): "2026-01-13T02:00"
           const parts = meeting_request_datetime.split('T');
           scheduleDate = parts[0];
-          scheduleTime = parts[1] || '00:00';
+          scheduleTime = parts[1] || '09:00';
         } else if (meeting_request_datetime.includes(' ')) {
-          // 공백으로 구분된 형식: "2026-01-13 02:00"
-          const parts = meeting_request_datetime.split(' ');
-          scheduleDate = parts[0];
-          scheduleTime = parts[1] || '00:00';
+          // 공백으로 구분된 형식: "2026-01-13 02:00" 또는 "2026년 01월 20일 오전 09:00"
+          const dateStr = meeting_request_datetime.trim();
+          
+          // 한글 형식 체크: "01월 20일 오전 09:00" 또는 "2026년 01월 20일 오전 09:00"
+          if (dateStr.includes('월') && dateStr.includes('일')) {
+            // 연도 추출 (있으면)
+            const yearMatch = dateStr.match(/(\d{4})년/);
+            const year = yearMatch ? yearMatch[1] : new Date().getFullYear();
+            
+            // 월 추출
+            const monthMatch = dateStr.match(/(\d{1,2})월/);
+            const month = monthMatch ? monthMatch[1].padStart(2, '0') : '01';
+            
+            // 일 추출
+            const dayMatch = dateStr.match(/(\d{1,2})일/);
+            const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01';
+            
+            scheduleDate = `${year}-${month}-${day}`;
+            
+            // 시간 추출
+            const timeMatch = dateStr.match(/(\d{1,2}):(\d{2})/);
+            if (timeMatch) {
+              let hour = parseInt(timeMatch[1]);
+              const minute = timeMatch[2];
+              
+              // 오후인 경우 12시간 추가 (12시는 제외)
+              if (dateStr.includes('오후') && hour !== 12) {
+                hour += 12;
+              }
+              // 오전 12시는 00시로 변환
+              if (dateStr.includes('오전') && hour === 12) {
+                hour = 0;
+              }
+              
+              scheduleTime = `${hour.toString().padStart(2, '0')}:${minute}`;
+            } else {
+              scheduleTime = '09:00';
+            }
+          } else {
+            // 일반적인 공백 구분 형식: "2026-01-13 02:00"
+            const parts = dateStr.split(' ');
+            scheduleDate = parts[0];
+            scheduleTime = parts[1] || '09:00';
+          }
         } else {
-          // 날짜만 있는 경우
-          scheduleDate = meeting_request_datetime;
-          scheduleTime = '00:00';
+          // 날짜만 있거나 "2026-01-22오후4시" 같은 형식
+          const dateStr = meeting_request_datetime.trim();
+          
+          // "2026-01-22오후4시" 또는 "2026-01-22오전9시" 형식 체크
+          const koreanTimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})(오전|오후)(\d{1,2})시?/);
+          if (koreanTimeMatch) {
+            scheduleDate = koreanTimeMatch[1];
+            const period = koreanTimeMatch[2];
+            let hour = parseInt(koreanTimeMatch[3]);
+            
+            // 오후인 경우 12시간 추가 (12시는 제외)
+            if (period === '오후' && hour !== 12) {
+              hour += 12;
+            }
+            // 오전 12시는 00시로 변환
+            if (period === '오전' && hour === 12) {
+              hour = 0;
+            }
+            
+            scheduleTime = `${hour.toString().padStart(2, '0')}:00`;
+          } else {
+            // 날짜만 있는 경우
+            scheduleDate = meeting_request_datetime;
+            scheduleTime = '09:00';
+          }
         }
         
         console.log('파싱된 일정:', scheduleDate, scheduleTime);
@@ -1827,9 +1889,31 @@ app.put('/api/sales-db/:id', (req, res) => {
             scheduleTime = parts[1] || '09:00';
           }
         } else {
-          // 날짜만 있는 경우
-          scheduleDate = meeting_request_datetime;
-          scheduleTime = '09:00';
+          // 날짜만 있거나 "2026-01-22오후4시" 같은 형식
+          const dateStr = meeting_request_datetime.trim();
+          
+          // "2026-01-22오후4시" 또는 "2026-01-22오전9시" 형식 체크
+          const koreanTimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})(오전|오후)(\d{1,2})시?/);
+          if (koreanTimeMatch) {
+            scheduleDate = koreanTimeMatch[1];
+            const period = koreanTimeMatch[2];
+            let hour = parseInt(koreanTimeMatch[3]);
+            
+            // 오후인 경우 12시간 추가 (12시는 제외)
+            if (period === '오후' && hour !== 12) {
+              hour += 12;
+            }
+            // 오전 12시는 00시로 변환
+            if (period === '오전' && hour === 12) {
+              hour = 0;
+            }
+            
+            scheduleTime = `${hour.toString().padStart(2, '0')}:00`;
+          } else {
+            // 날짜만 있는 경우
+            scheduleDate = meeting_request_datetime;
+            scheduleTime = '09:00';
+          }
         }
         
         console.log('파싱된 일정:', scheduleDate, scheduleTime);

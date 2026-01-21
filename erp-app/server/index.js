@@ -1706,6 +1706,18 @@ app.put('/api/sales-db/:id', (req, res) => {
       return;
     }
     
+    // feedback만 업데이트하는 경우 (피드백 작성에서 호출)
+    if (Object.keys(body).length === 1 && body.feedback !== undefined) {
+      const stmt = db.prepare(`
+        UPDATE sales_db 
+        SET feedback = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `);
+      stmt.run(body.feedback, id);
+      res.json({ success: true });
+      return;
+    }
+    
     // 기존 데이터 조회 (알림 전송을 위해)
     const existingData = db.prepare('SELECT * FROM sales_db WHERE id = ?').get(id);
     

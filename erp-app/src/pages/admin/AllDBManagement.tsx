@@ -215,6 +215,46 @@ const AllDBManagement: React.FC = () => {
     fetchAllData();
   };
 
+  // 날짜를 datetime-local input 형식으로 변환
+  const toDatetimeLocalValue = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      // YYYY-MM-DDTHH:mm 형식으로 변환
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    } catch {
+      return '';
+    }
+  };
+
+  // 날짜를 date input 형식으로 변환
+  const toDateValue = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      // YYYY-MM-DD 형식으로 변환
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}`;
+    } catch {
+      return '';
+    }
+  };
+
   const handleChange = (id: number, field: string, value: string | number) => {
     // allData와 filteredData 모두 업데이트
     const updateItem = (item: DBItem) => 
@@ -703,7 +743,7 @@ const AllDBManagement: React.FC = () => {
                     {editingId === item.id ? (
                       <input
                         type="date"
-                        value={item.proposal_date || ''}
+                        value={toDateValue(item.proposal_date)}
                         onChange={(e) => handleChange(item.id, 'proposal_date', e.target.value)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
                       />
@@ -730,7 +770,7 @@ const AllDBManagement: React.FC = () => {
                     {editingId === item.id ? (
                       <input
                         type="datetime-local"
-                        value={item.meeting_request_datetime || ''}
+                        value={toDatetimeLocalValue(item.meeting_request_datetime)}
                         onChange={(e) => handleChange(item.id, 'meeting_request_datetime', e.target.value)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-yellow-500"
                       />
@@ -881,7 +921,7 @@ const AllDBManagement: React.FC = () => {
                     {editingId === item.id ? (
                       <input
                         type="date"
-                        value={item.contract_date || ''}
+                        value={toDateValue(item.contract_date)}
                         onChange={(e) => handleChange(item.id, 'contract_date', e.target.value)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-orange-500"
                       />

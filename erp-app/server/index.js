@@ -1695,8 +1695,8 @@ app.post('/api/sales-db', (req, res) => {
           // 날짜만 있거나 "2026-01-22오후4시" 같은 형식
           const dateStr = meeting_request_datetime.trim();
           
-          // "2026-01-22오후4시" 또는 "2026-01-22오전9시" 형식 체크
-          const koreanTimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})(오전|오후)(\d{1,2})시?/);
+          // "2026-01-22오후4시" 또는 "2026-01-22오전9시" 또는 "2026-01-22오후3~4시" 형식 체크
+          const koreanTimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})(오전|오후)(\d{1,2})(~\d{1,2})?시?/);
           if (koreanTimeMatch) {
             scheduleDate = koreanTimeMatch[1];
             const period = koreanTimeMatch[2];
@@ -1892,8 +1892,8 @@ app.put('/api/sales-db/:id', (req, res) => {
           // 날짜만 있거나 "2026-01-22오후4시" 같은 형식
           const dateStr = meeting_request_datetime.trim();
           
-          // "2026-01-22오후4시" 또는 "2026-01-22오전9시" 형식 체크
-          const koreanTimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})(오전|오후)(\d{1,2})시?/);
+          // "2026-01-22오후4시" 또는 "2026-01-22오전9시" 또는 "2026-01-22오후3~4시" 형식 체크
+          const koreanTimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})(오전|오후)(\d{1,2})(~\d{1,2})?시?/);
           if (koreanTimeMatch) {
             scheduleDate = koreanTimeMatch[1];
             const period = koreanTimeMatch[2];

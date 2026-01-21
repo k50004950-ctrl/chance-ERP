@@ -48,6 +48,7 @@ const AllDBManagement: React.FC = () => {
   const { user: currentUser } = useAuth();
   const [allData, setAllData] = useState<DBItem[]>([]);
   const [filteredData, setFilteredData] = useState<DBItem[]>([]);
+  const [newFeedback, setNewFeedback] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
   const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
@@ -275,6 +276,7 @@ const AllDBManagement: React.FC = () => {
   const handleShowDetail = (item: DBItem) => {
     setSelectedItem(item);
     setShowDetailModal(true);
+    setNewFeedback(''); // 모달 열 때 피드백 입력란 초기화
   };
 
   const handleDelete = async (item: DBItem) => {
@@ -299,6 +301,67 @@ const AllDBManagement: React.FC = () => {
     } catch (error) {
       console.error('삭제 실패:', error);
       alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!selectedItem || !newFeedback.trim()) {
+      alert('피드백 내용을 입력해주세요.');
+      return;
+    }
+
+    try {
+      // 기존 피드백 파싱
+      let feedbacks = [];
+      if (selectedItem.feedback) {
+        try {
+          feedbacks = JSON.parse(selectedItem.feedback);
+          if (!Array.isArray(feedbacks)) {
+            feedbacks = [];
+          }
+        } catch {
+          feedbacks = [];
+        }
+      }
+
+      // 새 피드백 추가
+      feedbacks.push({
+        author: currentUser?.name || '관리자',
+        content: newFeedback,
+        timestamp: new Date().toISOString()
+      });
+
+      // 서버에 업데이트
+      const response = await fetch(`/api/sales-db/${selectedItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          feedback: JSON.stringify(feedbacks)
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // 로컬 상태 업데이트
+        const updatedItem = { ...selectedItem, feedback: JSON.stringify(feedbacks) };
+        setSelectedItem(updatedItem);
+        
+        // 전체 데이터 업데이트
+        setAllData(allData.map(item => 
+          item.id === selectedItem.id ? updatedItem : item
+        ));
+        setFilteredData(filteredData.map(item => 
+          item.id === selectedItem.id ? updatedItem : item
+        ));
+
+        setNewFeedback('');
+        alert('피드백이 등록되었습니다.');
+      } else {
+        alert('피드백 등록 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('피드백 등록 실패:', error);
+      alert('피드백 등록 중 오류가 발생했습니다.');
     }
   };
 
@@ -862,7 +925,10 @@ const AllDBManagement: React.FC = () => {
             <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-600 text-white sticky top-0 z-10">
               <h2 className="text-lg md:text-2xl font-bold">업체 상세 정보</h2>
               <button
-                onClick={() => setShowDetailModal(false)}
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setNewFeedback(''); // 모달 닫을 때 피드백 입력란 초기화
+                }}
                 className="text-white hover:text-gray-200 transition"
               >
                 <X className="w-5 h-5 md:w-6 md:h-6" />
@@ -943,7 +1009,9 @@ const AllDBManagement: React.FC = () => {
                   </h3>
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-2">피드백 / 기타사항</p>
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    
+                    {/* 기존 피드백 표시 */}
+                    <div className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
                       {(() => {
                         if (!selectedItem.feedback) {
                           return <p className="text-gray-500">작성된 피드백이 없습니다.</p>;
@@ -977,6 +1045,26 @@ const AllDBManagement: React.FC = () => {
                         return <p className="text-gray-900 whitespace-pre-wrap">{selectedItem.feedback}</p>;
                       })()}
                     </div>
+
+                    {/* 새 피드백 작성 */}
+                    <div className="bg-white rounded-lg p-4 border border-purple-300">
+                      <p className="text-sm font-medium text-gray-700 mb-2">새 피드백 작성</p>
+                      <textarea
+                        value={newFeedback}
+                        onChange={(e) => setNewFeedback(e.target.value)}
+                        placeholder="피드백 또는 기타사항을 입력하세요..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                        rows={3}
+                      />
+                      <div className="flex justify-end mt-2">
+                        <button
+                          onClick={handleSubmitFeedback}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition text-sm font-medium"
+                        >
+                          피드백 등록
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -985,7 +1073,10 @@ const AllDBManagement: React.FC = () => {
             {/* Footer */}
             <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-200 bg-gray-50">
               <button
-                onClick={() => setShowDetailModal(false)}
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setNewFeedback(''); // 모달 닫을 때 피드백 입력란 초기화
+                }}
                 className="px-4 md:px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition text-sm md:text-base"
               >
                 닫기

@@ -137,7 +137,6 @@ const Sidebar: React.FC = () => {
       children: [
         { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
         { title: '경정청구 관리', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
-        { title: '계약취소 관리', path: '/contract-cancellation', icon: <XCircle className="w-4 h-4" /> },
       ],
     },
     {
@@ -148,6 +147,7 @@ const Sidebar: React.FC = () => {
         { title: 'DB등록', path: '/sales-db/register', icon: <UserPlus className="w-4 h-4" /> },
         { title: 'DB검색', path: '/sales-db/search', icon: <Search className="w-4 h-4" /> },
         { title: '섭외자 개인별 실적', path: '/admin/recruiter-performance', icon: <Users className="w-4 h-4" /> },
+        { title: '계약취소 관리', path: '/contract-cancellation', icon: <XCircle className="w-4 h-4" /> },
       ],
     },
     {

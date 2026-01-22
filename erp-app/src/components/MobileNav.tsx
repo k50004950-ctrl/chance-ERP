@@ -280,11 +280,6 @@ const MobileNav: React.FC = () => {
                     <span className="text-sm font-medium">경정청구 관리</span>
                   </NavLink>
 
-                  <NavLink to="/contract-cancellation" className={linkClasses} onClick={onClose}>
-                    <XCircle className="w-5 h-5" />
-                    <span className="text-sm font-medium">계약취소 관리</span>
-                  </NavLink>
-
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
                     설정관리
                   </div>
@@ -405,6 +400,19 @@ const MobileNav: React.FC = () => {
                     }
                   >
                     <span className="text-sm font-medium">섭외자 개인별 실적</span>
+                  </NavLink>
+                  <NavLink
+                    to="/contract-cancellation"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <span className="text-sm font-medium">계약취소 관리</span>
                   </NavLink>
 
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">

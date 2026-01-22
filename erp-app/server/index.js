@@ -5014,7 +5014,7 @@ app.get('/api/sales-db/completed', (req, res) => {
         u.name as salesperson_name
       FROM sales_db sd
       LEFT JOIN users u ON sd.salesperson_id = u.id
-      WHERE sd.contract_status = '계약완료'
+      WHERE (sd.contract_status = '계약완료' OR sd.contract_status = 'Y')
         AND sd.id NOT IN (SELECT sales_db_id FROM contract_cancellations)
     `;
     

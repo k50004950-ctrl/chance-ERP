@@ -871,6 +871,69 @@ const SalespersonMyData: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* 피드백 섹션 */}
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-gray-900 flex items-center">
+                    <FileAudio className="w-4 h-4 mr-1" />
+                    피드백
+                  </h4>
+                </div>
+                
+                {/* 기존 피드백 표시 */}
+                {(() => {
+                  try {
+                    const feedbackArray = item.feedback ? JSON.parse(item.feedback) : [];
+                    return feedbackArray.length > 0 ? (
+                      <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+                        {feedbackArray.map((fb: any, idx: number) => (
+                          <div key={idx} className="bg-blue-50 p-3 rounded-lg text-sm">
+                            <div className="flex justify-between items-start mb-1">
+                              <span className="font-medium text-blue-900">{fb.writer_name}</span>
+                              <span className="text-xs text-gray-500">{new Date(fb.created_at).toLocaleString('ko-KR')}</span>
+                            </div>
+                            <p className="text-gray-700 whitespace-pre-wrap">{fb.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 mb-3">피드백이 없습니다.</p>
+                    );
+                  } catch {
+                    return item.feedback ? (
+                      <div className="bg-blue-50 p-3 rounded-lg text-sm mb-3">
+                        <p className="text-gray-700 whitespace-pre-wrap">{item.feedback}</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 mb-3">피드백이 없습니다.</p>
+                    );
+                  }
+                })()}
+
+                {/* 새 피드백 입력 */}
+                <div className="space-y-2">
+                  <textarea
+                    value={feedbackInput}
+                    onChange={(e) => setFeedbackInput(e.target.value)}
+                    placeholder="새 피드백을 입력하세요..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    rows={3}
+                  />
+                  <button
+                    onClick={() => {
+                      if (!feedbackInput.trim()) {
+                        alert('피드백 내용을 입력해주세요.');
+                        return;
+                      }
+                      handleFeedbackSubmit(item.id);
+                    }}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+                  >
+                    피드백 저장
+                  </button>
+                </div>
+              </div>
             </div>
           ))
         )}

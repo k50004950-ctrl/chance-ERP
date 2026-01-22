@@ -4496,6 +4496,7 @@ app.post('/api/happycalls', (req, res) => {
     console.log('해피콜 등록 요청 받음:', req.body);
     
     const {
+      sales_db_id,
       happycall_staff_id,
       happycall_staff_name,
       salesperson_id,
@@ -4536,6 +4537,28 @@ app.post('/api/happycalls', (req, res) => {
     );
     
     console.log('해피콜 등록 성공:', result.lastInsertRowid);
+    
+    // sales_db 테이블의 happycall_completed 필드를 1로 업데이트
+    if (sales_db_id) {
+      try {
+        const updateStmt = db.prepare(`
+          UPDATE sales_db 
+          SET happycall_completed = 1 
+          WHERE id = ?
+        `);
+        const updateResult = updateStmt.run(sales_db_id);
+        
+        if (updateResult.changes > 0) {
+          console.log(`DB ID ${sales_db_id} (${client_name})의 해피콜 완료 상태 업데이트 성공`);
+        } else {
+          console.warn(`DB ID ${sales_db_id}의 sales_db 레코드를 찾을 수 없습니다.`);
+        }
+      } catch (updateError) {
+        console.error('해피콜 완료 상태 업데이트 실패:', updateError);
+      }
+    } else {
+      console.warn('sales_db_id가 제공되지 않아 완료 상태를 업데이트하지 못했습니다.');
+    }
     
     // 점수가 '하'인 경우 알림 생성
     if (score === '하') {

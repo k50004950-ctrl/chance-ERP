@@ -180,10 +180,18 @@ const HappyCallDBList: React.FC = () => {
     console.log('해피콜 등록 요청:', requestData);
 
     try {
+      // sales_db_id를 추가하여 정확한 DB 매칭
+      const requestDataWithId = {
+        ...requestData,
+        sales_db_id: selectedDB.id
+      };
+
+      console.log('해피콜 등록 요청 (DB ID 포함):', requestDataWithId);
+
       const response = await fetch(`${API_BASE_URL}/api/happycalls`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestDataWithId)
       });
 
       console.log('응답 상태:', response.status);

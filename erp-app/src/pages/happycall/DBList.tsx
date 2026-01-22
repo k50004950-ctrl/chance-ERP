@@ -337,7 +337,7 @@ const HappyCallDBList: React.FC = () => {
 
       const result = await response.json();
       if (result.success) {
-        alert(`✅ 해피콜 완료 상태 동기화 완료!\n\n성공: ${result.updated}건\n실패: ${result.errors}건\n전체: ${result.total}건`);
+        alert(`✅ 해피콜 완료 상태 동기화 완료!\n\n${result.updatedCount}건의 DB가 업데이트되었습니다.`);
         fetchSalesDB(); // 목록 새로고침
       } else {
         alert('❌ 동기화 실패: ' + result.message);

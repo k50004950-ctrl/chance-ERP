@@ -4625,6 +4625,55 @@ app.post('/api/happycalls', (req, res) => {
   }
 });
 
+// 해피콜 완료 상태 동기화 (기존 해피콜 데이터 업데이트)
+app.post('/api/happycalls/sync-completion-status', (req, res) => {
+  try {
+    console.log('해피콜 완료 상태 동기화 시작...');
+    
+    // 모든 해피콜 조회
+    const happycalls = db.prepare(`
+      SELECT DISTINCT client_name, client_contact 
+      FROM happycalls
+    `).all();
+    
+    let updatedCount = 0;
+    
+    // 각 해피콜에 대해 sales_db 업데이트
+    happycalls.forEach(happycall => {
+      try {
+        // client_name으로 sales_db 찾기 (contact도 있으면 함께 사용)
+        let query = 'UPDATE sales_db SET happycall_completed = 1 WHERE company_name = ?';
+        let params = [happycall.client_name];
+        
+        if (happycall.client_contact) {
+          query += ' AND contact = ?';
+          params.push(happycall.client_contact);
+        }
+        
+        const result = db.prepare(query).run(...params);
+        
+        if (result.changes > 0) {
+          updatedCount += result.changes;
+          console.log(`${happycall.client_name} 완료 상태 업데이트 성공 (${result.changes}건)`);
+        }
+      } catch (error) {
+        console.error(`${happycall.client_name} 업데이트 실패:`, error);
+      }
+    });
+    
+    console.log(`총 ${updatedCount}건의 DB 완료 상태가 업데이트되었습니다.`);
+    
+    res.json({ 
+      success: true, 
+      updatedCount,
+      message: `${updatedCount}건의 해피콜 완료 상태가 동기화되었습니다.` 
+    });
+  } catch (error) {
+    console.error('해피콜 완료 상태 동기화 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // 해피콜 수정
 app.put('/api/happycalls/:id', (req, res) => {
   try {

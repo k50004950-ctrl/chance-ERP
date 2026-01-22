@@ -164,36 +164,45 @@ const HappyCallDBList: React.FC = () => {
 
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
+    const requestData = {
+      happycall_staff_id: currentUser.id,
+      happycall_staff_name: currentUser.name,
+      salesperson_id: selectedDB.salesperson_id,
+      salesperson_name: selectedDB.salesperson_name,
+      client_name: selectedDB.company_name,
+      client_contact: selectedDB.contact,
+      call_date: happyCallData.call_date,
+      call_content: happyCallData.call_content,
+      score: happyCallData.score,
+      notes: happyCallData.notes
+    };
+
+    console.log('해피콜 등록 요청:', requestData);
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/happycalls`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          happycall_staff_id: currentUser.id,
-          happycall_staff_name: currentUser.name,
-          salesperson_id: selectedDB.salesperson_id,
-          salesperson_name: selectedDB.salesperson_name,
-          client_name: selectedDB.company_name,
-          client_contact: selectedDB.contact,
-          call_date: happyCallData.call_date,
-          call_content: happyCallData.call_content,
-          score: happyCallData.score,
-          notes: happyCallData.notes
-        })
+        body: JSON.stringify(requestData)
       });
 
+      console.log('응답 상태:', response.status);
       const result = await response.json();
+      console.log('응답 결과:', result);
+      
       if (result.success) {
-        alert('해피콜이 등록되었습니다!');
+        alert('✅ 해피콜이 등록되었습니다!\n\n현재 필터 설정이 유지됩니다.');
         setShowHappyCallModal(false);
         setSelectedDB(null);
-        fetchSalesDB(); // 목록 새로고침
+        // 화면 초기화를 방지하기 위해 fetchSalesDB() 호출 제거
+        // 필요시 사용자가 직접 새로고침하거나 필터를 다시 설정할 수 있습니다
       } else {
-        alert('해피콜 등록 실패: ' + result.message);
+        console.error('해피콜 등록 실패:', result);
+        alert('❌ 해피콜 등록 실패:\n' + result.message);
       }
     } catch (error) {
       console.error('해피콜 등록 오류:', error);
-      alert('해피콜 등록 중 오류가 발생했습니다.');
+      alert('❌ 해피콜 등록 중 오류가 발생했습니다.\n\n오류: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
     }
   };
 

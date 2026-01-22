@@ -4493,6 +4493,8 @@ app.get('/api/happycalls', (req, res) => {
 // 해피콜 등록
 app.post('/api/happycalls', (req, res) => {
   try {
+    console.log('해피콜 등록 요청 받음:', req.body);
+    
     const {
       happycall_staff_id,
       happycall_staff_name,
@@ -4506,6 +4508,12 @@ app.post('/api/happycalls', (req, res) => {
       notes
     } = req.body;
     
+    // 필수 필드 검증
+    if (!happycall_staff_id || !happycall_staff_name || !client_name || !call_date || !call_content) {
+      console.error('필수 필드 누락:', { happycall_staff_id, happycall_staff_name, client_name, call_date, call_content: call_content?.substring(0, 20) });
+      return res.json({ success: false, message: '필수 입력 항목이 누락되었습니다.' });
+    }
+    
     const stmt = db.prepare(`
       INSERT INTO happycalls (
         happycall_staff_id, happycall_staff_name, salesperson_id, salesperson_name,
@@ -4513,18 +4521,21 @@ app.post('/api/happycalls', (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
+    console.log('해피콜 데이터 삽입 시도...');
     const result = stmt.run(
       happycall_staff_id,
       happycall_staff_name,
-      salesperson_id,
-      salesperson_name,
+      salesperson_id || null,
+      salesperson_name || null,
       client_name,
-      client_contact,
+      client_contact || null,
       call_date,
       call_content,
-      score,
-      notes
+      score || '중',
+      notes || null
     );
+    
+    console.log('해피콜 등록 성공:', result.lastInsertRowid);
     
     // 점수가 '하'인 경우 알림 생성
     if (score === '하') {

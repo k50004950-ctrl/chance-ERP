@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Search as SearchIcon, X, MessageSquare, Download, CheckCircle, Edit2, Save, RefreshCw } from 'lucide-react';
+import { Phone, Search as SearchIcon, X, MessageSquare, Download, CheckCircle, Edit2, Save, RefreshCw, FileText } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -40,6 +40,7 @@ const HappyCallDBList: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [completionFilter, setCompletionFilter] = useState<string>('all');
+  const [contractStatusFilter, setContractStatusFilter] = useState<string>('all');
   const [editingMemo, setEditingMemo] = useState<number | null>(null);
   const [memoContent, setMemoContent] = useState<string>('');
   const [happyCallData, setHappyCallData] = useState({
@@ -100,8 +101,20 @@ const HappyCallDBList: React.FC = () => {
       });
     }
 
+    // 계약 상태 필터
+    if (contractStatusFilter !== 'all') {
+      filtered = filtered.filter((item) => {
+        if (contractStatusFilter === 'completed') {
+          return item.contract_status === 'Y' || item.contract_status === '계약완료';
+        } else if (contractStatusFilter === 'not_completed') {
+          return item.contract_status !== 'Y' && item.contract_status !== '계약완료';
+        }
+        return true;
+      });
+    }
+
     setFilteredData(filtered);
-  }, [searchTerm, startDate, endDate, completionFilter, salesDB]);
+  }, [searchTerm, startDate, endDate, completionFilter, contractStatusFilter, salesDB]);
 
   const fetchSalesDB = async () => {
     setLoading(true);
@@ -423,6 +436,20 @@ const HappyCallDBList: React.FC = () => {
             <option value="all">해피콜 상태: 전체</option>
             <option value="completed">완료</option>
             <option value="incomplete">미완료</option>
+          </select>
+        </div>
+
+        {/* 계약 상태 필터 */}
+        <div className="flex items-center space-x-2">
+          <FileText className="w-5 h-5 text-gray-400" />
+          <select
+            value={contractStatusFilter}
+            onChange={(e) => setContractStatusFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">계약상태: 전체</option>
+            <option value="completed">계약완료</option>
+            <option value="not_completed">미계약</option>
           </select>
           <div className="ml-auto text-sm text-gray-600">
             총 <span className="font-bold text-blue-600">{filteredData.length}</span>건

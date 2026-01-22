@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, Database, TrendingUp, CheckCircle, Clock, XCircle, FileAudio, Download, Search, Filter, Trash2 } from 'lucide-react';
+import { Edit, Save, X, Database, TrendingUp, CheckCircle, Clock, XCircle, FileAudio, Download, Search, Filter, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
@@ -64,6 +64,7 @@ const AllDBManagement: React.FC = () => {
   const [showUnassignedOnly, setShowUnassignedOnly] = useState<boolean>(false);
   const [meetingDateStart, setMeetingDateStart] = useState<string>('');
   const [meetingDateEnd, setMeetingDateEnd] = useState<string>('');
+  const [showFilters, setShowFilters] = useState<boolean>(false);
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'admin') {
@@ -608,6 +609,12 @@ const AllDBManagement: React.FC = () => {
           <Filter className="w-5 h-5 text-gray-600 mr-2" />
           <h2 className="text-lg font-bold text-gray-800">필터</h2>
           <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="ml-2 p-1 hover:bg-gray-100 rounded"
+          >
+            {showFilters ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </button>
+          <button
             onClick={handleResetFilters}
             className="ml-auto text-sm text-blue-600 hover:text-blue-800"
           >
@@ -615,6 +622,8 @@ const AllDBManagement: React.FC = () => {
           </button>
         </div>
         
+        {showFilters && (
+          <>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
           {/* 검색 */}
           <div className="relative">
@@ -766,10 +775,159 @@ const AllDBManagement: React.FC = () => {
             </button>
           </div>
         </div>
+          </>
+        )}
       </div>
 
-      {/* 테이블 */}
-      <div className="bg-white rounded-lg shadow overflow-x-auto" style={{ maxHeight: 'calc(100vh - 400px)', overflowY: 'auto' }}>
+      {/* 모바일 카드 뷰 */}
+      <div className="md:hidden space-y-4 mb-6">
+        {filteredData.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            조건에 맞는 DB가 없습니다.
+          </div>
+        ) : (
+          filteredData.map((item) => (
+            <div key={item.id} className="bg-white rounded-lg shadow p-4">
+              {/* 헤더 */}
+              <div className="flex justify-between items-start mb-3 pb-3 border-b">
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">{item.company_name || '-'}</h3>
+                  <p className="text-sm text-gray-600">{item.representative || '-'}</p>
+                </div>
+                <div className="flex space-x-2">
+                  {editingId === item.id ? (
+                    <>
+                      <button
+                        onClick={() => handleSave(item.id)}
+                        className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      >
+                        <Save className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleEdit(item.id)}
+                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenDetail(item)}
+                        className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                      >
+                        <FileAudio className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* 주요 정보 */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">섭외일:</span>
+                  <span className="text-gray-900">{formatDateToKorean(item.proposal_date) || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">섭외자:</span>
+                  <span className="text-green-700 font-medium">{item.proposer || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">미팅희망:</span>
+                  <span className="text-yellow-700 font-medium">{formatDateTime(item.meeting_request_datetime)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">연락처:</span>
+                  <span className="text-gray-900">{item.contact || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">담당영업자:</span>
+                  {editingId === item.id ? (
+                    <select
+                      value={item.salesperson_id || ''}
+                      onChange={(e) => handleChange(item.id, 'salesperson_id', e.target.value)}
+                      className="px-3 py-1 border rounded-lg text-sm flex-1 max-w-xs ml-2"
+                    >
+                      <option value="">다시 선택</option>
+                      {salespersons.map((sp) => (
+                        <option key={sp.id} value={sp.id}>
+                          {sp.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-purple-700 font-medium">{item.salesperson_name || '미배정'}</span>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">미팅상태:</span>
+                  {editingId === item.id ? (
+                    <select
+                      value={item.meeting_status || ''}
+                      onChange={(e) => handleChange(item.id, 'meeting_status', e.target.value)}
+                      className="px-3 py-1 border rounded-lg text-sm flex-1 max-w-xs ml-2"
+                    >
+                      <option value="">선택</option>
+                      <option value="미팅완료">미팅완료</option>
+                      <option value="미팅요청">미팅요청</option>
+                      <option value="재미팅">재미팅</option>
+                      <option value="영업자관리">영업자관리</option>
+                      <option value="미팅거절">미팅거절</option>
+                    </select>
+                  ) : (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                      item.meeting_status === '미팅요청' ? 'bg-yellow-100 text-yellow-800' :
+                      item.meeting_status === '재미팅' ? 'bg-blue-100 text-blue-800' :
+                      item.meeting_status === '영업자관리' ? 'bg-purple-100 text-purple-800' :
+                      item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {item.meeting_status || '-'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">계약상태:</span>
+                  {editingId === item.id ? (
+                    <select
+                      value={item.contract_status || ''}
+                      onChange={(e) => handleChange(item.id, 'contract_status', e.target.value)}
+                      className="px-3 py-1 border rounded-lg text-sm flex-1 max-w-xs ml-2"
+                    >
+                      <option value="">선택</option>
+                      <option value="계약완료">계약완료</option>
+                      <option value="미계약">미계약</option>
+                    </select>
+                  ) : (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      item.contract_status === '계약완료' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {item.contract_status || '-'}
+                    </span>
+                  )}
+                </div>
+                {item.contract_date && (
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-700">계약날짜:</span>
+                    <span className="text-orange-700 font-medium">{formatDateToKorean(item.contract_date)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* 테이블 (데스크톱) */}
+      <div className="hidden md:block bg-white rounded-lg shadow overflow-x-auto" style={{ maxHeight: 'calc(100vh - 400px)', overflowY: 'auto' }}>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

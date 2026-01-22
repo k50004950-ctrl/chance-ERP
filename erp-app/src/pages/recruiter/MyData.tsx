@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle, Plus, FileAudio, Upload, Download, Trash2, Bell, BellOff, ExternalLink } from 'lucide-react';
+import { Edit, Save, X, UserCheck, TrendingUp, CheckCircle, Clock, XCircle, Plus, FileAudio, Upload, Download, Trash2, Bell, BellOff, ExternalLink, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
@@ -59,6 +59,7 @@ const RecruiterMyData: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all'); // 'all', 'action_needed', 'rejected', 'completed'
+  const [showFilters, setShowFilters] = useState<boolean>(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [newFeedback, setNewFeedback] = useState('');

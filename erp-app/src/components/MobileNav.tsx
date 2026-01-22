@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut, Home } from 'lucide-react';
+import { Menu, X, LogOut, Home, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const MobileNav: React.FC = () => {
@@ -278,6 +278,11 @@ const MobileNav: React.FC = () => {
                   >
                     <span className="text-lg">📋</span>
                     <span className="text-sm font-medium">경정청구 관리</span>
+                  </NavLink>
+
+                  <NavLink to="/contract-cancellation" className={linkClasses} onClick={onClose}>
+                    <XCircle className="w-5 h-5" />
+                    <span className="text-sm font-medium">계약취소 관리</span>
                   </NavLink>
 
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">

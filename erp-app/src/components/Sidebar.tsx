@@ -28,7 +28,8 @@ import {
   Bell,
   Phone,
   Calculator,
-  Building2
+  Building2,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -136,6 +137,7 @@ const Sidebar: React.FC = () => {
       children: [
         { title: '경정청구 검토', externalLink: 'https://solution.wisetax.kr/?managerID=23023', icon: <FileSignature className="w-4 h-4" /> },
         { title: '경정청구 관리', path: '/correction/list', icon: <FileSignature className="w-4 h-4" /> },
+        { title: '계약취소 관리', path: '/contract-cancellation', icon: <XCircle className="w-4 h-4" /> },
       ],
     },
     {

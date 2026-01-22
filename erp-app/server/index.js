@@ -382,6 +382,27 @@ function initDatabase() {
       FOREIGN KEY (writer_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    -- 계약취소 테이블
+    CREATE TABLE IF NOT EXISTS contract_cancellations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sales_db_id INTEGER NOT NULL,
+      salesperson_id INTEGER NOT NULL,
+      salesperson_name TEXT NOT NULL,
+      company_name TEXT NOT NULL,
+      cancelled_by INTEGER NOT NULL,
+      canceller_name TEXT NOT NULL,
+      cancellation_reason TEXT NOT NULL,
+      payment_months INTEGER NOT NULL,
+      refund_amount INTEGER NOT NULL,
+      original_contract_date DATE,
+      original_actual_sales INTEGER,
+      cancelled_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      notes TEXT,
+      FOREIGN KEY (sales_db_id) REFERENCES sales_db(id) ON DELETE CASCADE,
+      FOREIGN KEY (salesperson_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (cancelled_by) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     -- 경정청구 피드백 테이블
     CREATE TABLE IF NOT EXISTS correction_feedbacks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4956,6 +4977,167 @@ app.get('/api/correction-requests/stats/monthly', (req, res) => {
     res.json({ success: true, data: stats });
   } catch (error) {
     console.error('경정청구 통계 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// ==================== 계약취소 관리 API ====================
+
+// 계약취소 목록 조회
+app.get('/api/contract-cancellations', (req, res) => {
+  try {
+    const cancellations = db.prepare(`
+      SELECT 
+        cc.*,
+        sd.contract_date,
+        sd.contract_month
+      FROM contract_cancellations cc
+      LEFT JOIN sales_db sd ON cc.sales_db_id = sd.id
+      ORDER BY cc.cancelled_at DESC
+    `).all();
+    
+    res.json({ success: true, data: cancellations });
+  } catch (error) {
+    console.error('계약취소 목록 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 계약완료된 DB 목록 조회 (취소 가능한 목록)
+app.get('/api/sales-db/completed', (req, res) => {
+  try {
+    const { search } = req.query;
+    
+    let query = `
+      SELECT 
+        sd.*,
+        u.name as salesperson_name
+      FROM sales_db sd
+      LEFT JOIN users u ON sd.salesperson_id = u.id
+      WHERE sd.contract_status = '계약완료'
+        AND sd.id NOT IN (SELECT sales_db_id FROM contract_cancellations)
+    `;
+    
+    const params = [];
+    if (search) {
+      query += ` AND (sd.company_name LIKE ? OR sd.representative LIKE ? OR u.name LIKE ?)`;
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern);
+    }
+    
+    query += ` ORDER BY sd.contract_date DESC`;
+    
+    const completed = db.prepare(query).all(...params);
+    
+    res.json({ success: true, data: completed });
+  } catch (error) {
+    console.error('계약완료 DB 조회 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 계약취소 등록
+app.post('/api/contract-cancellations', (req, res) => {
+  try {
+    const {
+      sales_db_id,
+      cancelled_by,
+      canceller_name,
+      cancellation_reason,
+      payment_months,
+      refund_amount,
+      notes
+    } = req.body;
+    
+    // 해당 DB 정보 조회
+    const salesDb = db.prepare('SELECT * FROM sales_db WHERE id = ?').get(sales_db_id);
+    
+    if (!salesDb) {
+      return res.json({ success: false, message: 'DB를 찾을 수 없습니다.' });
+    }
+    
+    if (salesDb.contract_status !== '계약완료') {
+      return res.json({ success: false, message: '계약완료 상태가 아닙니다.' });
+    }
+    
+    // 영업자 정보 조회
+    const salesperson = db.prepare('SELECT name FROM users WHERE id = ?').get(salesDb.salesperson_id);
+    
+    // 계약취소 등록
+    const result = db.prepare(`
+      INSERT INTO contract_cancellations (
+        sales_db_id, salesperson_id, salesperson_name, company_name,
+        cancelled_by, canceller_name, cancellation_reason, payment_months,
+        refund_amount, original_contract_date, original_actual_sales, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      sales_db_id,
+      salesDb.salesperson_id,
+      salesperson ? salesperson.name : '미지정',
+      salesDb.company_name,
+      cancelled_by,
+      canceller_name,
+      cancellation_reason,
+      payment_months,
+      refund_amount,
+      salesDb.contract_date,
+      salesDb.actual_sales || 0,
+      notes || null
+    );
+    
+    // sales_db의 contract_status를 '계약취소'로 변경
+    db.prepare('UPDATE sales_db SET contract_status = ? WHERE id = ?').run('계약취소', sales_db_id);
+    
+    // 영업자에게 알림 생성
+    if (salesDb.salesperson_id) {
+      try {
+        db.prepare(`
+          INSERT INTO notifications (user_id, title, message, type, related_id)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(
+          salesDb.salesperson_id,
+          '계약 취소 알림',
+          `${salesDb.company_name} 계약이 취소되었습니다. 환수금액: ${refund_amount.toLocaleString()}원`,
+          'cancellation',
+          result.lastInsertRowid
+        );
+      } catch (notifError) {
+        console.error('알림 생성 실패:', notifError);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: '계약취소가 등록되었습니다.',
+      id: result.lastInsertRowid 
+    });
+  } catch (error) {
+    console.error('계약취소 등록 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// 계약취소 삭제
+app.delete('/api/contract-cancellations/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 취소 정보 조회
+    const cancellation = db.prepare('SELECT * FROM contract_cancellations WHERE id = ?').get(id);
+    
+    if (!cancellation) {
+      return res.json({ success: false, message: '취소 정보를 찾을 수 없습니다.' });
+    }
+    
+    // sales_db의 contract_status를 다시 '계약완료'로 변경
+    db.prepare('UPDATE sales_db SET contract_status = ? WHERE id = ?').run('계약완료', cancellation.sales_db_id);
+    
+    // 취소 삭제
+    db.prepare('DELETE FROM contract_cancellations WHERE id = ?').run(id);
+    
+    res.json({ success: true, message: '계약취소가 삭제되었습니다.' });
+  } catch (error) {
+    console.error('계약취소 삭제 오류:', error);
     res.json({ success: false, message: error.message });
   }
 });

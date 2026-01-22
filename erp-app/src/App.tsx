@@ -70,6 +70,9 @@ import CorrectionList from './pages/correction/CorrectionList';
 import CorrectionRegister from './pages/correction/CorrectionRegister';
 import CorrectionDetail from './pages/correction/CorrectionDetail';
 
+// 계약취소
+import ContractCancellation from './pages/admin/ContractCancellation';
+
 function App() {
   return (
     <AuthProvider>
@@ -133,6 +136,7 @@ function App() {
             <Route path="correction/list" element={<CorrectionList />} />
             <Route path="correction/register" element={<CorrectionRegister />} />
             <Route path="correction/detail/:id" element={<CorrectionDetail />} />
+            <Route path="contract-cancellation" element={<ContractCancellation />} />
             
             {/* 계약 관리 */}
             <Route path="contract/sales-commission" element={<SalesCommission />} />

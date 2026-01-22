@@ -412,7 +412,7 @@ const MobileNav: React.FC = () => {
                       }`
                     }
                   >
-                    <span className="text-sm font-medium">계약취소 관리</span>
+                    <span className="text-sm font-medium">계약해지 관리</span>
                   </NavLink>
 
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">

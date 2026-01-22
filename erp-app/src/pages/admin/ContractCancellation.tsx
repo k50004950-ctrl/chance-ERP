@@ -92,12 +92,12 @@ const ContractCancellation: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!selectedDB) {
-      alert('취소할 계약을 선택하세요.');
+      alert('해지할 계약을 선택하세요.');
       return;
     }
 
     if (!formData.cancellation_reason.trim()) {
-      alert('취소 사유를 입력하세요.');
+      alert('해지 사유를 입력하세요.');
       return;
     }
 
@@ -106,7 +106,7 @@ const ContractCancellation: React.FC = () => {
       return;
     }
 
-    if (!window.confirm(`${selectedDB.company_name} 계약을 취소하시겠습니까?\n환수금액: ${formData.refund_amount.toLocaleString()}원`)) {
+    if (!window.confirm(`${selectedDB.company_name} 계약을 해지하시겠습니까?\n환수금액: ${formData.refund_amount.toLocaleString()}원`)) {
       return;
     }
 
@@ -124,20 +124,20 @@ const ContractCancellation: React.FC = () => {
 
       const result = await response.json();
       if (result.success) {
-        alert('계약취소가 등록되었습니다.');
+        alert('✅ 계약해지가 등록되었습니다.\n환수금액이 수수료 명세서에 자동으로 반영됩니다.');
         setShowAddModal(false);
         fetchCancellations();
       } else {
         alert('등록 실패: ' + result.message);
       }
     } catch (error) {
-      console.error('계약취소 등록 실패:', error);
+      console.error('계약해지 등록 실패:', error);
       alert('등록 중 오류가 발생했습니다.');
     }
   };
 
   const handleDelete = async (id: number, companyName: string) => {
-    if (!window.confirm(`${companyName}의 계약취소를 삭제하시겠습니까?\n(계약 상태가 다시 '계약완료'로 변경됩니다)`)) {
+    if (!window.confirm(`${companyName}의 계약해지를 삭제하시겠습니까?\n(계약 상태가 다시 '계약완료'로 변경되고, 환수금액도 수수료 명세서에서 제거됩니다)`)) {
       return;
     }
 
@@ -148,25 +148,25 @@ const ContractCancellation: React.FC = () => {
 
       const result = await response.json();
       if (result.success) {
-        alert('계약취소가 삭제되었습니다.');
+        alert('✅ 계약해지가 삭제되었습니다.');
         fetchCancellations();
       } else {
         alert('삭제 실패: ' + result.message);
       }
     } catch (error) {
-      console.error('계약취소 삭제 실패:', error);
+      console.error('계약해지 삭제 실패:', error);
       alert('삭제 중 오류가 발생했습니다.');
     }
   };
 
   const handleExcelDownload = () => {
     const excelData = cancellations.map(c => ({
-      '취소일': formatDateToKorean(c.cancelled_at.split(' ')[0]),
+      '해지일': formatDateToKorean(c.cancelled_at.split(' ')[0]),
       '업체명': c.company_name,
       '담당영업자': c.salesperson_name,
       '원계약일': formatDateToKorean(c.original_contract_date),
       '원계약금액': c.original_actual_sales || 0,
-      '취소사유': c.cancellation_reason,
+      '해지사유': c.cancellation_reason,
       '납부개월': c.payment_months,
       '환수금액': c.refund_amount,
       '처리자': c.canceller_name,
@@ -175,10 +175,10 @@ const ContractCancellation: React.FC = () => {
 
     const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '계약취소');
+    XLSX.utils.book_append_sheet(wb, ws, '계약해지');
     
     const date = new Date();
-    const filename = `계약취소_${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}.xlsx`;
+    const filename = `계약해지_${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}.xlsx`;
     XLSX.writeFile(wb, filename);
   };
 
@@ -190,9 +190,9 @@ const ContractCancellation: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-800 flex items-center">
               <XCircle className="w-7 h-7 mr-2 text-red-600" />
-              계약취소 관리
+              계약해지 관리
             </h1>
-            <p className="text-gray-600 mt-1">계약 취소 처리 및 환수금액 관리</p>
+            <p className="text-gray-600 mt-1">계약 해지 처리 및 환수금액 관리</p>
           </div>
           <div className="flex space-x-3">
             <button
@@ -207,7 +207,7 @@ const ContractCancellation: React.FC = () => {
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center space-x-2 transition"
             >
               <Plus className="w-5 h-5" />
-              <span>계약취소 등록</span>
+              <span>계약해지 등록</span>
             </button>
           </div>
         </div>
@@ -218,7 +218,7 @@ const ContractCancellation: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">총 취소건수</p>
+              <p className="text-sm text-gray-600">총 해지건수</p>
               <p className="text-2xl font-bold text-gray-900">{cancellations.length}건</p>
             </div>
             <XCircle className="w-8 h-8 text-red-500" />
@@ -240,7 +240,7 @@ const ContractCancellation: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">이번달 취소</p>
+              <p className="text-sm text-gray-600">이번달 해지</p>
               <p className="text-2xl font-bold text-gray-900">
                 {cancellations.filter(c => c.cancelled_at.startsWith(new Date().toISOString().slice(0, 7))).length}건
               </p>
@@ -250,18 +250,18 @@ const ContractCancellation: React.FC = () => {
         </div>
       </div>
 
-      {/* 취소 목록 테이블 */}
+      {/* 해지 목록 테이블 */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">취소일</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">해지일</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">업체명</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">담당영업자</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">원계약일</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">원계약금액</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">취소사유</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">해지사유</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">납부개월</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase bg-red-50">환수금액</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">처리자</th>
@@ -272,7 +272,7 @@ const ContractCancellation: React.FC = () => {
               {cancellations.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
-                    계약취소 내역이 없습니다.
+                    계약해지 내역이 없습니다.
                   </td>
                 </tr>
               ) : (
@@ -322,19 +322,19 @@ const ContractCancellation: React.FC = () => {
         </div>
       </div>
 
-      {/* 계약취소 등록 모달 */}
+      {/* 계약해지 등록 모달 */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-xl font-bold mb-4 flex items-center">
                 <XCircle className="w-6 h-6 mr-2 text-red-600" />
-                계약취소 등록
+                계약해지 등록
               </h2>
 
               {/* Step 1: 계약 선택 */}
               <div className="mb-6">
-                <h3 className="font-semibold mb-2">1. 취소할 계약 선택</h3>
+                <h3 className="font-semibold mb-2">1. 해지할 계약 선택</h3>
                 <div className="flex items-center space-x-2 mb-3">
                   <Search className="w-5 h-5 text-gray-400" />
                   <input
@@ -412,13 +412,13 @@ const ContractCancellation: React.FC = () => {
                 )}
               </div>
 
-              {/* Step 2: 취소 정보 입력 */}
+              {/* Step 2: 해지 정보 입력 */}
               <div className="space-y-4">
-                <h3 className="font-semibold">2. 취소 정보 입력</h3>
+                <h3 className="font-semibold">2. 해지 정보 입력</h3>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    취소 사유 <span className="text-red-500">*</span>
+                    해지 사유 <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -485,7 +485,7 @@ const ContractCancellation: React.FC = () => {
                   onClick={handleSubmit}
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                 >
-                  계약취소 등록
+                  계약해지 등록
                 </button>
               </div>
             </div>

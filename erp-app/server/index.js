@@ -5075,7 +5075,7 @@ app.post('/api/contract-cancellations', (req, res) => {
     // 영업자 정보 조회
     const salesperson = db.prepare('SELECT name FROM users WHERE id = ?').get(salesDb.salesperson_id);
     
-    // 계약취소 등록
+    // 계약해지 등록
     const result = db.prepare(`
       INSERT INTO contract_cancellations (
         sales_db_id, salesperson_id, salesperson_name, company_name,
@@ -5097,8 +5097,35 @@ app.post('/api/contract-cancellations', (req, res) => {
       notes || null
     );
     
-    // sales_db의 contract_status를 '계약취소'로 변경
-    db.prepare('UPDATE sales_db SET contract_status = ? WHERE id = ?').run('계약취소', sales_db_id);
+    const cancellationId = result.lastInsertRowid;
+    
+    // sales_db의 contract_status를 '계약해지'로 변경
+    db.prepare('UPDATE sales_db SET contract_status = ? WHERE id = ?').run('계약해지', sales_db_id);
+    
+    // 해지월(현재 월)의 수수료 명세서에 환수금액을 기타수수료로 추가
+    const now = new Date();
+    const year = now.getFullYear().toString();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    
+    if (salesDb.salesperson_id && refund_amount > 0) {
+      try {
+        db.prepare(`
+          INSERT INTO misc_commissions (
+            salesperson_id, year, month, description, amount, created_at
+          ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(
+          salesDb.salesperson_id,
+          year,
+          month,
+          `[계약해지 환수] ${salesDb.company_name} (취소사유: ${cancellation_reason})`,
+          -refund_amount // 환수는 마이너스
+        );
+        
+        console.log(`환수금액 ${refund_amount}원이 ${year}년 ${month}월 기타수수료에 추가되었습니다.`);
+      } catch (miscError) {
+        console.error('기타수수료 추가 실패:', miscError);
+      }
+    }
     
     // 영업자에게 알림 생성
     if (salesDb.salesperson_id) {
@@ -5108,10 +5135,10 @@ app.post('/api/contract-cancellations', (req, res) => {
           VALUES (?, ?, ?, ?, ?)
         `).run(
           salesDb.salesperson_id,
-          '계약 취소 알림',
-          `${salesDb.company_name} 계약이 취소되었습니다. 환수금액: ${refund_amount.toLocaleString()}원`,
+          '계약 해지 알림',
+          `${salesDb.company_name} 계약이 해지되었습니다. 환수금액: ${refund_amount.toLocaleString()}원`,
           'cancellation',
-          result.lastInsertRowid
+          cancellationId
         );
       } catch (notifError) {
         console.error('알림 생성 실패:', notifError);
@@ -5120,8 +5147,8 @@ app.post('/api/contract-cancellations', (req, res) => {
     
     res.json({ 
       success: true, 
-      message: '계약취소가 등록되었습니다.',
-      id: result.lastInsertRowid 
+      message: '계약해지가 등록되었습니다.',
+      id: cancellationId 
     });
   } catch (error) {
     console.error('계약취소 등록 오류:', error);
@@ -5129,25 +5156,42 @@ app.post('/api/contract-cancellations', (req, res) => {
   }
 });
 
-// 계약취소 삭제
+// 계약해지 삭제
 app.delete('/api/contract-cancellations/:id', (req, res) => {
   try {
     const { id } = req.params;
     
-    // 취소 정보 조회
+    // 해지 정보 조회
     const cancellation = db.prepare('SELECT * FROM contract_cancellations WHERE id = ?').get(id);
     
     if (!cancellation) {
-      return res.json({ success: false, message: '취소 정보를 찾을 수 없습니다.' });
+      return res.json({ success: false, message: '해지 정보를 찾을 수 없습니다.' });
     }
     
-    // sales_db의 contract_status를 다시 '계약완료'로 변경
-    db.prepare('UPDATE sales_db SET contract_status = ? WHERE id = ?').run('계약완료', cancellation.sales_db_id);
+    // sales_db의 contract_status를 다시 'Y'로 변경
+    db.prepare('UPDATE sales_db SET contract_status = ? WHERE id = ?').run('Y', cancellation.sales_db_id);
     
-    // 취소 삭제
+    // 해당 환수 기타수수료 삭제 (설명에 [계약해지 환수]와 업체명이 포함된 항목)
+    if (cancellation.salesperson_id) {
+      try {
+        db.prepare(`
+          DELETE FROM misc_commissions 
+          WHERE salesperson_id = ? 
+            AND description LIKE ?
+        `).run(
+          cancellation.salesperson_id,
+          `[계약해지 환수] ${cancellation.company_name}%`
+        );
+        console.log(`${cancellation.company_name} 환수 기타수수료가 삭제되었습니다.`);
+      } catch (miscError) {
+        console.error('기타수수료 삭제 실패:', miscError);
+      }
+    }
+    
+    // 해지 삭제
     db.prepare('DELETE FROM contract_cancellations WHERE id = ?').run(id);
     
-    res.json({ success: true, message: '계약취소가 삭제되었습니다.' });
+    res.json({ success: true, message: '계약해지가 삭제되었습니다.' });
   } catch (error) {
     console.error('계약취소 삭제 오류:', error);
     res.json({ success: false, message: error.message });

@@ -685,6 +685,32 @@ function initDatabase() {
     // 이미 컬럼이 존재하면 무시
   }
 
+  // 기본 거래처 데이터 추가 (없으면)
+  try {
+    const clientCount = db.prepare('SELECT COUNT(*) as count FROM sales_clients').get();
+    if (clientCount.count === 0) {
+      console.log('기본 거래처 데이터 추가 중...');
+      const insertClient = db.prepare('INSERT INTO sales_clients (client_name, commission_rate, description) VALUES (?, ?, ?)');
+      
+      const defaultClients = [
+        ['예송DB', 30, '기본 매출 거래처'],
+        ['예송소개', 25, '소개 거래처'],
+        ['기타', 20, '기타 거래처']
+      ];
+      
+      defaultClients.forEach(([name, rate, desc]) => {
+        try {
+          insertClient.run(name, rate, desc);
+          console.log(`거래처 추가: ${name} (${rate}%)`);
+        } catch (e) {
+          console.log(`거래처 이미 존재: ${name}`);
+        }
+      });
+    }
+  } catch (e) {
+    console.error('거래처 데이터 추가 실패:', e);
+  }
+
   console.log('Database initialized at:', dbPath);
 }
 

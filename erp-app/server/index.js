@@ -5179,6 +5179,76 @@ app.post('/api/contract-cancellations', (req, res) => {
   }
 });
 
+// 계약해지 환수금액 수정
+app.put('/api/contract-cancellations/:id/refund', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { refund_amount, old_refund_amount, salesperson_id, company_name } = req.body;
+    
+    console.log('환수금액 수정 요청:', { id, refund_amount, old_refund_amount, salesperson_id, company_name });
+    
+    // 해지 정보 조회
+    const cancellation = db.prepare('SELECT * FROM contract_cancellations WHERE id = ?').get(id);
+    
+    if (!cancellation) {
+      return res.json({ success: false, message: '해지 정보를 찾을 수 없습니다.' });
+    }
+    
+    // contract_cancellations 테이블의 환수금액 업데이트
+    db.prepare('UPDATE contract_cancellations SET refund_amount = ? WHERE id = ?').run(refund_amount, id);
+    
+    // 기존 환수 기타수수료 삭제
+    if (salesperson_id) {
+      try {
+        db.prepare(`
+          DELETE FROM misc_commissions 
+          WHERE salesperson_id = ? 
+            AND description LIKE ?
+        `).run(
+          salesperson_id,
+          `[계약해지 환수] ${company_name}%`
+        );
+        console.log(`${company_name} 기존 환수 기타수수료 삭제 완료`);
+      } catch (miscError) {
+        console.error('기존 기타수수료 삭제 실패:', miscError);
+      }
+      
+      // 새로운 환수금액으로 기타수수료 추가
+      const now = new Date();
+      const year = now.getFullYear().toString();
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      
+      try {
+        db.prepare(`
+          INSERT INTO misc_commissions (
+            salesperson_id, year, month, description, amount, created_at
+          ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(
+          salesperson_id,
+          year,
+          month,
+          `[계약해지 환수] ${company_name} (취소사유: ${cancellation.cancellation_reason})`,
+          -refund_amount // 환수는 마이너스
+        );
+        
+        console.log(`${company_name} 새로운 환수금액 ${refund_amount}원 기타수수료에 추가 완료`);
+      } catch (miscError) {
+        console.error('새로운 기타수수료 추가 실패:', miscError);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: '환수금액이 변경되었습니다.',
+      old_amount: old_refund_amount,
+      new_amount: refund_amount
+    });
+  } catch (error) {
+    console.error('환수금액 수정 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // 계약해지 삭제
 app.delete('/api/contract-cancellations/:id', (req, res) => {
   try {

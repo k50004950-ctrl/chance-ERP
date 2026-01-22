@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { XCircle, Search, Plus, Trash2, AlertTriangle, Download } from 'lucide-react';
+import { XCircle, Search, Plus, Trash2, AlertTriangle, Download, Edit2, Save, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../lib/api';
 import { formatDateToKorean } from '../../utils/dateFormat';
@@ -42,6 +42,8 @@ const ContractCancellation: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDB, setSelectedDB] = useState<CompletedDB | null>(null);
+  const [editingRefundId, setEditingRefundId] = useState<number | null>(null);
+  const [editingRefundAmount, setEditingRefundAmount] = useState<number>(0);
   
   const [formData, setFormData] = useState({
     cancellation_reason: '',
@@ -156,6 +158,53 @@ const ContractCancellation: React.FC = () => {
     } catch (error) {
       console.error('계약해지 삭제 실패:', error);
       alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleStartEditRefund = (cancellation: Cancellation) => {
+    setEditingRefundId(cancellation.id);
+    setEditingRefundAmount(cancellation.refund_amount);
+  };
+
+  const handleCancelEditRefund = () => {
+    setEditingRefundId(null);
+    setEditingRefundAmount(0);
+  };
+
+  const handleSaveRefund = async (cancellation: Cancellation) => {
+    if (editingRefundAmount <= 0) {
+      alert('환수금액은 0보다 커야 합니다.');
+      return;
+    }
+
+    if (!window.confirm(`환수금액을 ${editingRefundAmount.toLocaleString()}원으로 변경하시겠습니까?\n수수료 명세서에도 자동으로 반영됩니다.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/contract-cancellations/${cancellation.id}/refund`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refund_amount: editingRefundAmount,
+          old_refund_amount: cancellation.refund_amount,
+          salesperson_id: cancellation.salesperson_id,
+          company_name: cancellation.company_name
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('✅ 환수금액이 변경되었습니다.');
+        setEditingRefundId(null);
+        setEditingRefundAmount(0);
+        fetchCancellations();
+      } else {
+        alert('변경 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('환수금액 변경 실패:', error);
+      alert('변경 중 오류가 발생했습니다.');
     }
   };
 
@@ -299,8 +348,45 @@ const ContractCancellation: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {cancellation.payment_months}개월
                     </td>
-                    <td className="px-6 py-4 text-sm font-bold text-red-600 bg-red-50">
-                      {cancellation.refund_amount.toLocaleString()}원
+                    <td className="px-6 py-4 bg-red-50">
+                      {editingRefundId === cancellation.id ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            value={editingRefundAmount}
+                            onChange={(e) => setEditingRefundAmount(parseInt(e.target.value) || 0)}
+                            className="w-32 px-3 py-1 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 text-sm text-right"
+                            min="0"
+                          />
+                          <button
+                            onClick={() => handleSaveRefund(cancellation)}
+                            className="p-1 text-green-600 hover:text-green-900"
+                            title="저장"
+                          >
+                            <Save className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleCancelEditRefund}
+                            className="p-1 text-gray-600 hover:text-gray-900"
+                            title="취소"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-red-600">
+                            {cancellation.refund_amount.toLocaleString()}원
+                          </span>
+                          <button
+                            onClick={() => handleStartEditRefund(cancellation)}
+                            className="ml-2 p-1 text-blue-600 hover:text-blue-900"
+                            title="수정"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {cancellation.canceller_name}

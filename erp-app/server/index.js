@@ -5179,6 +5179,66 @@ app.post('/api/contract-cancellations', (req, res) => {
   }
 });
 
+// 기존 해피콜 완료 상태 일괄 업데이트
+app.post('/api/happycalls/sync-completion-status', (req, res) => {
+  try {
+    console.log('해피콜 완료 상태 동기화 시작...');
+    
+    // 모든 해피콜 조회
+    const happycalls = db.prepare('SELECT * FROM happycalls').all();
+    
+    let updatedCount = 0;
+    let errorCount = 0;
+    
+    happycalls.forEach(happycall => {
+      try {
+        // 업체명과 연락처로 sales_db 찾기
+        const updateResult = db.prepare(`
+          UPDATE sales_db 
+          SET happycall_completed = 1 
+          WHERE company_name = ? AND (contact = ? OR contact IS NULL)
+        `).run(happycall.client_name, happycall.client_contact || '');
+        
+        if (updateResult.changes > 0) {
+          updatedCount++;
+          console.log(`✓ ${happycall.client_name} 완료 상태 업데이트 성공`);
+        } else {
+          // 업체명만으로 한번 더 시도
+          const retryResult = db.prepare(`
+            UPDATE sales_db 
+            SET happycall_completed = 1 
+            WHERE company_name = ?
+          `).run(happycall.client_name);
+          
+          if (retryResult.changes > 0) {
+            updatedCount++;
+            console.log(`✓ ${happycall.client_name} 완료 상태 업데이트 성공 (업체명 매칭)`);
+          } else {
+            console.warn(`⚠ ${happycall.client_name}의 sales_db 레코드를 찾을 수 없습니다.`);
+            errorCount++;
+          }
+        }
+      } catch (error) {
+        console.error(`✗ ${happycall.client_name} 업데이트 실패:`, error);
+        errorCount++;
+      }
+    });
+    
+    console.log(`해피콜 완료 상태 동기화 완료: 성공 ${updatedCount}건, 실패 ${errorCount}건`);
+    
+    res.json({ 
+      success: true, 
+      message: `해피콜 완료 상태가 동기화되었습니다.`,
+      updated: updatedCount,
+      errors: errorCount,
+      total: happycalls.length
+    });
+  } catch (error) {
+    console.error('해피콜 완료 상태 동기화 오류:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // 계약해지 환수금액 수정
 app.put('/api/contract-cancellations/:id/refund', (req, res) => {
   try {

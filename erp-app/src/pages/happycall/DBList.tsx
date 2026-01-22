@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Search as SearchIcon, X, MessageSquare, Download, CheckCircle, Edit2, Save } from 'lucide-react';
+import { Phone, Search as SearchIcon, X, MessageSquare, Download, CheckCircle, Edit2, Save, RefreshCw } from 'lucide-react';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -311,6 +311,30 @@ const HappyCallDBList: React.FC = () => {
     setMemoContent('');
   };
 
+  // 해피콜 완료 상태 동기화 (관리자 전용)
+  const handleSyncCompletionStatus = async () => {
+    if (!window.confirm('기존 등록된 모든 해피콜의 완료 상태를 동기화하시겠습니까?\n\n이 작업은 happycalls 테이블에 있는 모든 해피콜을 sales_db 테이블의 완료 상태로 업데이트합니다.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/happycalls/sync-completion-status`, {
+        method: 'POST'
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert(`✅ 해피콜 완료 상태 동기화 완료!\n\n성공: ${result.updated}건\n실패: ${result.errors}건\n전체: ${result.total}건`);
+        fetchSalesDB(); // 목록 새로고침
+      } else {
+        alert('❌ 동기화 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('동기화 오류:', error);
+      alert('❌ 동기화 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <div className="p-4 md:p-6">
       <div className="mb-6">
@@ -321,13 +345,25 @@ const HappyCallDBList: React.FC = () => {
               모든 영업 DB를 조회하고 해피콜을 입력할 수 있습니다.
             </p>
           </div>
-          <button
-            onClick={handleExcelDownload}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center space-x-2 transition"
-          >
-            <Download className="w-5 h-5" />
-            <span className="hidden sm:inline">엑셀 다운로드</span>
-          </button>
+          <div className="flex space-x-2">
+            {user?.role === 'admin' && (
+              <button
+                onClick={handleSyncCompletionStatus}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center space-x-2 transition"
+                title="해피콜 완료 상태 동기화"
+              >
+                <RefreshCw className="w-5 h-5" />
+                <span className="hidden sm:inline">완료상태 동기화</span>
+              </button>
+            )}
+            <button
+              onClick={handleExcelDownload}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center space-x-2 transition"
+            >
+              <Download className="w-5 h-5" />
+              <span className="hidden sm:inline">엑셀 다운로드</span>
+            </button>
+          </div>
         </div>
       </div>
 

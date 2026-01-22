@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Edit, Save, X, Users, Plus, FileAudio, Upload, Download, Trash2, ChevronDown, ChevronUp, Filter } from 'lucide-react';
-import { formatDateToKorean } from '../../utils/dateFormat';
+import { formatDateToKorean, toDatetimeLocalValue, toDateValue } from '../../utils/dateFormat';
 import KoreanDatePicker from '../../components/KoreanDatePicker';
 import { API_BASE_URL } from '../../lib/api';
 
@@ -805,30 +805,43 @@ const SalespersonMyData: React.FC = () => {
               </div>
 
               {/* 주요 정보 */}
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+              <div className="space-y-3 text-sm">
+                <div className="flex flex-col gap-1">
                   <span className="font-medium text-gray-700">섭외날짜:</span>
                   <span className="text-yellow-700 font-medium">{formatDateToKorean(item.proposal_date) || '-'}</span>
                 </div>
-                <div className="flex justify-between">
+                
+                <div className="flex flex-col gap-1">
                   <span className="font-medium text-gray-700">섭외자:</span>
                   <span className="text-yellow-700 font-medium">{item.proposer || '-'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">미팅희망:</span>
-                  <span className="text-yellow-700 font-medium">{formatDateTime(item.meeting_request_datetime)}</span>
+                
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-gray-700">미팅희망날짜:</span>
+                  {editingId === item.id ? (
+                    <input
+                      type="datetime-local"
+                      value={toDatetimeLocalValue(item.meeting_request_datetime)}
+                      onChange={(e) => handleChange(item.id, 'meeting_request_datetime', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                    />
+                  ) : (
+                    <span className="text-yellow-700 font-medium">{formatDateTime(item.meeting_request_datetime)}</span>
+                  )}
                 </div>
-                <div className="flex justify-between">
+                
+                <div className="flex flex-col gap-1">
                   <span className="font-medium text-gray-700">연락처:</span>
                   <span className="text-gray-900">{item.contact || '-'}</span>
                 </div>
-                <div className="flex justify-between">
+                
+                <div className="flex flex-col gap-1">
                   <span className="font-medium text-gray-700">미팅여부:</span>
                   {editingId === item.id ? (
                     <select
                       value={item.meeting_status || ''}
                       onChange={(e) => handleChange(item.id, 'meeting_status', e.target.value)}
-                      className="px-3 py-1 border rounded-lg text-sm flex-1 max-w-xs ml-2"
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
                     >
                       <option value="">선택</option>
                       <option value="미팅완료">미팅완료</option>
@@ -838,7 +851,7 @@ const SalespersonMyData: React.FC = () => {
                       <option value="미팅거절">미팅거절</option>
                     </select>
                   ) : (
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
                       item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
                       item.meeting_status === '미팅요청' ? 'bg-yellow-100 text-yellow-800' :
                       item.meeting_status === '재미팅' ? 'bg-blue-100 text-blue-800' :
@@ -850,24 +863,57 @@ const SalespersonMyData: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <div className="flex justify-between">
+                <div className="flex flex-col gap-1">
                   <span className="font-medium text-gray-700">계약완료:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    item.contract_status === 'Y' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {item.contract_status || '-'}
-                  </span>
+                  {editingId === item.id ? (
+                    <select
+                      value={item.contract_status || ''}
+                      onChange={(e) => handleChange(item.id, 'contract_status', e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    >
+                      <option value="">선택</option>
+                      <option value="Y">Y</option>
+                      <option value="N">N</option>
+                    </select>
+                  ) : (
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                      item.contract_status === 'Y' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {item.contract_status || '-'}
+                    </span>
+                  )}
                 </div>
-                {item.contract_date && (
-                  <div className="flex justify-between">
+                
+                {(editingId === item.id || item.contract_date) && (
+                  <div className="flex flex-col gap-1">
                     <span className="font-medium text-gray-700">계약날짜:</span>
-                    <span className="text-orange-700 font-medium">{formatDateToKorean(item.contract_date)}</span>
+                    {editingId === item.id ? (
+                      <input
+                        type="date"
+                        value={toDateValue(item.contract_date)}
+                        onChange={(e) => handleChange(item.id, 'contract_date', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                    ) : (
+                      <span className="text-orange-700 font-medium">{formatDateToKorean(item.contract_date)}</span>
+                    )}
                   </div>
                 )}
-                {item.actual_sales && (
-                  <div className="flex justify-between">
+                
+                {(editingId === item.id || item.actual_sales) && (
+                  <div className="flex flex-col gap-1">
                     <span className="font-medium text-gray-700">계약기장료:</span>
-                    <span className="text-blue-700 font-medium">{item.actual_sales?.toLocaleString()}원</span>
+                    {editingId === item.id ? (
+                      <input
+                        type="number"
+                        value={item.actual_sales || ''}
+                        onChange={(e) => handleChange(item.id, 'actual_sales', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
+                      />
+                    ) : (
+                      <span className="text-blue-700 font-medium">{item.actual_sales?.toLocaleString()}원</span>
+                    )}
                   </div>
                 )}
               </div>

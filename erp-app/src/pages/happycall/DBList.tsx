@@ -359,7 +359,7 @@ const HappyCallDBList: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            {user?.role === 'admin' && (
+            {isHappyCallStaff && (
               <button
                 onClick={handleSyncCompletionStatus}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center space-x-2 transition"

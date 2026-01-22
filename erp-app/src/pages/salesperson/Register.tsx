@@ -86,7 +86,10 @@ const SalespersonMyData: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'range'>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [meetingDateStart, setMeetingDateStart] = useState('');
+  const [meetingDateEnd, setMeetingDateEnd] = useState('');
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [showCompletedOnly, setShowCompletedOnly] = useState(false);
   
   const [newData, setNewData] = useState({
@@ -219,8 +222,25 @@ const SalespersonMyData: React.FC = () => {
       filtered = filtered.filter((item) => item.contract_status === 'Y');
     }
 
+    // 미팅희망날짜 필터
+    if (meetingDateStart || meetingDateEnd) {
+      filtered = filtered.filter((item) => {
+        if (!item.meeting_request_datetime) return false;
+        const meetingDate = item.meeting_request_datetime.split('T')[0]; // YYYY-MM-DD 형식으로 변환
+        
+        if (meetingDateStart && meetingDateEnd) {
+          return meetingDate >= meetingDateStart && meetingDate <= meetingDateEnd;
+        } else if (meetingDateStart) {
+          return meetingDate >= meetingDateStart;
+        } else if (meetingDateEnd) {
+          return meetingDate <= meetingDateEnd;
+        }
+        return true;
+      });
+    }
+
     setFilteredData(filtered);
-  }, [myData, searchTerm, dateFilter, startDate, endDate, showCompletedOnly]);
+  }, [myData, searchTerm, dateFilter, startDate, endDate, showCompletedOnly, meetingDateStart, meetingDateEnd]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -785,6 +805,40 @@ const SalespersonMyData: React.FC = () => {
           </label>
         </div>
 
+        {/* 미팅희망날짜 필터 */}
+        <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <label className="block text-sm font-medium text-purple-900 mb-2">
+            미팅희망날짜 필터
+          </label>
+          <div className="flex items-center space-x-2">
+            <input
+              type="date"
+              value={meetingDateStart}
+              onChange={(e) => setMeetingDateStart(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+            />
+            <span className="text-gray-500">~</span>
+            <input
+              type="date"
+              value={meetingDateEnd}
+              onChange={(e) => setMeetingDateEnd(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+            />
+            {(meetingDateStart || meetingDateEnd) && (
+              <button
+                onClick={() => {
+                  setMeetingDateStart('');
+                  setMeetingDateEnd('');
+                }}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition"
+                title="초기화"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* 필터 결과 요약 */}
         <div className="mt-4 text-sm text-gray-600">
           총 <span className="font-semibold text-blue-600">{filteredData.length}</span>개의 업체
@@ -792,6 +846,9 @@ const SalespersonMyData: React.FC = () => {
           {dateFilter === 'today' && <span className="ml-2">(오늘)</span>}
           {dateFilter === 'range' && startDate && endDate && (
             <span className="ml-2">({startDate} ~ {endDate})</span>
+          )}
+          {(meetingDateStart || meetingDateEnd) && (
+            <span className="ml-2">(미팅: {meetingDateStart || '시작'} ~ {meetingDateEnd || '끝'})</span>
           )}
           {showCompletedOnly && <span className="ml-2">(계약완료만)</span>}
         </div>
@@ -806,15 +863,36 @@ const SalespersonMyData: React.FC = () => {
             조건에 맞는 DB가 없습니다.
           </div>
         ) : (
-          filteredData.map((item) => (
+          filteredData.map((item) => {
+            const isExpanded = expandedCards.has(item.id);
+            const toggleExpand = () => {
+              const newExpanded = new Set(expandedCards);
+              if (isExpanded) {
+                newExpanded.delete(item.id);
+              } else {
+                newExpanded.add(item.id);
+              }
+              setExpandedCards(newExpanded);
+            };
+
+            return (
             <div key={item.id} className="bg-white rounded-lg shadow p-4">
               {/* 헤더 */}
-              <div className="flex justify-between items-start mb-3 pb-3 border-b">
+              <div 
+                className="flex justify-between items-start mb-3 pb-3 border-b cursor-pointer"
+                onClick={toggleExpand}
+              >
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">{item.company_name || '-'}</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center">
+                    {item.company_name || '-'}
+                    <span className="ml-2 text-sm text-gray-500">
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
+                  </h3>
                   <p className="text-sm text-gray-600">{item.representative || '-'}</p>
+                  <p className="text-sm text-gray-500 mt-1">{item.contact || '-'}</p>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                   {editingId === item.id ? (
                     <>
                       <button
@@ -857,6 +935,26 @@ const SalespersonMyData: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* 접혀있을 때 간단한 정보만 표시 */}
+              {!isExpanded && (
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="font-medium">미팅여부:</span>
+                    <span className="text-blue-600 font-medium">{item.meeting_status || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">계약완료:</span>
+                    <span className={item.contract_status === 'Y' ? 'text-green-600 font-bold' : 'text-gray-500'}>
+                      {item.contract_status === 'Y' ? '완료' : '-'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 펼쳐졌을 때 상세 정보 표시 */}
+              {isExpanded && (
+              <>
 
               {/* 주요 정보 */}
               <div className="space-y-3 text-sm">
@@ -1054,8 +1152,11 @@ const SalespersonMyData: React.FC = () => {
                   </button>
                 </div>
               </div>
+              </>
+              )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

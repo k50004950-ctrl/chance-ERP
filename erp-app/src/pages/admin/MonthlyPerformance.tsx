@@ -51,7 +51,7 @@ const MonthlyPerformance: React.FC = () => {
   // 매출거래처 목록 가져오기
   const fetchSalesClients = async () => {
     try {
-      const response = await fetch('${API_BASE_URL}/api/sales-clients');
+      const response = await fetch(`${API_BASE_URL}/api/sales-clients`);
       const result = await response.json();
       if (result.success) {
         setSalesClients(result.data);
@@ -148,6 +148,10 @@ const MonthlyPerformance: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    fetchSalesClients();
+  }, []);
+
+  useEffect(() => {
     fetchData();
     fetchCorrectionStats();
   }, [selectedYear, selectedMonth, contractFilter, clientFilter]);
@@ -211,8 +215,8 @@ const MonthlyPerformance: React.FC = () => {
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-4">
+      <div className="w-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

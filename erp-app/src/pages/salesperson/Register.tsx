@@ -818,7 +818,7 @@ const SalespersonMyData: React.FC = () => {
                   {editingId === item.id ? (
                     <>
                       <button
-                        onClick={() => handleSave(item.id)}
+                        onClick={() => handleSave(item)}
                         className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                       >
                         <Save className="w-5 h-5" />

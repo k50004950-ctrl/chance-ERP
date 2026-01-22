@@ -32,7 +32,6 @@ const Login: React.FC = () => {
           <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
             찬스컴퍼니 ERP
           </h1>
-          <p className="text-gray-500 text-sm">어드민 로그인</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -80,15 +79,6 @@ const Login: React.FC = () => {
             {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
-
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>
-            회원 사용자이신가요?{' '}
-            <a href="#" className="text-purple-600 hover:text-purple-700 font-medium">
-              사용자 로그인
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   );

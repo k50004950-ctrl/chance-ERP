@@ -835,12 +835,21 @@ const SalespersonMyData: React.FC = () => {
                       <button
                         onClick={() => handleEdit(item.id)}
                         className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        title="편집"
                       >
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
+                        onClick={() => handleShowRecordings(item.id)}
+                        className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                        title="녹취관리"
+                      >
+                        <Upload className="w-5 h-5" />
+                      </button>
+                      <button
                         onClick={() => handleOpenDetail(item)}
                         className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                        title="피드백"
                       >
                         <FileAudio className="w-5 h-5" />
                       </button>

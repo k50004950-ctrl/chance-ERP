@@ -975,6 +975,27 @@ const SalespersonMyData: React.FC = () => {
                     )}
                   </div>
                 )}
+
+                {/* 거래처 선택 */}
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-gray-700">거래처:</span>
+                  {editingId === item.id ? (
+                    <select
+                      value={item.client_name || ''}
+                      onChange={(e) => handleChange(item.id, 'client_name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">거래처 선택</option>
+                      {salesClients.map((client) => (
+                        <option key={client.id} value={client.client_name}>
+                          {client.client_name} ({client.commission_rate}%)
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-purple-700 font-medium">{item.client_name || '-'}</span>
+                  )}
+                </div>
               </div>
 
               {/* 피드백 섹션 */}

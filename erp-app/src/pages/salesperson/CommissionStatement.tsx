@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, DollarSign, Edit, Save } from 'lucide-react';
+import { FileText, Plus, DollarSign, Edit, Save, X, Edit2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateToKorean } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../lib/api';
@@ -44,6 +44,9 @@ const SalespersonCommissionStatement: React.FC = () => {
   const [showAddMisc, setShowAddMisc] = useState<boolean>(false);
   const [newMiscDescription, setNewMiscDescription] = useState<string>('');
   const [newMiscAmount, setNewMiscAmount] = useState<string>('');
+  const [editingMiscId, setEditingMiscId] = useState<number | null>(null);
+  const [editingMiscDescription, setEditingMiscDescription] = useState<string>('');
+  const [editingMiscAmount, setEditingMiscAmount] = useState<string>('');
 
   useEffect(() => {
     fetchSalespersons();
@@ -160,6 +163,55 @@ const SalespersonCommissionStatement: React.FC = () => {
     } catch (error) {
       console.error('삭제 실패:', error);
       alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleStartEditMisc = (misc: MiscCommission) => {
+    setEditingMiscId(misc.id!);
+    setEditingMiscDescription(misc.description);
+    setEditingMiscAmount(misc.amount.toLocaleString('ko-KR'));
+  };
+
+  const handleCancelEditMisc = () => {
+    setEditingMiscId(null);
+    setEditingMiscDescription('');
+    setEditingMiscAmount('');
+  };
+
+  const handleSaveMiscCommission = async () => {
+    if (!editingMiscDescription.trim()) {
+      alert('내역을 입력하세요.');
+      return;
+    }
+
+    if (!editingMiscAmount) {
+      alert('금액을 입력하세요.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/misc-commissions/${editingMiscId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: editingMiscDescription,
+          amount: parseInt(editingMiscAmount.replace(/,/g, ''))
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('수정되었습니다.');
+        setEditingMiscId(null);
+        setEditingMiscDescription('');
+        setEditingMiscAmount('');
+        fetchMiscCommissions();
+      } else {
+        alert('수정 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('수정 실패:', error);
+      alert('수정 중 오류가 발생했습니다.');
     }
   };
 
@@ -554,21 +606,76 @@ const SalespersonCommissionStatement: React.FC = () => {
             </div>
           ) : (
             miscCommissions.map((misc) => (
-              <div key={misc.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
-                <span className="text-sm text-gray-900">{misc.description}</span>
-                <div className="flex items-center space-x-4">
-                  <span className={`text-sm font-semibold ${misc.amount >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {misc.amount >= 0 ? '+' : ''}{formatCurrency(misc.amount)}
-                  </span>
-                  {user?.role === 'admin' && !isConfirmed && (
+              <div key={misc.id} className="px-6 py-4 hover:bg-gray-50">
+                {editingMiscId === misc.id ? (
+                  // 편집 모드
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="text"
+                      value={editingMiscDescription}
+                      onChange={(e) => setEditingMiscDescription(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                      placeholder="내역"
+                    />
+                    <input
+                      type="text"
+                      value={editingMiscAmount}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/,/g, '');
+                        if (value === '' || value === '-' || /^-?\d+$/.test(value)) {
+                          if (value === '' || value === '-') {
+                            setEditingMiscAmount(value);
+                          } else {
+                            setEditingMiscAmount(parseInt(value).toLocaleString('ko-KR'));
+                          }
+                        }
+                      }}
+                      className="w-40 px-3 py-2 border border-gray-300 rounded text-sm text-right"
+                      placeholder="금액"
+                    />
                     <button
-                      onClick={() => handleDeleteMiscCommission(misc.id!)}
-                      className="text-red-600 hover:text-red-900"
+                      onClick={handleSaveMiscCommission}
+                      className="p-2 text-green-600 hover:text-green-900"
+                      title="저장"
                     >
-                      <span className="text-xs">삭제</span>
+                      <Save className="w-4 h-4" />
                     </button>
-                  )}
-                </div>
+                    <button
+                      onClick={handleCancelEditMisc}
+                      className="p-2 text-gray-600 hover:text-gray-900"
+                      title="취소"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  // 보기 모드
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-900">{misc.description}</span>
+                    <div className="flex items-center space-x-4">
+                      <span className={`text-sm font-semibold ${misc.amount >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {misc.amount >= 0 ? '+' : ''}{formatCurrency(misc.amount)}
+                      </span>
+                      {user?.role === 'admin' && !isConfirmed && (
+                        <>
+                          <button
+                            onClick={() => handleStartEditMisc(misc)}
+                            className="p-1 text-blue-600 hover:text-blue-900"
+                            title="수정"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMiscCommission(misc.id!)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <span className="text-xs">삭제</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           )}

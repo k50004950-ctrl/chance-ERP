@@ -271,6 +271,51 @@ const SalespersonMyData: React.FC = () => {
     setFilteredData(filteredData.map(updateItem));
   };
 
+  // 모바일 카드 뷰 피드백 저장
+  const handleMobileFeedbackSubmit = async (dbId: number) => {
+    if (!newFeedback.trim()) {
+      alert('피드백 내용을 입력해주세요.');
+      return;
+    }
+
+    try {
+      const item = myData.find(d => d.id === dbId);
+      if (!item) return;
+
+      let feedbackArray: any[] = [];
+      try {
+        feedbackArray = item.feedback ? JSON.parse(item.feedback) : [];
+      } catch {
+        feedbackArray = item.feedback ? [{ content: item.feedback, writer_name: '이전 기록', created_at: new Date().toISOString() }] : [];
+      }
+
+      const newFeedbackObj = {
+        content: newFeedback,
+        writer_name: currentUser?.name || '영업자',
+        created_at: new Date().toISOString()
+      };
+      feedbackArray.push(newFeedbackObj);
+
+      const response = await fetch(`${API_BASE_URL}/api/sales-db/${dbId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback: JSON.stringify(feedbackArray) }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('피드백이 저장되었습니다.');
+        setNewFeedback('');
+        fetchMyData();
+      } else {
+        alert('저장 실패: ' + result.message);
+      }
+    } catch (error) {
+      console.error('피드백 저장 실패:', error);
+      alert('피드백 저장 중 오류가 발생했습니다.');
+    }
+  };
+
   // 녹취 파일 관리 함수들
   const handleShowRecordings = async (dbId: number) => {
     setSelectedRecordingDbId(dbId);
@@ -960,20 +1005,14 @@ const SalespersonMyData: React.FC = () => {
                 {/* 새 피드백 입력 */}
                 <div className="space-y-2">
                   <textarea
-                    value={feedbackInput}
-                    onChange={(e) => setFeedbackInput(e.target.value)}
+                    value={newFeedback}
+                    onChange={(e) => setNewFeedback(e.target.value)}
                     placeholder="새 피드백을 입력하세요..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                     rows={3}
                   />
                   <button
-                    onClick={() => {
-                      if (!feedbackInput.trim()) {
-                        alert('피드백 내용을 입력해주세요.');
-                        return;
-                      }
-                      handleFeedbackSubmit(item.id);
-                    }}
+                    onClick={() => handleMobileFeedbackSubmit(item.id)}
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
                   >
                     피드백 저장

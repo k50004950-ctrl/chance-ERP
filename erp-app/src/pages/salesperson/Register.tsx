@@ -890,6 +890,11 @@ const SalespersonMyData: React.FC = () => {
                 </div>
                 
                 <div className="flex flex-col gap-1">
+                  <span className="font-medium text-gray-700">주소:</span>
+                  <span className="text-gray-900">{item.address || '-'}</span>
+                </div>
+                
+                <div className="flex flex-col gap-1">
                   <span className="font-medium text-gray-700">미팅여부:</span>
                   {editingId === item.id ? (
                     <select

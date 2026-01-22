@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Search, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, FileText, Search, CheckCircle, XCircle, Clock, AlertTriangle, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../lib/api';
 import { formatDateToKorean } from '../../utils/dateFormat';
+import * as XLSX from 'xlsx';
 
 interface CorrectionRequest {
   id: number;
@@ -27,6 +28,9 @@ const CorrectionList: React.FC = () => {
   const [requests, setRequests] = useState<CorrectionRequest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('전체');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
 
   useEffect(() => {
     fetchRequests();
@@ -38,6 +42,16 @@ const CorrectionList: React.FC = () => {
       const result = await response.json();
       if (result.success) {
         setRequests(result.data);
+        
+        // Extract unique years
+        const years = Array.from(
+          new Set(
+            result.data
+              .map((item: CorrectionRequest) => item.created_at ? item.created_at.split('-')[0] : '')
+              .filter(Boolean)
+          )
+        ).sort((a, b) => b.localeCompare(a));
+        setAvailableYears(years as string[]);
       }
     } catch (error) {
       console.error('경정청구 목록 조회 실패:', error);
@@ -72,8 +86,47 @@ const CorrectionList: React.FC = () => {
                          req.representative.includes(searchTerm) ||
                          req.writer_name.includes(searchTerm);
     const matchesFilter = filterStatus === '전체' || req.review_status === filterStatus;
-    return matchesSearch && matchesFilter;
+    
+    // 년도 필터
+    let matchesYear = true;
+    if (selectedYear) {
+      matchesYear = req.created_at && req.created_at.startsWith(selectedYear);
+    }
+    
+    // 월 필터
+    let matchesMonth = true;
+    if (selectedMonth) {
+      const month = req.created_at ? req.created_at.split('-')[1] : '';
+      matchesMonth = month === selectedMonth;
+    }
+    
+    return matchesSearch && matchesFilter && matchesYear && matchesMonth;
   });
+
+  const handleExcelDownload = () => {
+    const excelData = filteredRequests.map(req => ({
+      '상태': req.review_status,
+      '업체명': req.company_name,
+      '대표자': req.representative,
+      '담당자': req.writer_name,
+      '특수관계': req.special_relation,
+      '첫창업': req.first_startup,
+      '경정진행중': req.correction_in_progress,
+      '추가사업장': req.additional_workplace,
+      '환급금액': req.refund_amount || 0,
+      '서류전달': req.document_delivered,
+      '피드백': req.feedback_count || 0,
+      '등록일': formatDateToKorean(req.created_at)
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '경정청구');
+    
+    const date = new Date();
+    const filename = `경정청구_검토_${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  };
 
   const handleRowClick = (id: number) => {
     window.location.href = `/correction/detail/${id}`;
@@ -132,6 +185,67 @@ const CorrectionList: React.FC = () => {
               className="flex-1 bg-transparent outline-none"
             />
           </div>
+        </div>
+
+        {/* 월별 필터 및 엑셀 다운로드 */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-4 pt-4 border-t space-y-3 md:space-y-0">
+          <div className="flex items-center space-x-3">
+            {/* 년도 필터 */}
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+                setSelectedMonth('');
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="">전체 년도</option>
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}년
+                </option>
+              ))}
+            </select>
+
+            {/* 월 필터 */}
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              disabled={!selectedYear}
+            >
+              <option value="">전체 월</option>
+              {Array.from({ length: 12 }, (_, i) => {
+                const month = (i + 1).toString().padStart(2, '0');
+                return (
+                  <option key={month} value={month}>
+                    {i + 1}월
+                  </option>
+                );
+              })}
+            </select>
+
+            {(selectedYear || selectedMonth) && (
+              <button
+                onClick={() => {
+                  setSelectedYear('');
+                  setSelectedMonth('');
+                }}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+              >
+                필터 초기화
+              </button>
+            )}
+          </div>
+
+          {/* 엑셀 다운로드 */}
+          <button
+            onClick={handleExcelDownload}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center space-x-2 transition"
+          >
+            <Download className="w-4 h-4" />
+            <span className="text-sm font-medium">엑셀 다운로드 ({filteredRequests.length}건)</span>
+          </button>
         </div>
       </div>
 

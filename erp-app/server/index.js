@@ -5067,8 +5067,9 @@ app.post('/api/contract-cancellations', (req, res) => {
       return res.json({ success: false, message: 'DB를 찾을 수 없습니다.' });
     }
     
-    if (salesDb.contract_status !== '계약완료') {
-      return res.json({ success: false, message: '계약완료 상태가 아닙니다.' });
+    // 'Y' 또는 '계약완료' 상태 모두 허용
+    if (salesDb.contract_status !== '계약완료' && salesDb.contract_status !== 'Y') {
+      return res.json({ success: false, message: '계약완료 상태가 아닙니다. (현재 상태: ' + (salesDb.contract_status || '없음') + ')' });
     }
     
     // 영업자 정보 조회

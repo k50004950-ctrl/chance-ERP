@@ -240,6 +240,10 @@ const SalespersonMyData: React.FC = () => {
     }
 
     setFilteredData(filtered);
+    
+    // 기본적으로 모든 카드를 펼친 상태로 설정
+    const allIds = new Set(filtered.map(item => item.id));
+    setExpandedCards(allIds);
   }, [myData, searchTerm, dateFilter, startDate, endDate, showCompletedOnly, meetingDateStart, meetingDateEnd]);
 
   const handleEdit = (id: number) => {

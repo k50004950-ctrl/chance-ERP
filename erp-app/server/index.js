@@ -2807,24 +2807,17 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
       console.log(`계약완료 'Y' 설정 - 자동으로 오늘 날짜를 계약날짜로 설정: ${contract_date}, DB ID: ${id}`);
     }
     
-    // 일정재섭외 또는 일정재확인요청으로 변경 시 영업자를 초기화 (null로 설정)
-    let finalSalespersonId = salesperson_id;
-    if (meeting_status === '일정재섭외' || meeting_status === '일정재확인요청') {
-      finalSalespersonId = null;
-      console.log(`${meeting_status}로 변경됨 - 영업자 초기화: DB ID ${id}`);
-    }
-    
     const stmt = db.prepare(`
       UPDATE sales_db 
       SET contract_date = ?, meeting_status = ?, meeting_request_datetime = ?, contract_client = ?, client_name = ?, contract_status = ?, feedback = ?, actual_sales = ?, salesperson_id = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    stmt.run(contract_date, meeting_status, meeting_request_datetime, contract_client, client_name, contract_status, feedback, actual_sales, finalSalespersonId, id);
+    stmt.run(contract_date, meeting_status, meeting_request_datetime, contract_client, client_name, contract_status, feedback, actual_sales, salesperson_id, id);
     
     // 미팅희망날짜시간이 변경되고 영업자가 배정되어 있으면 일정 업데이트 또는 생성
-    if (meeting_request_datetime && finalSalespersonId) {
+    if (meeting_request_datetime && salesperson_id) {
       try {
-        console.log('일정 자동 업데이트/생성 시작:', meeting_request_datetime, finalSalespersonId, record.company_name);
+        console.log('일정 자동 업데이트/생성 시작:', meeting_request_datetime, salesperson_id, record.company_name);
         
         // datetime-local 형식을 파싱
         let scheduleDate, scheduleTime;
@@ -2881,7 +2874,7 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
           SELECT id FROM schedules 
           WHERE user_id = ? AND client_name = ? AND status = 'scheduled'
           ORDER BY created_at DESC LIMIT 1
-        `).get(finalSalespersonId, record.company_name);
+        `).get(salesperson_id, record.company_name);
         
         if (existingSchedule) {
           // 기존 일정 업데이트
@@ -2906,7 +2899,7 @@ app.put('/api/sales-db/:id/salesperson-update', (req, res) => {
               user_id, title, schedule_date, schedule_time, client_name, location, notes, status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `).run(
-            finalSalespersonId,
+            salesperson_id,
             `고객 미팅: ${record.company_name}`,
             scheduleDate,
             scheduleTime,

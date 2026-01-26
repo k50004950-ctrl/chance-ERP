@@ -244,6 +244,8 @@ const RecruiterMyData: React.FC = () => {
       filtered = filtered.filter(item => item.meeting_status === '미팅거절');
     } else if (status === 'completed') {
       filtered = filtered.filter(item => item.meeting_status === '미팅완료');
+    } else if (status === 'contracted') {
+      filtered = filtered.filter(item => item.contract_status === 'Y');
     }
     
     setFilteredData(filtered);
@@ -282,7 +284,8 @@ const RecruiterMyData: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/api/sales-db/${id}/feedback-history`);
       const result = await response.json();
       if (result.success) {
-        setFeedbackHistory(result.data || []);
+        const history = Array.isArray(result.data) ? result.data : [];
+        setFeedbackHistory(history);
         setShowFeedbackModal(true);
       } else {
         alert('피드백 조회 실패: ' + result.message);
@@ -314,7 +317,8 @@ const RecruiterMyData: React.FC = () => {
       });
       const result = await response.json();
       if (result.success) {
-        setFeedbackHistory(result.data);
+        const history = Array.isArray(result.data) ? result.data : [];
+        setFeedbackHistory(history);
         setNewFeedback('');
         alert('피드백이 추가되었습니다.');
       } else {
@@ -600,7 +604,7 @@ const RecruiterMyData: React.FC = () => {
       )}
 
       {/* 실적 통계 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div 
           onClick={() => setStatusFilter('all')}
           className={`bg-white rounded-lg shadow p-4 border-l-4 border-blue-500 cursor-pointer transition-all hover:shadow-lg ${
@@ -647,6 +651,30 @@ const RecruiterMyData: React.FC = () => {
               </p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+        
+        <div 
+          onClick={() => setStatusFilter('contracted')}
+          className={`bg-white rounded-lg shadow p-4 border-l-4 border-purple-500 cursor-pointer transition-all hover:shadow-lg ${
+            statusFilter === 'contracted' ? 'ring-2 ring-purple-500' : ''
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">계약완료</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {myData.filter(item => {
+                  if (!selectedYear) return item.contract_status === 'Y';
+                  if (!item.proposal_date) return false;
+                  const itemYear = item.proposal_date.substring(0, 4);
+                  const yearMatch = itemYear === selectedYear;
+                  const monthMatch = !selectedMonth || item.proposal_date.substring(5, 7) === selectedMonth;
+                  return yearMatch && monthMatch && item.contract_status === 'Y';
+                }).length}
+              </p>
+            </div>
+            <CheckCircle className="w-8 h-8 text-purple-500" />
           </div>
         </div>
         
@@ -798,11 +826,13 @@ const RecruiterMyData: React.FC = () => {
               <span className="text-sm font-semibold text-gray-700">필터:</span>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                 statusFilter === 'completed' ? 'bg-green-100 text-green-800' :
+                statusFilter === 'contracted' ? 'bg-purple-100 text-purple-800' :
                 statusFilter === 'action_needed' ? 'bg-yellow-100 text-yellow-800' :
                 statusFilter === 'rejected' ? 'bg-red-100 text-red-800' :
                 'bg-gray-100 text-gray-800'
               }`}>
                 {statusFilter === 'completed' ? '미팅완료' :
+                 statusFilter === 'contracted' ? '계약완료' :
                  statusFilter === 'action_needed' ? '조치 필요' :
                  statusFilter === 'rejected' ? '미팅거절' : '전체'}
               </span>
@@ -1063,11 +1093,13 @@ const RecruiterMyData: React.FC = () => {
                       <span className="text-sm font-medium">피드백 보기</span>
                       <span className="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded-full">
                         {(() => {
+                          if (!item.feedback) return 0;
                           try {
-                            const history = item.feedback ? JSON.parse(item.feedback) : [];
+                            const history = JSON.parse(item.feedback);
                             return Array.isArray(history) ? history.length : 0;
-                          } catch {
-                            return item.feedback ? 1 : 0;
+                          } catch (e) {
+                            console.error('피드백 파싱 오류:', e);
+                            return 0;
                           }
                         })()}
                       </span>
@@ -1128,7 +1160,7 @@ const RecruiterMyData: React.FC = () => {
 
             {/* 피드백 이력 목록 */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {feedbackHistory.length === 0 ? (
+              {!feedbackHistory || feedbackHistory.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <p>아직 작성된 피드백이 없습니다.</p>
                   <p className="text-sm mt-2">첫 번째 피드백을 작성해보세요!</p>
@@ -1142,16 +1174,16 @@ const RecruiterMyData: React.FC = () => {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
-                          {feedback.author}
+                          {feedback?.author || '알 수 없음'}
                         </span>
                         <span className="text-xs text-gray-500">
-                          {formatDateTime(feedback.timestamp)}
+                          {formatDateTime(feedback?.timestamp || '')}
                         </span>
                       </div>
                       <span className="text-xs text-gray-400">#{index + 1}</span>
                     </div>
                     <div className="bg-white rounded p-3 mt-2 border border-gray-100">
-                      <p className="text-gray-800 whitespace-pre-wrap">{feedback.content}</p>
+                      <p className="text-gray-800 whitespace-pre-wrap">{feedback?.content || ''}</p>
                     </div>
                   </div>
                 ))

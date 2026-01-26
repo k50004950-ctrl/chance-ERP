@@ -520,7 +520,12 @@ const SalesDBSearch: React.FC = () => {
                       >
                         <option value="">선택</option>
                         <option value="미팅완료">미팅완료</option>
+                        <option value="미팅요청">미팅요청</option>
+                        <option value="재미팅">재미팅</option>
                         <option value="일정재확인요청">일정재확인요청</option>
+                        <option value="일정재섭외">일정재섭외</option>
+                        <option value="AS">AS</option>
+                        <option value="영업자관리">영업자관리</option>
                         <option value="미팅거절">미팅거절</option>
                       </select>
                     ) : (

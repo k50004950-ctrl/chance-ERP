@@ -1008,6 +1008,9 @@ const SalespersonMyData: React.FC = () => {
                       <option value="미팅완료">미팅완료</option>
                       <option value="미팅요청">미팅요청</option>
                       <option value="재미팅">재미팅</option>
+                      <option value="일정재확인요청">일정재확인요청</option>
+                      <option value="일정재섭외">일정재섭외</option>
+                      <option value="AS">AS</option>
                       <option value="영업자관리">영업자관리</option>
                       <option value="미팅거절">미팅거절</option>
                     </select>
@@ -1016,7 +1019,10 @@ const SalespersonMyData: React.FC = () => {
                       item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
                       item.meeting_status === '미팅요청' ? 'bg-yellow-100 text-yellow-800' :
                       item.meeting_status === '재미팅' ? 'bg-blue-100 text-blue-800' :
-                      item.meeting_status === '영업자관리' ? 'bg-purple-100 text-purple-800' :
+                      item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                      item.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800' :
+                      item.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800' :
+                      item.meeting_status === '영업자관리' ? 'bg-blue-100 text-blue-800' :
                       item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
@@ -1119,7 +1125,7 @@ const SalespersonMyData: React.FC = () => {
                           <div key={idx} className="bg-blue-50 p-3 rounded-lg text-sm">
                             <div className="flex justify-between items-start mb-1">
                               <span className="font-medium text-blue-900">{fb.writer_name}</span>
-                              <span className="text-xs text-gray-500">{new Date(fb.created_at).toLocaleString('ko-KR')}</span>
+                              <span className="text-xs text-gray-500">{formatDateTime(fb.created_at)}</span>
                             </div>
                             <p className="text-gray-700 whitespace-pre-wrap">{fb.content}</p>
                           </div>
@@ -1254,14 +1260,22 @@ const SalespersonMyData: React.FC = () => {
                       >
                         <option value="">선택</option>
                         <option value="미팅완료">미팅완료</option>
+                        <option value="미팅요청">미팅요청</option>
+                        <option value="재미팅">재미팅</option>
                         <option value="일정재확인요청">일정재확인요청</option>
+                        <option value="일정재섭외">일정재섭외</option>
+                        <option value="AS">AS</option>
                         <option value="영업자관리">영업자관리</option>
                         <option value="미팅거절">미팅거절</option>
                       </select>
                     ) : (
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                        item.meeting_status === '미팅요청' ? 'bg-yellow-100 text-yellow-800' :
+                        item.meeting_status === '재미팅' ? 'bg-blue-100 text-blue-800' :
                         item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                        item.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800' :
+                        item.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800' :
                         item.meeting_status === '영업자관리' ? 'bg-blue-100 text-blue-800' :
                         item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
@@ -1914,14 +1928,7 @@ const SalespersonMyData: React.FC = () => {
                         />
                       ) : (
                         <p className="text-lg font-semibold text-gray-900">
-                          {selectedItem.meeting_request_datetime ? 
-                            new Date(selectedItem.meeting_request_datetime).toLocaleString('ko-KR', { 
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric', 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            }) : '-'}
+                          {formatDateTime(selectedItem.meeting_request_datetime)}
                         </p>
                       )}
                     </div>
@@ -1936,14 +1943,22 @@ const SalespersonMyData: React.FC = () => {
                           <option value="">선택하세요</option>
                           <option value="미정">미정</option>
                           <option value="미팅완료">미팅완료</option>
+                          <option value="미팅요청">미팅요청</option>
+                          <option value="재미팅">재미팅</option>
                           <option value="일정재확인요청">일정재확인요청</option>
+                          <option value="일정재섭외">일정재섭외</option>
+                          <option value="AS">AS</option>
                           <option value="영업자관리">영업자관리</option>
                           <option value="미팅거절">미팅거절</option>
                         </select>
                       ) : (
                         <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
                           selectedItem.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
+                          selectedItem.meeting_status === '미팅요청' ? 'bg-yellow-100 text-yellow-800' :
+                          selectedItem.meeting_status === '재미팅' ? 'bg-blue-100 text-blue-800' :
                           selectedItem.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                          selectedItem.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800' :
+                          selectedItem.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800' :
                           selectedItem.meeting_status === '영업자관리' ? 'bg-blue-100 text-blue-800' :
                           selectedItem.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'
@@ -2170,7 +2185,7 @@ const SalespersonMyData: React.FC = () => {
                             <p className="text-xs text-gray-600 ml-6">비고: {recording.notes}</p>
                           )}
                           <p className="text-xs text-gray-500 ml-6">
-                            업로드: {recording.uploader_name} | {new Date(recording.created_at).toLocaleString('ko-KR')}
+                            업로드: {recording.uploader_name} | {formatDateTime(recording.created_at)}
                           </p>
                         </div>
                         <button

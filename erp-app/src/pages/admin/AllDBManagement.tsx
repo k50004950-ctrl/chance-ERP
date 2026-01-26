@@ -933,6 +933,9 @@ const AllDBManagement: React.FC = () => {
                       <option value="미팅완료">미팅완료</option>
                       <option value="미팅요청">미팅요청</option>
                       <option value="재미팅">재미팅</option>
+                      <option value="일정재확인요청">일정재확인요청</option>
+                      <option value="일정재섭외">일정재섭외</option>
+                      <option value="AS">AS</option>
                       <option value="영업자관리">영업자관리</option>
                       <option value="미팅거절">미팅거절</option>
                     </select>
@@ -941,7 +944,10 @@ const AllDBManagement: React.FC = () => {
                       item.meeting_status === '미팅완료' ? 'bg-green-100 text-green-800' :
                       item.meeting_status === '미팅요청' ? 'bg-yellow-100 text-yellow-800' :
                       item.meeting_status === '재미팅' ? 'bg-blue-100 text-blue-800' :
-                      item.meeting_status === '영업자관리' ? 'bg-purple-100 text-purple-800' :
+                      item.meeting_status === '일정재확인요청' ? 'bg-yellow-100 text-yellow-800' :
+                      item.meeting_status === '일정재섭외' ? 'bg-orange-100 text-orange-800' :
+                      item.meeting_status === 'AS' ? 'bg-purple-100 text-purple-800' :
+                      item.meeting_status === '영업자관리' ? 'bg-blue-100 text-blue-800' :
                       item.meeting_status === '미팅거절' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>

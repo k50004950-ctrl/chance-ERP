@@ -199,7 +199,6 @@ const MonthlyPerformance: React.FC = () => {
       '미팅 상태',
       '계약 상태',
       '매출거래처',
-      '기장료',
       '계약월',
       '실제 매출',
       '수수료율(%)'
@@ -218,7 +217,6 @@ const MonthlyPerformance: React.FC = () => {
         escapeCsvField(row.meeting_status || ''),
         escapeCsvField(row.contract_status || ''),
         escapeCsvField(row.client_name || ''),
-        escapeCsvField(row.contract_client || ''),
         escapeCsvField(row.contract_month || ''),
         escapeCsvField(row.actual_sales || ''),
         escapeCsvField(row.commission_rate || '')

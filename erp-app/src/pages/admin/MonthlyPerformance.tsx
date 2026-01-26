@@ -156,6 +156,18 @@ const MonthlyPerformance: React.FC = () => {
     fetchCorrectionStats();
   }, [selectedYear, selectedMonth, contractFilter, clientFilter]);
 
+  // CSV 필드를 큰따옴표로 감싸는 함수 (쉼표, 따옴표, 개행 문자 처리)
+  const escapeCsvField = (field: any): string => {
+    if (field === null || field === undefined) return '""';
+    const str = String(field);
+    // 쉼표, 따옴표, 개행 문자가 포함되어 있으면 큰따옴표로 감싸기
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+      // 큰따옴표는 두 개로 escape
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return `"${str}"`;
+  };
+
   // 엑셀 다운로드 함수
   const downloadExcel = () => {
     // CSV 형식으로 데이터 변환
@@ -177,22 +189,22 @@ const MonthlyPerformance: React.FC = () => {
     ];
     
     const csvContent = [
-      headers.join(','),
+      headers.map(h => escapeCsvField(h)).join(','),
       ...data.map(row => [
-        formatDateToKorean(row.effective_date),
-        row.proposer || '',
-        row.salesperson_name || '',
-        row.company_name,
-        row.representative || '',
-        row.contact || '',
-        row.industry || '',
-        row.meeting_status || '',
-        row.contract_status || '',
-        row.client_name || '',
-        row.contract_client || 0,
-        row.contract_month || '',
-        row.actual_sales || 0,
-        row.commission_rate || 0
+        escapeCsvField(formatDateToKorean(row.effective_date)),
+        escapeCsvField(row.proposer || ''),
+        escapeCsvField(row.salesperson_name || ''),
+        escapeCsvField(row.company_name),
+        escapeCsvField(row.representative || ''),
+        escapeCsvField(row.contact || ''),
+        escapeCsvField(row.industry || ''),
+        escapeCsvField(row.meeting_status || ''),
+        escapeCsvField(row.contract_status || ''),
+        escapeCsvField(row.client_name || ''),
+        escapeCsvField(row.contract_client || ''),
+        escapeCsvField(row.contract_month || ''),
+        escapeCsvField(row.actual_sales || ''),
+        escapeCsvField(row.commission_rate || '')
       ].join(','))
     ].join('\n');
     

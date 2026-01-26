@@ -158,14 +158,23 @@ const MonthlyPerformance: React.FC = () => {
 
   // CSV 필드를 큰따옴표로 감싸는 함수 (쉼표, 따옴표, 개행 문자 처리)
   const escapeCsvField = (field: any): string => {
-    if (field === null || field === undefined) return '""';
-    const str = String(field);
-    // 쉼표, 따옴표, 개행 문자가 포함되어 있으면 큰따옴표로 감싸기
-    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-      // 큰따옴표는 두 개로 escape
-      return `"${str.replace(/"/g, '""')}"`;
+    if (field === null || field === undefined) return '';
+    let str = String(field).trim();
+    
+    // 데이터에 이미 큰따옴표가 있다면 제거 (DB에 잘못 저장된 경우)
+    if (str.startsWith('"') && str.endsWith('"')) {
+      str = str.slice(1, -1);
     }
-    return `"${str}"`;
+    
+    // CSV 규칙에 따라 큰따옴표는 두 개로 escape
+    str = str.replace(/"/g, '""');
+    
+    // 쉼표, 따옴표, 개행, 탭 문자가 포함되어 있으면 큰따옴표로 감싸기
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r') || str.includes('\t')) {
+      return `"${str}"`;
+    }
+    
+    return str;
   };
 
   // 엑셀 다운로드 함수

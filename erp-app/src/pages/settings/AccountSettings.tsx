@@ -80,8 +80,8 @@ const AccountSettings: React.FC = () => {
           username: user.username,
           name: user.name,
           employeeCode: user.employee_code || (user.username === 'admin' ? 'ADMIN001' : `EMP${String(user.id).padStart(3, '0')}`),
-          employmentStatus: '재직' as const,
-          accountStatus: '활성' as const,
+          employmentStatus: (user.employment_status || '재직') as '재직' | '탈퇴',
+          accountStatus: (user.account_status || '활성') as '활성' | '탈퇴',
           department: user.department || (user.username === 'admin' ? '관리부서' : user.role === 'salesperson' ? '영업팀' : '개발팀'),
           position: user.position || (user.username === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업사원' : '사원'),
           role: user.role === 'admin' ? '관리자' : user.role === 'salesperson' ? '영업자' : user.role === 'recruiter' ? '섭외자' : user.role === 'happycall' ? '해피콜직원' : user.role === 'reviewer' ? '검토담당자' : '일반사용자',
@@ -199,6 +199,8 @@ const AccountSettings: React.FC = () => {
           hire_date: accountToUpdate.hire_date,
           address: accountToUpdate.address,
           emergency_contact: accountToUpdate.emergency_contact,
+          employment_status: accountToUpdate.employmentStatus,
+          account_status: accountToUpdate.accountStatus,
         }),
       });
       
@@ -286,6 +288,8 @@ const AccountSettings: React.FC = () => {
             address: formData.address,
             emergency_contact: formData.emergency_contact,
             notification_enabled: formData.notification_enabled,
+            employment_status: formData.employmentStatus,
+            account_status: formData.accountStatus,
           }),
         });
         
@@ -322,6 +326,8 @@ const AccountSettings: React.FC = () => {
             address: formData.address,
             emergency_contact: formData.emergency_contact,
             notification_enabled: formData.notification_enabled,
+            employment_status: formData.employmentStatus,
+            account_status: formData.accountStatus,
           }),
         });
         

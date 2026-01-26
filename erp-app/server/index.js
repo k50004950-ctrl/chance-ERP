@@ -78,7 +78,9 @@ function initDatabase() {
       hire_date DATE,
       address TEXT,
       emergency_contact TEXT,
-      notification_enabled INTEGER DEFAULT 1
+      notification_enabled INTEGER DEFAULT 1,
+      employment_status TEXT DEFAULT '재직',
+      account_status TEXT DEFAULT '활성'
     );
 
     -- Products table (제품)
@@ -601,6 +603,22 @@ function initDatabase() {
   // Use POST /api/create-test-accounts endpoint to manually create test accounts if needed
   console.log('Database initialized. Use /api/create-test-accounts to create test accounts if needed.');
 
+  // 기존 users 테이블에 employment_status 필드 추가 (없으면)
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN employment_status TEXT DEFAULT '재직'");
+    console.log('employment_status 필드가 users 테이블에 추가되었습니다.');
+  } catch (e) {
+    // 이미 컬럼이 존재하면 에러 발생, 무시
+  }
+
+  // 기존 users 테이블에 account_status 필드 추가 (없으면)
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN account_status TEXT DEFAULT '활성'");
+    console.log('account_status 필드가 users 테이블에 추가되었습니다.');
+  } catch (e) {
+    // 이미 컬럼이 존재하면 에러 발생, 무시
+  }
+
   // 기존 sales_db 테이블에 commission_rate 필드 추가 (없으면)
   try {
     db.exec('ALTER TABLE sales_db ADD COLUMN commission_rate REAL DEFAULT 30');
@@ -896,7 +914,8 @@ app.get('/api/users', (req, res) => {
       SELECT id, username, name, role, created_at,
              employee_code, department, position, commission_rate,
              bank_name, account_number, social_security_number,
-             hire_date, address, emergency_contact, notification_enabled
+             hire_date, address, emergency_contact, notification_enabled,
+             employment_status, account_status
       FROM users 
       ORDER BY created_at DESC
     `).all();
@@ -1127,7 +1146,8 @@ app.post('/api/users', (req, res) => {
       username, password, name, role, 
       department, position, commission_rate,
       bank_name, account_number, social_security_number,
-      hire_date, address, emergency_contact, notification_enabled
+      hire_date, address, emergency_contact, notification_enabled,
+      employment_status, account_status
     } = req.body;
     
     // 사원번호 자동 생성 (최대 ID + 1로 생성)
@@ -1141,16 +1161,18 @@ app.post('/api/users', (req, res) => {
         username, password, name, role, employee_code,
         department, position, commission_rate,
         bank_name, account_number, social_security_number,
-        hire_date, address, emergency_contact, notification_enabled
+        hire_date, address, emergency_contact, notification_enabled,
+        employment_status, account_status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const userInfo = userStmt.run(
       username, password, name, role, auto_employee_code,
       department || '', position || '', commission_rate || 0,
       bank_name || '', account_number || '', social_security_number || '',
       hire_date || null, address || '', emergency_contact || '',
-      notification_enabled !== undefined ? (notification_enabled ? 1 : 0) : 1
+      notification_enabled !== undefined ? (notification_enabled ? 1 : 0) : 1,
+      employment_status || '재직', account_status || '활성'
     );
     
     // 직원 정보도 함께 생성 (employees 테이블과의 호환성 유지)
@@ -1242,6 +1264,14 @@ app.put('/api/users/:id', (req, res) => {
     if (updateData.notification_enabled !== undefined) {
       updateFields.push('notification_enabled = ?');
       updateValues.push(updateData.notification_enabled ? 1 : 0);
+    }
+    if (updateData.employment_status !== undefined) {
+      updateFields.push('employment_status = ?');
+      updateValues.push(updateData.employment_status);
+    }
+    if (updateData.account_status !== undefined) {
+      updateFields.push('account_status = ?');
+      updateValues.push(updateData.account_status);
     }
     
     if (updateFields.length === 0) {

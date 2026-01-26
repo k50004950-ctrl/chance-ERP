@@ -161,20 +161,28 @@ const MonthlyPerformance: React.FC = () => {
     if (field === null || field === undefined) return '';
     let str = String(field).trim();
     
-    // 데이터에 이미 큰따옴표가 있다면 제거 (DB에 잘못 저장된 경우)
-    if (str.startsWith('"') && str.endsWith('"')) {
-      str = str.slice(1, -1);
+    // 1. 탭 문자를 공백으로 변환
+    str = str.replace(/\t/g, ' ');
+    
+    // 2. 줄바꿈 문자를 공백으로 변환
+    str = str.replace(/[\r\n]+/g, ' ');
+    
+    // 3. 여러 개의 연속된 큰따옴표를 하나로 정리
+    str = str.replace(/"{2,}/g, '"');
+    
+    // 4. 데이터 앞뒤의 큰따옴표 제거 (DB에 잘못 저장된 경우)
+    while (str.startsWith('"') && str.endsWith('"') && str.length > 1) {
+      str = str.slice(1, -1).trim();
     }
     
-    // CSV 규칙에 따라 큰따옴표는 두 개로 escape
+    // 5. CSV 규칙: 큰따옴표는 두 개로 escape
     str = str.replace(/"/g, '""');
     
-    // 쉼표, 따옴표, 개행, 탭 문자가 포함되어 있으면 큰따옴표로 감싸기
-    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r') || str.includes('\t')) {
-      return `"${str}"`;
-    }
+    // 6. 연속된 공백을 하나로 정리
+    str = str.replace(/\s+/g, ' ').trim();
     
-    return str;
+    // 7. 모든 필드를 큰따옴표로 감싸기 (안전성 최우선)
+    return `"${str}"`;
   };
 
   // 엑셀 다운로드 함수

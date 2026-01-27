@@ -915,7 +915,15 @@ const RecruiterMyData: React.FC = () => {
                     {editingId === item.id ? (
                       <div className="flex flex-col space-y-1">
                         <KoreanDatePicker
-                          selected={item.meeting_request_datetime ? new Date(item.meeting_request_datetime) : null}
+                          selected={(() => {
+                            if (!item.meeting_request_datetime) return null;
+                            try {
+                              const date = new Date(item.meeting_request_datetime);
+                              return isNaN(date.getTime()) ? null : date;
+                            } catch (e) {
+                              return null;
+                            }
+                          })()}
                           onChange={(date) => {
                             if (date) {
                               const year = date.getFullYear();

@@ -1039,14 +1039,22 @@ const SalespersonMyData: React.FC = () => {
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     >
                       <option value="">선택</option>
-                      <option value="Y">Y</option>
-                      <option value="N">N</option>
+                      <option value="Y">계약완료</option>
+                      <option value="N">미계약</option>
+                      <option value="계약예정">계약예정</option>
+                      <option value="계약불가">계약불가</option>
                     </select>
                   ) : (
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                      item.contract_status === 'Y' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      item.contract_status === 'Y' ? 'bg-green-100 text-green-800' : 
+                      item.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                      item.contract_status === '계약예정' ? 'bg-blue-100 text-blue-800' :
+                      item.contract_status === '계약불가' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
                     }`}>
-                      {item.contract_status || '-'}
+                      {item.contract_status === 'Y' ? '계약완료' :
+                       item.contract_status === 'N' ? '미계약' :
+                       item.contract_status || '-'}
                     </span>
                   )}
                 </div>
@@ -1342,16 +1350,22 @@ const SalespersonMyData: React.FC = () => {
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500"
                       >
                         <option value="">선택</option>
-                        <option value="Y">Y</option>
-                        <option value="N">N</option>
+                        <option value="Y">계약완료</option>
+                        <option value="N">미계약</option>
+                        <option value="계약예정">계약예정</option>
+                        <option value="계약불가">계약불가</option>
                       </select>
                     ) : (
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         item.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
                         item.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                        item.contract_status === '계약예정' ? 'bg-blue-100 text-blue-800' :
+                        item.contract_status === '계약불가' ? 'bg-red-100 text-red-800' :
                         'bg-gray-50 text-gray-500'
                       }`}>
-                        {item.contract_status || '-'}
+                        {item.contract_status === 'Y' ? '계약완료' :
+                         item.contract_status === 'N' ? '미계약' :
+                         item.contract_status || '-'}
                       </span>
                     )}
                   </td>
@@ -2033,16 +2047,22 @@ const SalespersonMyData: React.FC = () => {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                         >
                           <option value="">선택</option>
-                          <option value="Y">Y</option>
-                          <option value="N">N</option>
+                          <option value="Y">계약완료</option>
+                          <option value="N">미계약</option>
+                          <option value="계약예정">계약예정</option>
+                          <option value="계약불가">계약불가</option>
                         </select>
                       ) : (
                         <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
                           selectedItem.contract_status === 'Y' ? 'bg-green-100 text-green-800' :
                           selectedItem.contract_status === 'N' ? 'bg-gray-100 text-gray-800' :
+                          selectedItem.contract_status === '계약예정' ? 'bg-blue-100 text-blue-800' :
+                          selectedItem.contract_status === '계약불가' ? 'bg-red-100 text-red-800' :
                           'bg-gray-50 text-gray-500'
                         }`}>
-                          {selectedItem.contract_status || '-'}
+                          {selectedItem.contract_status === 'Y' ? '계약완료' :
+                           selectedItem.contract_status === 'N' ? '미계약' :
+                           selectedItem.contract_status || '-'}
                         </span>
                       )}
                     </div>

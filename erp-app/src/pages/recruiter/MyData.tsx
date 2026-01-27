@@ -60,6 +60,11 @@ const RecruiterMyData: React.FC = () => {
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all'); // 'all', 'action_needed', 'rejected', 'completed'
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  
+  // 검색 필터 states
+  const [searchCompanyName, setSearchCompanyName] = useState<string>('');
+  const [searchStartDate, setSearchStartDate] = useState<string>('');
+  const [searchEndDate, setSearchEndDate] = useState<string>('');
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [newFeedback, setNewFeedback] = useState('');
@@ -216,8 +221,29 @@ const RecruiterMyData: React.FC = () => {
   const filterDataByMonth = (data: MyDataItem[], year: string, month: string, status: string) => {
     let filtered = data;
     
-    // 연도 필터
-    if (year) {
+    // 업체명 검색
+    if (searchCompanyName.trim()) {
+      filtered = filtered.filter(item => 
+        item.company_name?.toLowerCase().includes(searchCompanyName.toLowerCase().trim())
+      );
+    }
+    
+    // 날짜 범위 검색
+    if (searchStartDate) {
+      filtered = filtered.filter(item => {
+        if (!item.proposal_date) return false;
+        return item.proposal_date >= searchStartDate;
+      });
+    }
+    if (searchEndDate) {
+      filtered = filtered.filter(item => {
+        if (!item.proposal_date) return false;
+        return item.proposal_date <= searchEndDate;
+      });
+    }
+    
+    // 연도 필터 (날짜 범위 검색이 없을 때만 적용)
+    if (year && !searchStartDate && !searchEndDate) {
       filtered = filtered.filter(item => {
         if (!item.proposal_date) return false;
         const itemYear = item.proposal_date.substring(0, 4);
@@ -255,7 +281,7 @@ const RecruiterMyData: React.FC = () => {
     if (myData.length > 0) {
       filterDataByMonth(myData, selectedYear, selectedMonth, statusFilter);
     }
-  }, [selectedYear, selectedMonth, statusFilter]);
+  }, [selectedYear, selectedMonth, statusFilter, searchCompanyName, searchStartDate, searchEndDate]);
 
   const handleEdit = (id: number) => {
     setEditingId(id);
@@ -788,8 +814,65 @@ const RecruiterMyData: React.FC = () => {
         </div>
       )}
 
-      {/* 월별 필터 */}
+      {/* 검색 및 필터 */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
+        {/* 검색 필터 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b border-gray-200">
+          <div className="flex flex-col space-y-1">
+            <label className="text-sm font-semibold text-gray-700">업체명 검색</label>
+            <input
+              type="text"
+              value={searchCompanyName}
+              onChange={(e) => setSearchCompanyName(e.target.value)}
+              placeholder="업체명 입력..."
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="flex flex-col space-y-1">
+            <label className="text-sm font-semibold text-gray-700">시작 날짜</label>
+            <input
+              type="date"
+              value={searchStartDate}
+              onChange={(e) => setSearchStartDate(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="flex flex-col space-y-1">
+            <label className="text-sm font-semibold text-gray-700">종료 날짜</label>
+            <input
+              type="date"
+              value={searchEndDate}
+              onChange={(e) => setSearchEndDate(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* 검색 초기화 버튼 */}
+        {(searchCompanyName || searchStartDate || searchEndDate) && (
+          <div className="mb-4 flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+            <span className="text-sm text-blue-800">
+              검색 필터 적용 중
+              {searchCompanyName && <span className="ml-2 font-medium">업체명: "{searchCompanyName}"</span>}
+              {searchStartDate && <span className="ml-2 font-medium">시작: {searchStartDate}</span>}
+              {searchEndDate && <span className="ml-2 font-medium">종료: {searchEndDate}</span>}
+            </span>
+            <button
+              onClick={() => {
+                setSearchCompanyName('');
+                setSearchStartDate('');
+                setSearchEndDate('');
+              }}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+            >
+              검색 초기화
+            </button>
+          </div>
+        )}
+
+        {/* 월별 필터 */}
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center space-x-2">
             <label className="text-sm font-semibold text-gray-700">연도:</label>
@@ -800,6 +883,7 @@ const RecruiterMyData: React.FC = () => {
                 setSelectedMonth('');
               }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={!!(searchStartDate || searchEndDate)}
             >
               <option value="">전체</option>
               {availableYears.map((year) => (
@@ -808,9 +892,12 @@ const RecruiterMyData: React.FC = () => {
                 </option>
               ))}
             </select>
+            {(searchStartDate || searchEndDate) && (
+              <span className="text-xs text-gray-500">(날짜 범위 검색 중)</span>
+            )}
           </div>
           
-          {selectedYear && (
+          {selectedYear && !searchStartDate && !searchEndDate && (
             <div className="flex items-center space-x-2">
               <label className="text-sm font-semibold text-gray-700">월:</label>
               <select

@@ -469,19 +469,29 @@ const RecruiterMyData: React.FC = () => {
   // 섭외자 데이터 저장
   const handleSave = async (item: MyDataItem) => {
     try {
+      const requestData = {
+        proposal_date: item.proposal_date,
+        meeting_status: item.meeting_status,
+        salesperson_id: item.salesperson_id,
+        meeting_request_datetime: item.meeting_request_datetime,
+        proposer: currentUser.name,
+      };
+      
+      console.log('=== Recruiter Save Request ===');
+      console.log('Item ID:', item.id);
+      console.log('Item proposer:', item.proposer);
+      console.log('Current user name:', currentUser.name);
+      console.log('Request data:', requestData);
+      
       const response = await fetch(`/api/sales-db/${item.id}/recruiter-update`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          proposal_date: item.proposal_date,
-          meeting_status: item.meeting_status,
-          salesperson_id: item.salesperson_id,
-          meeting_request_datetime: item.meeting_request_datetime,
-          proposer: currentUser.name,
-        }),
+        body: JSON.stringify(requestData),
       });
       
       const result = await response.json();
+      console.log('Response:', result);
+      
       if (result.success) {
         alert('저장되었습니다.');
         setEditingId(null);

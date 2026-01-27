@@ -2795,12 +2795,30 @@ app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
     const { id } = req.params;
     const { proposal_date, proposer, meeting_status, salesperson_id, meeting_request_datetime } = req.body;
     
+    console.log('=== Recruiter Update Request ===');
+    console.log('ID:', id);
+    console.log('Request proposer:', proposer);
+    console.log('meeting_request_datetime:', meeting_request_datetime);
+    
     // 본인 데이터인지 확인
     const record = db.prepare('SELECT proposer FROM sales_db WHERE id = ?').get(id);
-    if (!record || record.proposer !== proposer) {
-      return res.json({ success: false, message: '권한이 없습니다.' });
+    console.log('DB proposer:', record?.proposer);
+    
+    if (!record) {
+      console.error('Record not found');
+      return res.json({ success: false, message: '데이터를 찾을 수 없습니다.' });
     }
     
+    // proposer 비교 (trimmed)
+    const dbProposer = (record.proposer || '').trim();
+    const reqProposer = (proposer || '').trim();
+    
+    if (dbProposer !== reqProposer) {
+      console.error('Proposer mismatch:', { db: dbProposer, request: reqProposer });
+      return res.json({ success: false, message: `권한이 없습니다. (DB: "${dbProposer}", 요청: "${reqProposer}")` });
+    }
+    
+    console.log('Updating database...');
     const stmt = db.prepare(`
       UPDATE sales_db 
       SET proposal_date = ?, meeting_status = ?, salesperson_id = ?, meeting_request_datetime = ?, updated_at = CURRENT_TIMESTAMP
@@ -2808,8 +2826,10 @@ app.put('/api/sales-db/:id/recruiter-update', (req, res) => {
     `);
     stmt.run(proposal_date, meeting_status, salesperson_id, meeting_request_datetime, id);
     
+    console.log('Update successful');
     res.json({ success: true });
   } catch (error) {
+    console.error('Error in recruiter-update:', error);
     res.json({ success: false, message: error.message });
   }
 });
